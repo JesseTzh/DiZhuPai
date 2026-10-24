@@ -1,0 +1,167 @@
+/* Shop tooltips, paper price cards and the shopkeeper's speech bubble (phone sizes are in shop.css). */
+.toy-tooltip {
+  position: absolute;
+  z-index: 5;
+  left: var(--price-x, 50%);
+  top: calc(100% + 34px);
+  width: min(240px, 70vw);
+  padding: 9px 12px;
+  display: grid;
+  gap: 4px;
+  text-align: left;
+  background: #fff4d6;
+  border: 2px solid var(--ink);
+  border-radius: 4px;
+  box-shadow: 3px 4px 0 #41538f;
+  opacity: 0;
+  visibility: hidden;
+  transform: translate(-50%, 6px);
+  transition:
+    opacity 0.15s,
+    transform 0.15s,
+    visibility 0.15s;
+  pointer-events: none;
+}
+.toy-tooltip:after {
+  content: '';
+  position: absolute;
+  left: calc(50% - 7px);
+  top: -8px;
+  width: 12px;
+  height: 12px;
+  background: #fff4d6;
+  border: solid var(--ink);
+  border-width: 2px 0 0 2px;
+  transform: rotate(45deg);
+}
+.toy-tooltip strong {
+  font:
+    800 14px ui-serif,
+    'Songti SC',
+    serif;
+}
+.toy-tooltip span {
+  font-size: 11px;
+  line-height: 1.55;
+}
+.toy-tooltip small {
+  color: #3f6e56;
+  font-size: 10px;
+}
+.shop-product:hover .toy-tooltip,
+.shop-product:has(:focus-visible) .toy-tooltip {
+  opacity: 1;
+  visibility: visible;
+  transform: translate(-50%, 0);
+}
+/* Paper price card pinned to the counter front. */
+.price-tag {
+  position: absolute;
+  left: var(--price-x, 50%);
+  top: 100%;
+  transform: translate(-50%, -50%) rotate(var(--tilt, -2deg));
+  display: grid;
+  gap: 1px;
+  min-width: 92px;
+  padding: 5px 10px 6px;
+  color: var(--ink);
+  background: #fff4d6;
+  border: 2px solid var(--ink);
+  border-radius: 3px;
+  box-shadow: 2px 3px 0 #41538f;
+  font:
+    700 10px ui-monospace,
+    'PingFang SC',
+    sans-serif;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: transform 0.15s;
+}
+.price-tag:before {
+  content: '';
+  position: absolute;
+  left: calc(50% - 4px);
+  top: -6px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #e2ab3d;
+  border: 1.5px solid var(--ink);
+}
+.price-tag b {
+  font:
+    800 14px ui-serif,
+    'Songti SC',
+    serif;
+}
+.price-tag em {
+  font-style: normal;
+}
+.price-tag span {
+  padding: 2px 6px;
+  border-radius: 2px;
+  background: var(--toy-color);
+}
+.toy-hand .price-tag {
+  --tilt: 1.5deg;
+}
+.toy-dragon .price-tag {
+  --tilt: -1deg;
+}
+.price-tag:not(:disabled):hover {
+  transform: translate(-50%, -54%) rotate(0deg);
+}
+.price-tag:disabled {
+  cursor: default;
+  box-shadow: none;
+}
+.price-tag:disabled span {
+  background: #e7dcc4;
+}
+.owned-mark {
+  margin-left: 6px;
+  padding: 0 4px;
+  color: #d0483a;
+  border: 1.5px solid #d0483a;
+  border-radius: 2px;
+  font: 800 10px sans-serif;
+  font-style: normal;
+  vertical-align: 2px;
+}
+.goose-bubble {
+  position: absolute;
+  z-index: 3;
+  transform: translate(28%, -175%) scale(0.6);
+  transform-origin: 0 100%;
+  padding: 7px 12px;
+  background: #fff;
+  border: 2px solid var(--ink);
+  border-radius: 14px;
+  box-shadow: 2px 3px 0 #41538f;
+  font:
+    800 14px ui-serif,
+    'Songti SC',
+    serif;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity 0.15s,
+    transform 0.25s cubic-bezier(0.3, 1.6, 0.5, 1);
+}
+.goose-bubble:after {
+  content: '';
+  position: absolute;
+  left: 12px;
+  bottom: -8px;
+  width: 11px;
+  height: 11px;
+  background: #fff;
+  border: solid var(--ink);
+  border-width: 0 2px 2px 0;
+  transform: skewX(25deg) rotate(45deg);
+}
+.goose-bubble.show {
+  opacity: 1;
+  transform: translate(28%, -175%) scale(1);
+}

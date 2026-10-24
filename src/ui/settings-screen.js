@@ -1,0 +1,83 @@
+import {
+  renderDprSetting,
+  setRenderDprSetting,
+  RENDER_DPR_OPTIONS,
+} from '../engine/render-pixel-ratio.js';
+
+const ink = '#292a28';
+const speaker = `<path d="M8 17H15L24 10V34L15 27H8Z" fill="#f4b829" stroke="${ink}" stroke-width="2" stroke-linejoin="round"/><g class="sound-waves" fill="none" stroke="${ink}" stroke-width="2" stroke-linecap="round"><path d="M30 16Q36 22 30 28M35 11Q46 22 35 33"/></g><path class="sound-cross" d="M30 17L40 27M40 17L30 27" fill="none" stroke="${ink}" stroke-width="2" stroke-linecap="round"/>`;
+const scaleButton = (value) =>
+  `<button type="button" role="radio" aria-checked="false" data-scale="${value}" aria-label="${value === 'auto' ? '自动，最高 2 倍' : `${value} 倍`}"><svg viewBox="0 0 72 54" aria-hidden="true"><path class="scale-shadow" d="M7 8L65 6 68 45 10 48Z"/><path class="scale-paper" d="M4 4L63 3 65 42 6 44Z"/><text x="35" y="28" text-anchor="middle">${value === 'auto' ? '自动' : `${value}×`}</text><path class="scale-check" d="M48 35L52 38 59 31"/></svg></button>`;
+
+export function mountSettings({ ui, audio }) {
+  const settings = document.createElement('dialog');
+  settings.id = 'settings-screen';
+  settings.setAttribute('aria-labelledby', 'settings-title');
+  settings.innerHTML = `<div class="settings-content">
+    <svg class="settings-paper" viewBox="0 0 440 368" preserveAspectRatio="none" aria-hidden="true"><path d="M12 12L428 9 432 353 18 360 7 348Z" fill="#6487bd"/><path d="M5 4L421 3 425 343 12 349 3 336Z" fill="#fff8e7" stroke="${ink}" stroke-width="2" stroke-linejoin="round"/><path d="M15 339L414 334M414 14L417 324" fill="none" stroke="#d5c7a9" stroke-width="1.3"/><path d="M26 86Q203 83 399 87" fill="none" stroke="#b4a381" stroke-width="1.2"/></svg>
+    <div class="settings-heading"><h1 id="settings-title"><span class="sr-only">设置</span><svg viewBox="0 0 170 52" aria-hidden="true"><path d="M3 43L111 43" stroke="#f4b829" stroke-width="9"/><text x="3" y="34">设置</text><path d="M125 19L131 23 137 19 135 27 141 32 133 33 129 40 126 33 118 30 125 26Z" fill="#93d3b0" stroke="${ink}" stroke-width="1.5" stroke-linejoin="round"/></svg></h1>
+    <button id="close-settings" aria-label="关闭设置"><svg viewBox="0 0 44 44" aria-hidden="true"><path d="M6 8L35 5 39 35 9 39Z" fill="#6487bd"/><path d="M4 4L33 3 36 32 6 35Z" fill="#fff8e7" stroke="${ink}" stroke-width="2" stroke-linejoin="round"/><path d="M13 12L26 25M26 12L13 25" fill="none" stroke="${ink}" stroke-width="2.2" stroke-linecap="round"/></svg></button></div>
+    <div class="settings-sound-row"><span id="sound-label">音效</span><button id="sound-enabled" type="button" role="switch" aria-checked="true" aria-labelledby="sound-label"><svg viewBox="0 0 136 52" aria-hidden="true"><path d="M5 9L126 6 130 45 9 48Z" fill="#6487bd"/><path class="sound-paper" d="M3 4L124 3 126 41 6 43Z" stroke="${ink}" stroke-width="2" stroke-linejoin="round"/>${speaker}<text class="sound-value" x="78" y="28" text-anchor="middle">开启</text><circle class="sound-indicator" cx="110" cy="22" r="4" fill="${ink}"/></svg></button></div>
+    <div id="render-scale" role="radiogroup" aria-labelledby="scale-label"><span id="scale-label">渲染倍率</span><div class="scale-options">${RENDER_DPR_OPTIONS.map(scaleButton).join('')}</div></div>
+    <button id="return-home" type="button"><svg viewBox="0 0 240 54" aria-hidden="true"><path d="M8 9L230 6 234 46 11 49Z" fill="#6487bd"/><path d="M4 4L227 3 230 41 7 44Z" fill="#f4b829" stroke="${ink}" stroke-width="2" stroke-linejoin="round"/><path d="M29 16L21 24 29 32M22 24H42" fill="none" stroke="${ink}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><text x="134" y="29" text-anchor="middle">返回主界面</text></svg><span class="sr-only">返回主界面</span></button>
+  </div>`;
+  document.body.append(settings);
+  const sound = settings.querySelector('#sound-enabled');
+  let enabled = localStorage.getItem('sound-enabled') !== 'off';
+  const syncSound = () => {
+    audio.mute(!enabled);
+    sound.setAttribute('aria-checked', String(enabled));
+    sound.querySelector('.sound-value').textContent = enabled ? '开启' : '关闭';
+  };
+  syncSound();
+  const savedVolume = Number(localStorage.getItem('sound-volume') ?? 35);
+  audio.setVolume(Number.isFinite(savedVolume) ? savedVolume / 100 : 0.35);
+  sound.onclick = () => {
+    enabled = !enabled;
+    syncSound();
+    localStorage.setItem('sound-enabled', enabled ? 'on' : 'off');
+  };
+  const choices = [...settings.querySelectorAll('[data-scale]')];
+  const refresh = () => {
+    const value = renderDprSetting();
+    choices.forEach((button) => {
+      const selected = button.dataset.scale === value;
+      button.setAttribute('aria-checked', String(selected));
+      button.tabIndex = selected ? 0 : -1;
+    });
+  };
+  const choose = (button) => {
+    setRenderDprSetting(button.dataset.scale);
+    refresh();
+    ui.render();
+  };
+  choices.forEach((button, index) => {
+    button.onclick = () => choose(button);
+    button.onkeydown = (event) => {
+      let next;
+      if (['ArrowRight', 'ArrowDown'].includes(event.key)) next = (index + 1) % choices.length;
+      if (['ArrowLeft', 'ArrowUp'].includes(event.key))
+        next = (index + choices.length - 1) % choices.length;
+      if (event.key === 'Home') next = 0;
+      if (event.key === 'End') next = choices.length - 1;
+      if (next === undefined) return;
+      event.preventDefault();
+      choices[next].focus();
+      choose(choices[next]);
+    };
+  });
+  settings.querySelector('#close-settings').onclick = () => settings.close();
+  settings.addEventListener('click', (event) => {
+    if (event.target !== settings) return;
+    const rect = settings.getBoundingClientRect();
+    if (
+      event.clientX < rect.left ||
+      event.clientX > rect.right ||
+      event.clientY < rect.top ||
+      event.clientY > rect.bottom
+    )
+      settings.close();
+  });
+  refresh();
+  return { element: settings, refresh, syncTableChoices() {} };
+}

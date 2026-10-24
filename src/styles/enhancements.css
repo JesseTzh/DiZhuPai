@@ -1,0 +1,105 @@
+.vset {
+  top: 4px !important;
+}
+#stats {
+  top: var(--vset-h, 44px) !important;
+}
+
+.zwrap {
+  position: relative;
+}
+.zwrap.on {
+  overflow: visible;
+}
+html.zoomed,
+html.zoomed body {
+  overflow: hidden;
+}
+
+.zwrap #fig {
+  transform-origin: 0 0;
+}
+.zchip {
+  position: absolute;
+  right: 2px;
+  bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  font:
+    600 11px ui-monospace,
+    Menlo,
+    monospace;
+  background: rgba(242, 239, 231, 0.88);
+  border: 1px solid rgba(35, 30, 22, 0.25);
+  border-radius: 999px;
+  padding: 2px;
+  z-index: 3;
+  user-select: none;
+}
+.zchip button {
+  all: unset;
+  cursor: pointer;
+  min-width: 22px;
+  height: 22px;
+  line-height: 22px;
+  text-align: center;
+  border-radius: 999px;
+  color: #231e16;
+}
+.zchip button:hover {
+  background: rgba(35, 30, 22, 0.08);
+}
+.zchip .zp {
+  min-width: 44px;
+}
+.toast {
+  position: absolute !important;
+  left: 50% !important;
+  right: auto !important;
+  top: 6% !important;
+  bottom: auto !important;
+  z-index: 4 !important;
+  transform: translate(-50%, 8px) !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  display: flex !important;
+  align-items: center;
+  gap: 8px;
+  width: max-content;
+  max-width: min(86%, 440px);
+  white-space: normal !important;
+  font:
+    600 12.5px/1.35 ui-monospace,
+    Menlo,
+    monospace !important;
+  letter-spacing: 0.01em !important;
+  text-transform: none !important;
+  color: #231e16 !important;
+  background: #fff1bf !important;
+  border: 1px solid rgba(35, 30, 22, 0.28) !important;
+  border-radius: 8px !important;
+  box-shadow: 0 8px 22px rgba(35, 30, 22, 0.16) !important;
+  padding: 7px 13px 7px 9px !important;
+  transition:
+    opacity 0.18s ease,
+    transform 0.18s ease !important;
+}
+.toast::before {
+  content: '!';
+  flex: none;
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  background: #231e16;
+  color: #fff1bf;
+  font:
+    800 11px/17px ui-monospace,
+    Menlo,
+    monospace;
+  text-align: center;
+}
+.toast.show {
+  opacity: 1 !important;
+  transform: translate(-50%, 0) !important;
+}

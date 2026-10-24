@@ -1,0 +1,143 @@
+body {
+  height: auto;
+  min-height: 100vh;
+  justify-content: flex-start;
+  padding: 150px 28px 34px;
+  background-color: #f2efe7;
+}
+.stage {
+  flex-shrink: 0;
+  max-width: 1120px;
+  display: flex;
+  flex-direction: column;
+}
+#fig {
+  max-width: none;
+  margin: 0;
+  width: 100%;
+}
+.actions {
+  position: static;
+  max-width: none;
+  flex-direction: row;
+  justify-content: center;
+  gap: 10px;
+  order: 2;
+  margin: 10px 0 25px;
+}
+.act,
+button {
+  font-family: ui-monospace, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-size: 12px;
+  letter-spacing: 0.05em;
+}
+.act {
+  padding: 9px 18px;
+  background: #faf5e9;
+  border-width: 1.3px;
+  box-shadow: 0 2px 0 #292a2820;
+  transition:
+    background 0.15s,
+    transform 0.15s;
+}
+.act:hover {
+  background: #eebc48;
+  transform: translateY(-1px);
+}
+.act:active {
+  transform: translateY(1px);
+}
+.stepwrap:nth-child(2) .act {
+  color: #b44736;
+}
+.stepwrap:nth-child(5) .act {
+  background: transparent;
+  color: #766e60;
+  border-color: #a49a88;
+  box-shadow: none;
+}
+.controls {
+  max-width: 900px;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  padding: 20px 0 0;
+  align-items: center;
+}
+.controls .ctl:first-child {
+  display: none;
+}
+.controls .ctl:nth-child(2) {
+  flex-direction: row;
+  align-items: center;
+  gap: 18px;
+}
+.controls .ctl:nth-child(3) {
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 18px;
+}
+.ctl label {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: #8a8172;
+}
+.sw {
+  width: 20px;
+  height: 20px;
+  border-width: 1.1px;
+}
+.sw[aria-pressed='true'] {
+  outline-width: 1.2px;
+  outline-offset: 3px;
+}
+.row {
+  gap: 12px;
+  align-items: center;
+}
+.vset {
+  order: 3;
+  position: static;
+  display: flex;
+  justify-content: center;
+  margin: -12px 0 15px !important;
+}
+.vset .act {
+  font-size: 10px;
+  padding: 5px 12px;
+  box-shadow: none;
+  border-color: #b6ad9a;
+  background: transparent;
+  color: #817767;
+}
+.zwrap {
+  order: 1;
+  width: 100%;
+}
+.zchip {
+  right: 10px !important;
+  bottom: 10px !important;
+  background: #faf5e9 !important;
+  border-color: #c4bba7 !important;
+}
+button:focus-visible {
+  outline: 2px solid #6487bd;
+  outline-offset: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  button {
+    transition: none !important;
+  }
+}
+#lblctl {
+  display: none;
+}
+.vrow {
+  display: flex;
+  gap: 6px;
+}
+.vset .act[aria-pressed='true'] {
+  background: var(--ink);
+  color: var(--paper);
+}

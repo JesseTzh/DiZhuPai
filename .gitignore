@@ -1,0 +1,13 @@
+node_modules/
+test-results/
+.DS_Store
+.idea/
+
+# Generated production bundle (created by `npm run build` or Docker)
+/dist/
+/index.html
+/performance.html
+/assets/main.bundle.js
+/assets/performance.bundle.js
+/assets/index.css
+/assets/performance.css

@@ -1,0 +1,103 @@
+import assert from 'node:assert/strict';
+import { chromium } from 'playwright';
+const browser = await chromium.launch({ channel: 'chrome' });
+const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+const errors = [];
+page.on('pageerror', (e) => errors.push(e.message));
+const base = process.env.TEST_URL || 'http://127.0.0.1:5173/';
+async function endRound() {
+  await page.evaluate(() => {
+    const s = gameApp.state,
+      g = s.game;
+    g.phase = 'playing';
+    g.turn = 0;
+    g.hands[0] = [0];
+    g.selected = [0];
+    g.target = null;
+    s.locked = false;
+    gameApp.play();
+  });
+}
+try {
+  await page.goto(`${base}?page=game`);
+  await page.evaluate(() => gameApp.ready());
+  await page.locator('[data-slot="0"] [data-slot-action="new"]').click();
+  await page.waitForFunction(() => gameApp.state.game.phase === 'playing');
+  await endRound();
+  await page.waitForFunction(() => document.body.classList.contains('clearing-table'));
+  await page.screenshot({ path: 'test-results/shop-table-exit.png' });
+  await page.waitForFunction(() => gameApp.state.game.phase === 'shop');
+  await page.waitForTimeout(700);
+  assert.equal(await page.locator('#shop').isVisible(), true);
+  assert.equal(await page.locator('.toy-model').count(), 3);
+  assert.equal(await page.locator('[data-part^="finger-"]').count(), 5);
+  await page.screenshot({ path: 'test-results/shop-desktop.png' });
+  for (const id of ['frog', 'hand', 'dragon']) await page.locator(`[data-buy="${id}"]`).click();
+  assert.equal(await page.locator('#shop-balance').textContent(), '25');
+  assert.equal(await page.locator('[data-buy="frog"]').isDisabled(), true);
+  await page.locator('#leave-shop').click();
+  await page.waitForFunction(() => gameApp.state.visual.dealTime > 2.38);
+  assert.equal(await page.evaluate(() => gameApp.state.locked), true);
+  assert.equal(await page.evaluate(() => gameApp.state.game.phase), 'dealing');
+  await page.screenshot({ path: 'test-results/frog-wild-reveal.png' });
+  await page.waitForFunction(() => gameApp.state.game.phase === 'playing');
+  assert.equal(await page.evaluate(() => gameApp.state.game.round), 2);
+  await page.waitForSelector('.wild-card-model');
+  assert.equal(await page.locator('.wild-card-model').count(), 1);
+  assert.equal(await page.locator('.center-label').count(), 0);
+  assert.doesNotMatch(await page.locator('#level-detail').textContent(), /余/);
+  assert.equal(await page.locator('.hand-card[aria-label*="赖子"]').count(), 1);
+  assert.equal(await page.locator('.table-item').count(), 3);
+  for (const id of ['frog', 'hand', 'dragon']) {
+    await page.locator(`#table-item-${id}`).hover();
+    assert.equal(await page.locator('#item-tooltip').isVisible(), true);
+    assert.match(await page.locator('#item-tooltip').textContent(), /本场持续生效/);
+  }
+  await page.mouse.move(0, 0);
+  assert.equal(await page.locator('#item-tooltip').isVisible(), false);
+  assert.equal(await page.locator('#camera-pitch, .camera-controls').count(), 0);
+  assert.equal(
+    await page.evaluate(async () => (await import('/engine/camera.js')).cameraView().pitch),
+    68,
+  );
+  await page.screenshot({ path: 'test-results/shop-items-in-play.png' });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.screenshot({ path: 'test-results/frog-wild-phone.png' });
+  assert.equal(await page.locator('.wild-card-model').count(), 1);
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await endRound();
+  await page.waitForFunction(() => gameApp.state.game.phase === 'shop');
+  await page.locator('#leave-shop').click();
+  await page.waitForFunction(() => gameApp.state.game.phase === 'playing');
+  assert.equal(await page.evaluate(() => gameApp.state.game.round), 3);
+  await page.locator('#table-item-frog').focus();
+  assert.equal(await page.locator('#item-tooltip').isVisible(), true);
+  await page.keyboard.press('Escape');
+  assert.equal(await page.locator('#item-tooltip').isVisible(), false);
+  await endRound();
+  await page.waitForFunction(() => gameApp.state.game.phase === 'shop');
+  assert.match(await page.locator('#leave-shop').textContent(), /第 2 大关/);
+  await page.locator('#leave-shop').click();
+  await page.waitForFunction(() => gameApp.state.game.phase === 'playing');
+  assert.equal(await page.evaluate(() => gameApp.state.game.stage), 2);
+  assert.equal(await page.evaluate(() => gameApp.state.game.items.length), 3);
+  // Last round remains a match result and a fresh match clears its inventory.
+  await page.evaluate(() => {
+    gameApp.state.game.round = 9;
+    gameApp.state.game.stage = 3;
+    gameApp.state.game.substage = 3;
+  });
+  await endRound();
+  await page.waitForTimeout(1700);
+  assert.equal(await page.evaluate(() => gameApp.state.game.matchOver), true);
+  assert.equal(await page.locator('#shop').isVisible(), false);
+  await page.locator('#start-game').click();
+  assert.deepEqual(await page.evaluate(() => gameApp.state.game.items), []);
+  assert.equal(await page.evaluate(() => gameApp.state.game.wildCard), null);
+  assert.deepEqual(errors, []);
+  console.log(
+    'Shop browser flow passed: animated exit, all purchases, five fingers, frog wild model, stage change, match reset.',
+  );
+} finally {
+  await browser.close();
+}

@@ -1,0 +1,56 @@
+#card-performance {
+  position: fixed;
+  top: 14px;
+  left: 14px;
+  z-index: 30;
+  width: 208px;
+  box-sizing: border-box;
+  padding: 10px 12px 9px;
+  border: 1.5px solid #292a28;
+  border-radius: 9px;
+  background: #fff8e7;
+  box-shadow: 3px 3px 0 #6487bd;
+  color: #292a28;
+  font:
+    10px/1.3 ui-monospace,
+    Menlo,
+    'PingFang SC',
+    monospace;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+.perf-heading,
+.perf-detail {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+.perf-heading {
+  color: #766e60;
+}
+.perf-main {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  margin: 3px 0;
+}
+.perf-main strong {
+  font-size: 27px;
+  line-height: 1;
+  font-weight: 700;
+}
+.perf-main small {
+  font-size: 10px;
+  margin-left: auto;
+  color: #766e60;
+}
+#perf-chart {
+  display: block;
+  width: 182px;
+  height: 36px;
+  margin: 5px 0;
+}
+.perf-detail {
+  font-size: 9px;
+  color: #766e60;
+}

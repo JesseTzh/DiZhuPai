@@ -1,0 +1,13 @@
+node_modules/
+.git/
+.gitignore
+test-results/
+.DS_Store
+.idea/
+.agents/
+.codex/
+dist/
+assets/
+index.html
+performance.html
+tests/

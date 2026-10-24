@@ -1,0 +1,104 @@
+import { homeMarkup, mountHomeAnimation } from '../ui/home-art.js';
+import { mountGameEntry } from '../ui/game-entry.js';
+
+export function mountNavigation({
+  state,
+  ui,
+  audio,
+  controller,
+  session,
+  settings,
+  saves,
+  saveProgress,
+}) {
+  const home = document.createElement('main');
+  home.id = 'home-screen';
+  home.innerHTML = homeMarkup();
+  document.body.append(home);
+  const homeAnimation = mountHomeAnimation(home);
+  let currentPage = null;
+  const entry = mountGameEntry({
+    home,
+    state,
+    ui,
+    onComplete: () => {
+      if (session.activeSlot !== null) showPage('game');
+      else {
+        session.select(0);
+        controller.newGame();
+      }
+    },
+  });
+  function openSettings() {
+    settings.refresh();
+    controller.stopComputer();
+    settings.element.showModal();
+  }
+  settings.element.addEventListener('close', () => {
+    controller.queueComputer();
+    ui.render();
+  });
+  function showPage(page, updateHistory = true) {
+    if (page === 'settings' && currentPage) {
+      openSettings();
+      return;
+    }
+    entry.cancel();
+    const wantsSettings = page === 'settings';
+    let next = ['game', 'saves'].includes(page) ? page : 'home';
+    if (settings.element.open) settings.element.close();
+    if (next === 'game' && session.activeSlot === null) next = 'saves';
+    if (next === 'saves') {
+      saveProgress();
+      saves.open();
+    }
+    if (next !== 'game') audio.stopDeal();
+    const isHome = next === 'home';
+    if (isHome && currentPage !== 'home' && !state.game.round) {
+      state.game.hands = [
+        [0, 8, 16, 24, 32, 40, 48],
+        [4, 12, 20, 28, 36, 44, 52],
+      ];
+    }
+    state.visual.home = isHome;
+    home.querySelector('.home-start-label').textContent = session.readSlots()[0].save
+      ? '继续游戏'
+      : '开始游戏';
+    currentPage = next;
+    controller.stopComputer();
+    document.body.classList.toggle('home-page', isHome);
+    document.body.classList.toggle('saves-page', next === 'saves');
+    home.hidden = !isHome;
+    homeAnimation.sync();
+    saves.element.hidden = next !== 'saves';
+    if (next === 'saves') document.getElementById('close-saves').focus({ preventScroll: true });
+    if (next === 'game' && state.game.phase === 'dealing') audio.startDeal();
+    controller.queueComputer();
+    if (updateHistory) {
+      const url = new URL(location.href);
+      if (isHome) url.searchParams.delete('page');
+      else url.searchParams.set('page', next);
+      history.pushState({}, '', url);
+    }
+    ui.render();
+    if (isHome) entry.syncHome();
+    if (wantsSettings) openSettings();
+  }
+  for (const id of ['home-settings', 'open-settings'])
+    document.getElementById(id).onclick = openSettings;
+  settings.element.querySelector('#return-home').onclick = () => {
+    saveProgress();
+    showPage('home');
+  };
+  document.getElementById('enter-game').onclick = entry.start;
+  document.getElementById('home-import').onclick = () => showPage('saves');
+  document.getElementById('close-saves').onclick = () => showPage('home');
+  addEventListener('popstate', () =>
+    showPage(new URLSearchParams(location.search).get('page'), false),
+  );
+  return {
+    showPage,
+    homeAnimation,
+    isGamePage: () => currentPage === 'game' && !settings.element.open,
+  };
+}

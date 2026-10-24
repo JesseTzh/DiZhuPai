@@ -1,0 +1,320 @@
+/* Paper, three flat shades, ink silhouettes and a short cobalt cast shadow. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+.saves-page .stage {
+  display: none;
+}
+#home-screen[hidden],
+#saves-screen[hidden] {
+  display: none !important;
+}
+.home-page #home-screen {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  padding: 0 20px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+.home-table {
+  position: absolute;
+  width: calc(100% - 28px);
+  height: calc(100% - 32px);
+  max-width: 1440px;
+  max-height: 1000px;
+  pointer-events: none;
+}
+.home-composition {
+  position: relative;
+  width: min(800px, calc(100vw - 40px));
+  margin-top: -45px;
+}
+#home-screen .home-title {
+  margin: 0;
+  width: 100%;
+  line-height: 0;
+}
+#home-art {
+  width: 100%;
+  height: auto;
+  display: block;
+  overflow: visible;
+}
+.home-buttons {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 22px;
+  margin-top: -24px;
+}
+.figure-button,
+#home-screen .figure-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  width: 240px;
+  min-height: 64px;
+  padding: 14px 28px;
+  margin: 0;
+  position: relative;
+  border: 2.5px solid var(--ink);
+  border-radius: 12px;
+  background: #fff4d6;
+  color: var(--ink);
+  font-size: 18px;
+  font-weight: 750;
+  letter-spacing: 0.12em;
+  text-align: center;
+  text-decoration: none;
+  box-shadow:
+    3px 5px 0 #c6b88e,
+    3px 7px 0 1.5px var(--ink),
+    -7px 13px 0 1px #41538f26;
+  transition:
+    transform 0.16s ease,
+    box-shadow 0.16s ease;
+  cursor: pointer;
+}
+.figure-button.figure-primary,
+#home-screen .figure-primary {
+  background: #76a0e2;
+  box-shadow:
+    3px 5px 0 #46679e,
+    3px 7px 0 1.5px var(--ink),
+    -7px 13px 0 1px #41538f26;
+}
+.figure-button:hover,
+#home-screen .figure-button:hover {
+  transform: translateY(-3px) rotate(-0.5deg);
+}
+.figure-button:active,
+#home-screen .figure-button:active {
+  transform: translate(2px, 5px);
+  box-shadow: 1px 2px 0 var(--ink);
+}
+.figure-button svg {
+  width: 27px;
+  height: 27px;
+  flex: 0 0 auto;
+}
+button:focus-visible,
+.home-rocket:focus-visible {
+  outline: 3px solid #46679e;
+  outline-offset: 7px;
+}
+.home-rocket {
+  z-index: 1;
+  position: absolute;
+  top: 24px;
+  left: 24px;
+  width: 48px;
+  height: 48px;
+  display: block;
+  border-radius: 12px;
+  transition: transform 0.2s;
+}
+.home-rocket:hover {
+  transform: translate(2px, -4px) rotate(8deg);
+}
+.home-rocket svg {
+  width: 100%;
+  height: 100%;
+}
+#saves-screen {
+  position: absolute;
+  inset: 0;
+  padding: 35px 28px 50px;
+  overflow: auto;
+  z-index: 10;
+  background: var(--paper);
+}
+.saves-content {
+  max-width: 980px;
+  margin: auto;
+}
+.back-button {
+  border: 0;
+  padding: 8px 0;
+  background: none;
+  font-size: 14px;
+  cursor: pointer;
+}
+.saves-content > h1 {
+  margin: 65px 0 42px;
+  font-size: 32px;
+  letter-spacing: 0.15em;
+  text-align: center;
+}
+.save-slots {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  max-width: 420px;
+  margin: auto;
+  gap: 25px;
+}
+.save-slot {
+  position: relative;
+  min-width: 0;
+  border: 2px solid var(--ink);
+  border-radius: 16px;
+  background: #fff8e7;
+  padding: 28px 20px;
+  text-align: center;
+  box-shadow:
+    4px 5px 0 #dbd0b5,
+    4px 7px 0 1px var(--ink),
+    -6px 13px 0 #41538f20;
+}
+.slot-number {
+  position: absolute;
+  left: 18px;
+  top: 14px;
+  color: #857d6e;
+  font-size: 12px;
+}
+.slot-card {
+  width: 100px;
+  height: 95px;
+  margin-top: 12px;
+}
+.save-slot h2 {
+  font-size: 16px;
+  margin: 12px 0;
+}
+.save-slot p {
+  font-size: 12px;
+  color: #706856;
+}
+.save-slot time {
+  display: block;
+  min-height: 36px;
+  font-size: 10px;
+  color: #857d6e;
+}
+.slot-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 18px;
+}
+.slot-actions .figure-button {
+  grid-column: 1/-1;
+  width: 100%;
+  font-size: 15px;
+  min-height: 48px;
+  padding: 10px;
+  margin-bottom: 12px;
+}
+.slot-actions > button:not(.figure-button) {
+  border: 0;
+  background: none;
+  font-size: 12px;
+  padding: 8px 0;
+  cursor: pointer;
+  text-underline-offset: 4px;
+}
+.slot-actions > button:not(.figure-button):hover {
+  text-decoration: underline;
+}
+.slot-actions > button[data-slot-action='import']:last-child {
+  grid-column: 1/-1;
+}
+#save-status {
+  min-height: 20px;
+  margin: 28px 0 0;
+  color: #706856;
+  font-size: 12px;
+  text-align: center;
+}
+#import-confirm {
+  margin: 16px auto;
+  padding: 16px;
+  border: 2px solid var(--ink);
+  border-radius: 10px;
+  max-width: 500px;
+  background: #fff4d6;
+}
+#import-confirm button {
+  margin-right: 12px;
+}
+
+@media (max-height: 520px) and (min-width: 651px) {
+  .home-composition {
+    display: flex;
+    align-items: center;
+    width: min(830px, 100%);
+    margin-top: 0;
+  }
+  #home-screen .home-title {
+    width: 64%;
+  }
+  .home-buttons {
+    width: 36%;
+    margin-top: 25px;
+    gap: 22px;
+  }
+  #home-screen .figure-button {
+    width: 190px;
+    min-height: 54px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  #home-screen *,
+  .figure-button {
+    transition: none !important;
+  }
+}
+
+/* The same game canvas paints the home board and entry sequence. */
+.home-page .stage {
+  display: block;
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.home-page .zwrap {
+  inset: 22px 0 112px;
+  will-change: transform;
+}
+.game-entering #home-screen {
+  pointer-events: none;
+}
+.game-entering .home-composition,
+.game-entering .home-rocket {
+  animation: home-exit 180ms ease-out both;
+}
+.game-entering .stage > :not(.zwrap),
+.game-entering .zchip {
+  visibility: hidden;
+}
+@keyframes home-exit {
+  to {
+    opacity: 0;
+    transform: translateY(-12px) scale(0.98);
+  }
+}
+@media (max-height: 620px) and (min-width: 601px) {
+  .home-page .zwrap {
+    inset: 6px 0 85px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .game-entering .home-composition,
+  .game-entering .home-rocket {
+    animation-duration: 1ms;
+  }
+}

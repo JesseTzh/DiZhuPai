@@ -1,0 +1,36 @@
+.table-item {
+  cursor: help;
+  outline: none;
+}
+.table-item:focus-visible path {
+  stroke: #5a82c6;
+  stroke-width: 2;
+  stroke-dasharray: 3 3;
+}
+.item-tooltip {
+  position: fixed;
+  z-index: 10;
+  width: min(240px, calc(100vw - 32px));
+  padding: 12px 14px;
+  border: 1.5px solid #30291f;
+  border-radius: 8px;
+  background: #fff6df;
+  box-shadow: 3px 4px 0 #41538f30;
+  pointer-events: none;
+  font-size: 11px;
+  line-height: 1.7;
+  color: #5d5041;
+}
+.item-tooltip strong,
+.item-tooltip span,
+.item-tooltip small {
+  display: block;
+}
+.item-tooltip strong {
+  color: #30291f;
+  margin-bottom: 5px;
+}
+.item-tooltip small {
+  color: #426b4d;
+  margin-top: 6px;
+}

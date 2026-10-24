@@ -1,0 +1,7 @@
+index.html
+node_modules/
+dist/
+test-results/
+.agents/
+package-lock.json
+coins.html

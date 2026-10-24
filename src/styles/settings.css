@@ -1,0 +1,207 @@
+#settings-screen {
+  width: min(440px, calc(100vw - 24px));
+  max-width: none;
+  max-height: calc(100vh - 24px);
+  margin: auto;
+  padding: 0;
+  overflow: auto;
+  color: #292a28;
+  background: transparent;
+  border: 0;
+  font-family: ui-monospace, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+}
+#settings-screen::backdrop {
+  background: #231e164d;
+}
+.settings-content {
+  position: relative;
+  padding: 24px 32px 35px 28px;
+  isolation: isolate;
+}
+.settings-paper {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+  pointer-events: none;
+}
+.settings-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 34px;
+}
+#settings-title {
+  width: 170px;
+  margin: 0;
+  line-height: 0;
+}
+#settings-title svg {
+  width: 100%;
+}
+#settings-title text {
+  font:
+    800 34px 'Songti SC',
+    ui-serif,
+    serif;
+  fill: #292a28;
+}
+#settings-screen button {
+  display: block;
+  padding: 0;
+  min-width: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: inherit;
+  cursor: pointer;
+  transition: transform 0.12s ease;
+}
+#settings-screen button:hover {
+  background: transparent;
+  transform: translateY(-2px);
+}
+#settings-screen button:active {
+  transform: translateY(1px);
+}
+#settings-screen button:focus-visible {
+  outline: 2px dashed #6487bd;
+  outline-offset: 3px;
+}
+#settings-screen button svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+#close-settings {
+  width: 40px;
+}
+.settings-sound-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+}
+#sound-label,
+#scale-label {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+}
+#sound-enabled {
+  width: 136px;
+}
+.sound-paper {
+  fill: #93d3b0;
+}
+.sound-value {
+  fill: #292a28;
+  font:
+    600 14px 'PingFang SC',
+    sans-serif;
+}
+.sound-cross {
+  display: none;
+}
+#sound-enabled[aria-checked='false'] .sound-paper {
+  fill: #e2d6b7;
+}
+#sound-enabled[aria-checked='false'] .sound-waves {
+  display: none;
+}
+#sound-enabled[aria-checked='false'] .sound-cross {
+  display: block;
+}
+#sound-enabled[aria-checked='false'] .sound-indicator {
+  fill: #b4a381;
+}
+#scale-label {
+  display: block;
+  margin-bottom: 14px;
+}
+.scale-options {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+.scale-options button {
+  width: 100%;
+}
+.scale-shadow {
+  fill: #6487bd;
+}
+.scale-paper {
+  fill: #fff8e7;
+  stroke: #292a28;
+  stroke-width: 1.7;
+  stroke-linejoin: round;
+}
+.scale-options text {
+  fill: #292a28;
+  font:
+    600 14px ui-monospace,
+    'PingFang SC',
+    sans-serif;
+}
+.scale-check {
+  display: none;
+  fill: none;
+  stroke: #292a28;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.scale-options [aria-checked='true'] .scale-paper {
+  fill: #f4b829;
+}
+.scale-options [aria-checked='true'] .scale-check {
+  display: block;
+}
+
+#return-home {
+  width: 240px;
+  max-width: 100%;
+  margin: 24px auto 0;
+}
+#return-home text {
+  fill: #292a28;
+  font:
+    600 15px 'PingFang SC',
+    sans-serif;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #settings-screen button {
+    transition: none;
+  }
+}
+.game-page .controls {
+  display: none;
+}
+.table-settings-button {
+  position: absolute;
+  top: 16px;
+  right: 20px;
+  z-index: 10;
+  width: 44px;
+  height: 44px;
+  padding: 5px;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.table-settings-button svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.money-bag[data-act] {
+  cursor: pointer;
+  outline: none;
+}
+.money-bag[data-act]:focus-visible {
+  filter: drop-shadow(0 0 3px #d49c1f);
+}
