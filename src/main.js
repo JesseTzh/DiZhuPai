@@ -46,7 +46,7 @@ let controller, navigation;
 const isGamePage = () => navigation?.isGamePage() || false;
 const ui = mountFigure({
   fig: '01',
-  title: '双人斗地主 · Colorfigures',
+  title: '地主牌',
   credit: false,
   size: [650, 650, 80],
   center: [0, 0],
@@ -61,7 +61,7 @@ const ui = mountFigure({
   buttons: [
     { label: '开始发牌', onClick: () => controller.start() },
     { label: '出牌', onClick: () => controller.playerPlay() },
-    { label: `不要 · ${PASS_COST} 金币`, onClick: () => controller.playerPass() },
+    { label: `过牌 · ${PASS_COST} 金币`, onClick: () => controller.playerPass() },
   ],
 });
 mountShell(ui, { palette: '玩家配色', swatches: ['芥末黄', null, '薄荷绿', '钴蓝', '玫瑰粉'] });

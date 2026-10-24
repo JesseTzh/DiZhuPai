@@ -1,4 +1,5 @@
 import { ITEMS } from '../game/items.js';
+import { itemTooltipMarkup } from './item-presentation.js';
 
 export function mountTableControls(stage, state) {
   const tooltip = document.createElement('div');
@@ -16,7 +17,7 @@ export function mountTableControls(stage, state) {
     const item = ITEMS.find((item) => item.id === target.dataset.item);
     if (!item) return;
     active = target;
-    tooltip.innerHTML = `<strong>${item.toy} · ${item.name}</strong><span>${item.description}</span><small>已拥有 · ${state.game.phase === 'shop' ? '下一小局生效' : '本场持续生效'}</small>`;
+    tooltip.innerHTML = itemTooltipMarkup(item);
     tooltip.hidden = false;
     const rect = tooltip.getBoundingClientRect();
     tooltip.style.left = `${Math.max(8, Math.min(innerWidth - rect.width - 8, x + 14))}px`;

@@ -59,10 +59,7 @@ try {
       await page.evaluate(() => gameApp.state.tableStyle),
       ['marble', 'planks', 'walnut'][stage - 1],
     );
-    assert.match(
-      await page.locator('#level-label').textContent(),
-      new RegExp(`第 ${stage} / 3 大关 · 第 ${substage} / 3 小关`),
-    );
+    assert.equal(await page.locator('#level-label').textContent(), `${stage}-${substage}`);
     assert.equal(
       await page.evaluate(() => gameApp.state.game.decks[0].length),
       (3 - substage) * 18,

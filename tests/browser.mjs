@@ -53,6 +53,14 @@ try {
   await page.waitForFunction(() => gameApp.state.visual.dealTime > 0.65);
   await shot('game-dealing');
   await page.waitForFunction(() => gameApp.state.game.phase === 'playing');
+  assert.equal(await page.title(), '地主牌');
+  assert.equal(await page.locator('.game-topbar').isVisible(), true);
+  assert.match(await page.locator('#level-label').textContent(), /第 1 \/ 3 大关，第 1 \/ 3 小关/);
+  assert.equal(await page.locator('#current-coins').textContent(), '当前金币 100');
+  assert.equal(await page.locator('#current-items').count(), 0);
+  assert.equal(await page.locator('.game-topbar canvas').count(), 1);
+  assert.equal(await page.locator('.game-topbar svg, .topbar-title').count(), 0);
+  assert.equal(await page.locator('.level-progress, #level-detail').count(), 0);
   assert.deepEqual(
     await page.evaluate(() => gameApp.state.game.hands.map((h) => h.length)),
     [18, 18],
@@ -118,6 +126,7 @@ try {
     coins[0] - 5,
     coins[1] + 5,
   ]);
+  assert.equal(await page.locator('#current-coins').textContent(), `当前金币 ${coins[0] - 5}`);
   await clean();
   await page.locator('#open-settings').click();
   assert.equal(await page.locator('#settings-screen').evaluate((node) => node.open), true);

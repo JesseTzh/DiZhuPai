@@ -161,12 +161,16 @@
   display: block;
 }
 
-#return-home {
-  width: 240px;
-  max-width: 100%;
-  margin: 24px auto 0;
+.settings-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 24px;
 }
-#return-home text {
+.settings-actions button {
+  width: 100%;
+}
+.settings-actions text {
   fill: #292a28;
   font:
     600 15px 'PingFang SC',
@@ -192,6 +196,9 @@
   border: 0;
   background: transparent;
   box-shadow: none;
+}
+.table-settings-button:focus {
+  outline: none;
 }
 .table-settings-button svg {
   display: block;

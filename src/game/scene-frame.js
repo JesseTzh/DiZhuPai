@@ -20,7 +20,7 @@ export function handPose(p, index, count) {
     flip: p === 0 ? 0 : Math.PI,
   };
 }
-export function fitScene(svg, viewport) {
+export function fitScene(svg, viewport, { zoom = 1, surface, centerY } = {}) {
   setCenter([0, 0], 0);
   setOrigin(0, 0);
   let minX = Infinity,
@@ -38,9 +38,14 @@ export function fitScene(svg, viewport) {
       }
   const rect = viewport || svg.getBoundingClientRect(),
     ratio = rect.width && rect.height ? rect.height / rect.width : 0.77;
-  const width = Math.max(maxX - minX + 45, (maxY - minY + 55) / ratio),
+  const width = Math.max(maxX - minX + 45, (maxY - minY + 55) / ratio) / zoom,
     height = width * ratio;
-  setOrigin((width - minX - maxX) / 2, (height - minY - maxY) / 2);
+  let originY = (height - minY - maxY) / 2;
+  if (surface && centerY != null && rect.height) {
+    const ys = surface.map((point) => P(...point)[1]);
+    originY = (centerY * height) / rect.height - (Math.min(...ys) + Math.max(...ys)) / 2;
+  }
+  setOrigin((width - minX - maxX) / 2, originY);
   const view = `0 0 ${width} ${height}`;
   if (svg.getAttribute('viewBox') !== view) svg.setAttribute('viewBox', view);
 }
@@ -96,12 +101,6 @@ export function sceneFrame(st) {
       bag = visual.bags[p],
       palette = p === 0 ? ownPalette : 'tomato';
     bags.push({ pos, state: { ...bag, coins: [...bag.coins, ...pockets[p]] }, palette, player: p });
-    const hasToys = p === 0 && game.items.length > 0;
-    label(
-      `${p === 0 ? '你' : '电脑'} · ${game.coins[p]} 金币`,
-      hasToys ? -220 : -315,
-      hasToys ? 252 : rowV(p) + 42,
-    );
     if (visual.transfer) {
       const tr = visual.transfer,
         elapsed = tr.elapsed ?? visual.time - tr.start;

@@ -118,16 +118,6 @@
 .price-tag:disabled span {
   background: #e7dcc4;
 }
-.owned-mark {
-  margin-left: 6px;
-  padding: 0 4px;
-  color: #d0483a;
-  border: 1.5px solid #d0483a;
-  border-radius: 2px;
-  font: 800 10px sans-serif;
-  font-style: normal;
-  vertical-align: 2px;
-}
 .goose-bubble {
   position: absolute;
   z-index: 3;

@@ -22,7 +22,7 @@ export const createGame = () => ({
   winner: null,
   matchWinner: null,
   matchOver: false,
-  message: '双人斗地主',
+  message: '地主牌',
   history: [],
 });
 

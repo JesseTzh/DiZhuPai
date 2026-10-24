@@ -1,0 +1,50 @@
+.game-topbar {
+  position: absolute;
+  z-index: 6;
+  top: max(10px, env(safe-area-inset-top));
+  left: 16px;
+  right: 16px;
+  height: 82px;
+  pointer-events: none;
+  will-change: transform;
+}
+#topbar-canvas {
+  display: block;
+  width: 100%;
+  pointer-events: none;
+}
+.game-topbar .topbar-hit {
+  position: absolute;
+  padding: 0;
+  margin: 0;
+  min-height: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  opacity: 0;
+  pointer-events: auto;
+  cursor: pointer;
+}
+.game-topbar .topbar-item {
+  cursor: help;
+}
+.home-page.game-entering .stage > .game-topbar {
+  display: block !important;
+  visibility: visible;
+}
+/* The viewport is identical before, during and after entry, so the table never reframes. */
+.game-page .stage .zwrap {
+  top: 98px;
+  bottom: 16px;
+}
+@media (max-width: 811px) {
+  .game-topbar {
+    left: 8px;
+    right: 8px;
+    top: max(6px, env(safe-area-inset-top));
+    height: 116px;
+  }
+  .game-page .stage .zwrap {
+    top: 134px;
+  }
+}

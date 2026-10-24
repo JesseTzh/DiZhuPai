@@ -1,7 +1,7 @@
 import { orb, rod, block, slab, planeText, path, ink } from './stage3d.js';
 import { INK } from '../engine/palette.js';
 
-/* 好运玩具铺: an old shopfront seen level with its counter, like a pawnshop in a TV drama.
+/* 鹅掌柜杂货铺: an old shopfront seen level with its counter, like a pawnshop in a TV drama.
  * Room: floor, back wall with shelves of goods and a curtained doorway, two red pillars with couplets,
  *       a lintel beam carrying the shop sign, two lanterns.
  * Counter: plinth, lacquered body with framed panels and brass coins, wood top, a pawnshop grille at the left,
@@ -168,8 +168,8 @@ export function shopfront(cam) {
             [0, -39.4, 263.5],
             [1, 0, 0],
             [0, 0, 1],
-            '好运玩具铺',
-            19,
+            '鹅掌柜杂货铺',
+            17,
             '#ffd56e',
             'font-weight="900" font-family="ui-serif,Songti SC,STSong,serif" letter-spacing="3"',
           ),

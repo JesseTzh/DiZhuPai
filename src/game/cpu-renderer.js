@@ -6,7 +6,7 @@ import { PALS, INK } from '../engine/palette.js';
 import { coinShape } from '../coins/coin.js';
 import { patchSvg } from '../engine/svg-dom.js';
 import { cpuArt } from './cpu-art.js';
-import { sceneFrame, fitScene } from './scene-frame.js';
+import { sceneFrame, fitScene, handPose } from './scene-frame.js';
 import { tableGeometry } from './table-geometry.js';
 import { world } from './table.js';
 import { ITEMS } from './items.js';
@@ -70,12 +70,35 @@ export async function createRenderer(art, svg) {
     const home = st.visual.home && !entry;
     setCameraPitch(entry?.pitch ?? (home ? 90 : 68), home || progress === 0 ? 0 : 1800 / progress);
     const frame = sceneFrame(st);
-    // CSS transforms must not change the viewport or raster resolution.
-    canvas.size = { width: svg.clientWidth, height: svg.clientHeight };
-    fitScene(svg, canvas.size);
-    canvas.begin();
     const table = tableGeometry(st.tableStyle),
       { A, B, outline } = table;
+    // CSS transforms must not change the viewport or raster resolution.
+    canvas.size = { width: svg.clientWidth, height: svg.clientHeight };
+    const stage = svg.closest('.stage'),
+      topbar = stage?.querySelector('.game-topbar');
+    const layout =
+      topbar && !home
+        ? {
+            zoom: 1.02,
+            surface: [...A, ...B],
+            centerY:
+              (topbar.offsetTop + topbar.offsetHeight + stage.clientHeight) / 2 -
+              svg.parentElement.offsetTop,
+          }
+        : {};
+    fitScene(svg, canvas.size, layout);
+    canvas.begin();
+    // Anchor controls to the gap between resting cards, so selection and dealing never move them.
+    const handCount = st.game.hands[0].length || 18;
+    const hand = canvas.cardGeometry(handPose(0, handCount - 1, handCount)),
+      played = canvas.cardGeometry({ u: 0, v: 0, z: 6, scale: 0.86 });
+    const handTop = Math.min(...[...hand.A, ...hand.B].map((point) => P(...point)[1])),
+      playedBottom = Math.max(...[...played.A, ...played.B].map((point) => P(...point)[1]));
+    const actionCenter = String((handTop + playedBottom) / 2);
+    if (svg.dataset.actionCenter !== actionCenter) {
+      svg.dataset.actionCenter = actionCenter;
+      svg.dispatchEvent(new Event('scene-layout'));
+    }
     canvas.shadow([...A, ...B], -22);
     for (let i = 0; i < A.length; i++) {
       const j = (i + 1) % A.length,

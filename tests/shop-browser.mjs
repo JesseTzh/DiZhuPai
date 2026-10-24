@@ -32,7 +32,21 @@ try {
   assert.equal(await page.locator('.toy-model').count(), 3);
   assert.equal(await page.locator('[data-part^="finger-"]').count(), 5);
   await page.screenshot({ path: 'test-results/shop-desktop.png' });
-  for (const id of ['frog', 'hand', 'dragon']) await page.locator(`[data-buy="${id}"]`).click();
+  assert.equal(await page.locator('.shop-wallet').innerText(), '100');
+  assert.equal(await page.locator('.shop-coin').count(), 1);
+  assert.equal(await page.locator('#shop-result, .shop-heading h1, .owned-mark').count(), 0);
+  assert.doesNotMatch(
+    await page.locator('#shop').innerText(),
+    /你的金币|悬停玩具|掌柜今日精选|好运玩具铺|胜场/,
+  );
+  assert.match(await page.locator('#shop-frame').textContent(), /鹅掌柜杂货铺/);
+  for (const id of ['frog', 'hand', 'dragon']) {
+    await page.locator(`[data-buy="${id}"]`).click();
+    assert.equal(await page.locator(`#shop [data-item="${id}"]`).isVisible(), false);
+    assert.equal(await page.locator(`[data-toy="${id}"]`).isVisible(), false);
+    assert.equal(await page.locator(`[data-toy-stand="${id}"]`).isVisible(), false);
+  }
+  await page.screenshot({ path: 'test-results/shop-purchased.png' });
   assert.equal(await page.locator('#shop-balance').textContent(), '25');
   assert.equal(await page.locator('[data-buy="frog"]').isDisabled(), true);
   await page.locator('#leave-shop').click();
@@ -67,6 +81,10 @@ try {
   await page.setViewportSize({ width: 1440, height: 1000 });
   await endRound();
   await page.waitForFunction(() => gameApp.state.game.phase === 'shop');
+  assert.equal(await page.locator('.shop-product:visible, .toy-model:visible').count(), 0);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.screenshot({ path: 'test-results/shop-phone.png' });
+  await page.setViewportSize({ width: 1440, height: 1000 });
   await page.locator('#leave-shop').click();
   await page.waitForFunction(() => gameApp.state.game.phase === 'playing');
   assert.equal(await page.evaluate(() => gameApp.state.game.round), 3);

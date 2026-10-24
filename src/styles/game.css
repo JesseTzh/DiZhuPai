@@ -113,23 +113,6 @@ html:has(.game-page) {
   font-size: 12px;
   pointer-events: none;
 }
-.level-progress {
-  position: absolute;
-  top: 16px;
-  left: 16px;
-  display: grid;
-  gap: 5px;
-  pointer-events: none;
-  color: #5d5041;
-}
-.level-progress strong {
-  font-size: 12px;
-}
-.level-progress > span {
-  font-size: 10px;
-  color: #857d6e;
-}
-
 .turn-dot {
   height: 6px;
   width: 6px;
@@ -146,10 +129,7 @@ html:has(.game-page) {
 }
 .game-page .actions.game-actions {
   position: absolute;
-  bottom: 22px;
-  top: auto;
-  left: 12px;
-  right: 12px;
+  inset: 0;
   max-width: none;
   display: flex;
   flex-direction: row;
@@ -159,6 +139,30 @@ html:has(.game-page) {
   gap: 9px;
   margin: 0;
   padding: 0;
+  pointer-events: none;
+}
+.game-actions .stepwrap {
+  pointer-events: none;
+}
+.game-actions .stepwrap:not(:first-child) {
+  position: static;
+}
+.game-actions .stepwrap:first-child {
+  position: absolute;
+  left: 50%;
+  bottom: 22px;
+  transform: translateX(-50%);
+}
+.game-actions .stepwrap:first-child button {
+  pointer-events: auto;
+}
+.game-actions-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 4;
+  pointer-events: none;
 }
 .game-actions button {
   min-height: 39px;
@@ -170,6 +174,26 @@ html:has(.game-page) {
   transition:
     transform 0.12s,
     background 0.12s;
+}
+.game-actions button#play-cards,
+.game-actions button#pass-turn {
+  position: absolute;
+  pointer-events: auto;
+  z-index: 5;
+  padding: 0;
+  min-height: 0;
+  opacity: 0;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+.game-actions button#play-cards:hover:enabled,
+.game-actions button#pass-turn:hover:enabled,
+.game-actions button#play-cards:active:enabled,
+.game-actions button#pass-turn:active:enabled {
+  background: transparent;
+  transform: none;
+  box-shadow: none;
 }
 .game-actions button:hover:enabled {
   background: #e8e2d3;
@@ -302,7 +326,7 @@ a {
     inset: 6px 0 85px;
   }
   .game-page .actions.game-actions {
-    bottom: 12px;
+    inset: 0;
   }
   .game-page .turn-bar {
     bottom: 62px;

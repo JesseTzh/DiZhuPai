@@ -1,9 +1,8 @@
-import { settingsIcon } from './home-art.js';
-import { STAGE_COUNT, ROUNDS_PER_STAGE, ruleOptions, buyItem } from '../game/state.js';
+import { ROUNDS_PER_STAGE, ruleOptions, buyItem } from '../game/state.js';
 import { classify, beats } from '../game/rules.js';
-import { TABLES } from '../game/table.js';
 import { mountShop } from '../shop/view.js';
 import { mountTableControls } from './table-controls.js';
+import { mountGameTopbar } from './game-topbar.js';
 
 export function mountGameView({ state, ui, actions: controller, isGamePage }) {
   const { game } = state;
@@ -12,23 +11,146 @@ export function mountGameView({ state, ui, actions: controller, isGamePage }) {
   menu.id = 'open-settings';
   menu.className = 'table-settings-button';
   menu.setAttribute('aria-label', '设置');
-  menu.innerHTML = settingsIcon();
-  stage.append(menu);
-  const progress = document.createElement('div');
-  progress.className = 'level-progress';
-  progress.innerHTML = '<strong id="level-label"></strong><span id="level-detail"></span>';
-  stage.append(progress);
+  const syncTopbar = mountGameTopbar(stage, menu, state);
   const status = document.createElement('div');
   status.className = 'turn-bar';
   status.innerHTML =
     '<span class="turn-dot"></span><span id="game-message" role="status" aria-live="polite"></span><span id="selection"></span>';
   const actions = document.getElementById('btns');
   actions.classList.add('game-actions');
-  stage.append(status, actions);
+  const actionCanvas = document.createElement('canvas');
+  actionCanvas.className = 'game-actions-canvas';
+  actionCanvas.setAttribute('aria-hidden', 'true');
+  stage.append(status, actionCanvas, actions);
+  const actionCtx = actionCanvas.getContext('2d');
+  const figure = document.getElementById('fig');
+  let hoveredAction = null;
+  const paintActions = () => {
+    const w = stage.clientWidth,
+      h = stage.clientHeight;
+    if (!w || !h) return;
+    const ratio = window.devicePixelRatio || 1;
+    actionCanvas.width = Math.round(w * ratio);
+    actionCanvas.height = Math.round(h * ratio);
+    actionCtx.setTransform(ratio, 0, 0, ratio, 0, 0);
+    actionCtx.clearRect(0, 0, w, h);
+    if (!['playing', 'dealing'].includes(game.phase)) return;
+    const center = Number(figure.dataset.actionCenter);
+    const y = figure.dataset.actionCenter
+      ? figure.parentElement.offsetTop +
+        (center * figure.clientHeight) / figure.viewBox.baseVal.height -
+        21
+      : h * 0.6;
+    const draw = (x, width, fill, text, icon, disabled, hovered) => {
+      const lift = hovered && !disabled ? -3 : 0;
+      actionCtx.save();
+      actionCtx.translate(0, lift);
+      const cut = 8;
+      const path = () => {
+        actionCtx.beginPath();
+        actionCtx.moveTo(x + cut, y);
+        actionCtx.lineTo(x + width - cut, y);
+        actionCtx.lineTo(x + width, y + cut);
+        actionCtx.lineTo(x + width, y + 42 - cut);
+        actionCtx.lineTo(x + width - cut, y + 42);
+        actionCtx.lineTo(x + cut, y + 42);
+        actionCtx.lineTo(x, y + 42 - cut);
+        actionCtx.lineTo(x, y + cut);
+        actionCtx.closePath();
+      };
+      actionCtx.fillStyle = '#41538f';
+      actionCtx.translate(3, 5);
+      path();
+      actionCtx.fill();
+      actionCtx.translate(-3, -5);
+      actionCtx.fillStyle = disabled ? '#d9d1c0' : fill;
+      path();
+      actionCtx.fill();
+      actionCtx.strokeStyle = '#231e16';
+      actionCtx.lineWidth = 2;
+      actionCtx.stroke();
+      actionCtx.strokeStyle = disabled ? '#b8ad9a' : '#fff4d6';
+      actionCtx.lineWidth = 1;
+      actionCtx.globalAlpha = 0.8;
+      actionCtx.beginPath();
+      actionCtx.moveTo(x + 8, y + 7);
+      actionCtx.lineTo(x + width - 8, y + 7);
+      actionCtx.lineTo(x + width - 7, y + 35);
+      actionCtx.lineTo(x + 7, y + 35);
+      actionCtx.closePath();
+      actionCtx.stroke();
+      actionCtx.globalAlpha = 1;
+      actionCtx.fillStyle = disabled ? '#8b8377' : '#231e16';
+      actionCtx.font = "700 13px ui-monospace, 'PingFang SC', sans-serif";
+      actionCtx.textAlign = 'center';
+      actionCtx.fillText(text, x + width / 2 + 8, y + 26);
+      actionCtx.strokeStyle = disabled ? '#8b8377' : '#231e16';
+      actionCtx.lineWidth = 1.5;
+      actionCtx.beginPath();
+      if (icon === 'play') {
+        actionCtx.moveTo(x + 16, y + 14);
+        actionCtx.lineTo(x + 16, y + 29);
+        actionCtx.lineTo(x + 25, y + 21.5);
+      } else {
+        actionCtx.moveTo(x + 13, y + 15);
+        actionCtx.lineTo(x + 25, y + 27);
+        actionCtx.moveTo(x + 25, y + 15);
+        actionCtx.lineTo(x + 13, y + 27);
+      }
+      actionCtx.stroke();
+      actionCtx.restore();
+    };
+    const gap = 14;
+    const passW = 112,
+      playW = 112,
+      total = passW + playW + gap,
+      x = (w - total) / 2;
+    draw(x, passW, '#fff4d6', '过牌', 'pass', buttons[2]?.disabled, hoveredAction === 'pass');
+    draw(
+      x + passW + gap,
+      playW,
+      '#93d3b0',
+      '出牌',
+      'play',
+      buttons[1]?.disabled,
+      hoveredAction === 'play',
+    );
+    const hitY = y - 5;
+    Object.assign(buttons[1].style, {
+      left: `${x + passW + gap}px`,
+      top: `${hitY}px`,
+      width: `${playW}px`,
+      height: '52px',
+    });
+    Object.assign(buttons[2].style, {
+      left: `${x}px`,
+      top: `${hitY}px`,
+      width: `${passW}px`,
+      height: '52px',
+    });
+  };
+  new ResizeObserver(paintActions).observe(stage);
+  figure.addEventListener('scene-layout', paintActions);
   const buttons = [...actions.querySelectorAll('button')];
   buttons.forEach((b, i) => (b.id = ['start-game', 'play-cards', 'pass-turn'][i]));
   buttons[1].classList.add('primary');
   buttons[0].classList.add('primary');
+  buttons[1].addEventListener('pointerenter', () => {
+    hoveredAction = 'play';
+    paintActions();
+  });
+  buttons[1].addEventListener('pointerleave', () => {
+    hoveredAction = null;
+    paintActions();
+  });
+  buttons[2].addEventListener('pointerenter', () => {
+    hoveredAction = 'pass';
+    paintActions();
+  });
+  buttons[2].addEventListener('pointerleave', () => {
+    hoveredAction = null;
+    paintActions();
+  });
   const tableControls = mountTableControls(stage, state);
   const syncShop = mountShop(
     stage,
@@ -63,11 +185,8 @@ export function mountGameView({ state, ui, actions: controller, isGamePage }) {
           : game.substage === ROUNDS_PER_STAGE
             ? `进入第 ${game.stage + 1} 大关`
             : `下一小关 · ${game.stage}-${game.substage + 1}`;
-    const table = TABLES.find((choice) => choice.id === state.tableStyle);
-    document.getElementById('level-label').textContent =
-      `第 ${game.stage} / ${STAGE_COUNT} 大关 · 第 ${game.substage} / ${ROUNDS_PER_STAGE} 小关`;
-    document.getElementById('level-detail').textContent =
-      `${table.name} · 胜场 ${game.wins[0]} : ${game.wins[1]}`;
+    syncTopbar(game);
+    paintActions();
     buttons.slice(1).forEach((b) => {
       b.parentElement.hidden = game.phase !== 'playing' && game.phase !== 'dealing';
       b.disabled = !active;
@@ -78,16 +197,17 @@ export function mountGameView({ state, ui, actions: controller, isGamePage }) {
       ? '收起牌桌，玩具铺营业中…'
       : state.locked && game.phase !== 'dealing'
         ? '金币结算中'
-        : game.message;
+        : game.message === '轮到你出牌'
+          ? ''
+          : game.message;
     status.classList.toggle('your-turn', active);
     status.classList.toggle('is-busy', game.phase === 'dealing' || game.turn === 1);
     document.getElementById('selection').textContent = game.selected.length
       ? `已选 ${game.selected.length} 张${move ? ' · ' + move.name + (move.wildRank ? ` · 赖子作 ${{ 11: 'J', 12: 'Q', 13: 'K', 14: 'A', 15: '2' }[move.wildRank] || move.wildRank}` : '') : ' · 请选择有效牌型'}`
-      : active
-        ? game.target
-          ? '跟牌或过牌'
-          : '自由出牌'
-        : '';
+      : '';
+    status.hidden =
+      !document.getElementById('game-message').textContent &&
+      !document.getElementById('selection').textContent;
     result.hidden = game.phase !== 'over' || state.locked;
     if (!result.hidden) {
       const winner = game.matchOver ? game.matchWinner : game.winner;

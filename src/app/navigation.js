@@ -90,6 +90,10 @@ export function mountNavigation({
     saveProgress();
     showPage('home');
   };
+  settings.element.querySelector('#restart-game').onclick = () => {
+    if (session.activeSlot === null) session.select(0);
+    controller.newGame();
+  };
   document.getElementById('enter-game').onclick = entry.start;
   document.getElementById('home-import').onclick = () => showPage('saves');
   document.getElementById('close-saves').onclick = () => showPage('home');
