@@ -83,8 +83,7 @@ const byDepth = (parts) =>
 // axes (a cycle), and the sort then scrambles rows of overlapping cards — one card covered from both
 // sides. Scene sorts use this scalar key instead: back-to-front by part depth, for the flat cards on
 // the table exactly their stacking z.
-export const paintOrder = (a, b) =>
-  depthOf(a.at ?? boxMid(a.box)) - depthOf(b.at ?? boxMid(b.box));
+export const paintOrder = (a, b) => depthOf(a.at ?? boxMid(a.box)) - depthOf(b.at ?? boxMid(b.box));
 // the half of a vertical ring that faces the viewer / is turned away, as [from, to] angles in degrees (0 = +x, 90 = +y)
 const nearHalf = () => [-45, 135],
   farHalf = () => [135, 315];

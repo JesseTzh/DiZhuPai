@@ -57,7 +57,10 @@ function tableParts({ n0, n1, d0 = 25, d1 = 25, nPlayed = 7 }) {
 const drawOrder = (parts) => [...parts].sort(paintOrder).map((p) => p.tag);
 const inIndexOrder = (tags, prefix) => {
   const picked = tags.filter((tag) => tag.startsWith(prefix));
-  assert.deepEqual(picked, picked.map((_, i) => prefix + i));
+  assert.deepEqual(
+    picked,
+    picked.map((_, i) => prefix + i),
+  );
 };
 
 test('game camera pitch keeps paintOrder a pure stacking order for flat cards', () => {
