@@ -8,12 +8,12 @@
 | --- | --- |
 | `src/main.js` | 创建状态、连接控制器和页面、保留 `window.gameApp` 调试接口 |
 | `src/app/game-controller.js` | 玩家操作、电脑计时、发牌/转账/关间动画、恢复对局；通过回调通知视图 |
-| `src/app/navigation.js` | 首页/存档/设置/牌桌切换、浏览器历史、页面焦点和音效启停 |
+| `src/app/navigation.js` | 首页/存档/设置/牌桌切换、浏览器历史、页面焦点、音效启停与随机种子入口 |
 | `src/app/save-session.js` | 单槽存档、本地存储、自动保存去重、导入提交与导出 |
 | `src/ui/*-screen.js` | 设置页、存档页的 DOM 与事件；存档解析委托给 `game/save.js` |
 | `src/ui/game-view.js`、`game-keyboard.js` | 对局 HUD、按钮、结算、商店反馈及键盘绑定 |
 | `src/ui/home-art.js`、`home-title.js`、`home-models.js` | 首页动画/碰撞、标题笔画数据、真实模型预绘制 |
-| `src/game/rules.js`、`state.js`、`items.js` | 纯规则、对局状态变化、道具定义；不接触 DOM、计时器和存储 |
+| `src/game/rules.js`、`state.js`、`items.js`、`random.js` | 纯规则、对局状态变化、道具定义、种子随机派生；不接触 DOM、计时器和存储 |
 | `src/game/save.js` | 存档格式、严格校验、序列化、恢复归一化及旧存档迁移 |
 | `src/game/scene.js`、`scene-frame.js`、`transfer.js` | 动画状态推进、场景布局描述、金币转账轨迹 |
 | `src/game/cpu-renderer.js`、`model-canvas.js`、`table-geometry.js` | 场景排序/命中外壳、牌/金币/钱袋绘制、桌面几何 |
@@ -26,7 +26,8 @@
 ## 依赖与状态边界
 
 - `main → app / ui → game / cards / coins / shop → engine / assets` 表示主要调用方向。`engine` 只依赖自身；具体业务模型放在 `game/model-canvas.js`，不回塞到通用 Canvas。
-- `game/rules.js`、`state.js`、`save.js`、`items.js` 不依赖 `app`、`ui`、`shop` 或 `engine`；所有模块禁止循环导入。跨模块协作用显式参数、返回值或回调，不新增全局服务对象。
+- `game/rules.js`、`state.js`、`save.js`、`items.js`、`random.js` 不依赖 `app`、`ui`、`shop` 或 `engine`；所有模块禁止循环导入。跨模块协作用显式参数、返回值或回调，不新增全局服务对象。
+- 随机种子经 `?seed=` 或首页输入框指定后随存档保存；`deal`/`enterShop` 按（种子, 用途, 局数）派生独立随机流，同一种子加相同决策可整场复现，未指定时保持真随机。浏览器测试统一用固定种子 `dizhupai-347` 访问。
 - `game` 保存可持久化规则状态，`visual` 保存动画状态；定时器、操作锁、动画进度和音频不写入存档。恢复时保留状态对象引用，重置动画并取消过期电脑任务。
 - `save-session` 管理三个栏位与当前栏位，`save.js` 负责数据可信性；导入须先校验，覆盖已有栏位须确认，删除须二次点击。写入失败保留现有对局并提示导出。
 - `scene-frame` 描述布局，不绘制、不加载资源；`ModelCanvas` 复用 `CPUCanvas` 投影与图元。游戏、首页模型和性能页共用模型实现，避免复制绘制算法。

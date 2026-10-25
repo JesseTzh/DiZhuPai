@@ -5,6 +5,14 @@ const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
 const errors = [];
 page.on('pageerror', (e) => errors.push(e.message));
 const base = process.env.TEST_URL || 'http://127.0.0.1:5173/';
+// 固定随机种子 dizhupai-347：第一轮货架恰好是经典三件套（frog/hand/dragon），
+// 之后每次补货同样可复现，无需再打补丁替换 Math.random。
+const url = (params = {}) => {
+  const target = new URL(base);
+  target.searchParams.set('seed', 'dizhupai-347');
+  for (const [key, value] of Object.entries(params)) target.searchParams.set(key, String(value));
+  return target.href;
+};
 async function endRound() {
   await page.evaluate(() => {
     const s = gameApp.state,
@@ -19,15 +27,11 @@ async function endRound() {
   });
 }
 try {
-  await page.goto(`${base}?page=game`);
+  await page.goto(url({ page: 'game' }));
   await page.evaluate(() => gameApp.ready());
   await page.locator('[data-slot="0"] [data-slot-action="new"]').click();
   await page.waitForFunction(() => gameApp.state.game.phase === 'playing');
-  // seed the shop's stocking roll so the counter features the classic trio
-  await page.evaluate(() => {
-    window.__fairRandom = Math.random;
-    Math.random = () => 0;
-  });
+  // The fixed URL seed stocks the counter with the classic trio deterministically.
   await endRound();
   await page.waitForFunction(() => document.body.classList.contains('clearing-table'));
   await page.screenshot({ path: 'test-results/shop-table-exit.png' });
@@ -91,9 +95,6 @@ try {
   assert.equal(await page.locator('.wild-card-model').count(), 1);
   await page.setViewportSize({ width: 1440, height: 1000 });
   // the next visit restocks from the toys still missing
-  await page.evaluate(() => {
-    Math.random = window.__fairRandom;
-  });
   await endRound();
   await page.waitForFunction(() => gameApp.state.game.phase === 'shop');
   const restock = await page.evaluate(() => gameApp.state.game.shopStock);

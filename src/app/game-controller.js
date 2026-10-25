@@ -21,6 +21,7 @@ export function createGameController({
   preferences,
   isGamePage,
   syncTableChoices,
+  seedSource = () => null,
   onRestore,
   onNew,
   onShopTransition,
@@ -121,7 +122,7 @@ export function createGameController({
     clearTimeout(aiTimer);
     const token = ++epoch;
     if (game.matchOver) {
-      Object.assign(game, createGame());
+      Object.assign(game, createGame(seedSource()));
       resetVisual();
       state.tableStyle = preferences.firstTable;
     }
@@ -290,7 +291,7 @@ export function createGameController({
     epoch++;
     stopComputer();
     audio.stopDeal();
-    Object.assign(game, createGame());
+    Object.assign(game, createGame(seedSource()));
     resetVisual();
     state.locked = false;
     state.shopTransition = false;

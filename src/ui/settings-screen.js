@@ -9,7 +9,7 @@ const speaker = `<path d="M8 17H15L24 10V34L15 27H8Z" fill="#f4b829" stroke="${i
 const scaleButton = (value) =>
   `<button type="button" role="radio" aria-checked="false" data-scale="${value}" aria-label="${value === 'auto' ? '自动，最高 2 倍' : `${value} 倍`}"><svg viewBox="0 0 72 54" aria-hidden="true"><path class="scale-shadow" d="M7 8L65 6 68 45 10 48Z"/><path class="scale-paper" d="M4 4L63 3 65 42 6 44Z"/><text x="35" y="28" text-anchor="middle">${value === 'auto' ? '自动' : `${value}×`}</text><path class="scale-check" d="M48 35L52 38 59 31"/></svg></button>`;
 
-export function mountSettings({ ui, audio }) {
+export function mountSettings({ state, ui, audio }) {
   const settings = document.createElement('dialog');
   settings.id = 'settings-screen';
   settings.setAttribute('aria-labelledby', 'settings-title');
@@ -18,6 +18,7 @@ export function mountSettings({ ui, audio }) {
     <div class="settings-heading"><h1 id="settings-title"><span class="sr-only">设置</span><svg viewBox="0 0 170 52" aria-hidden="true"><path d="M3 43L111 43" stroke="#f4b829" stroke-width="9"/><text x="3" y="34">设置</text><path d="M125 19L131 23 137 19 135 27 141 32 133 33 129 40 126 33 118 30 125 26Z" fill="#93d3b0" stroke="${ink}" stroke-width="1.5" stroke-linejoin="round"/></svg></h1>
     <button id="close-settings" aria-label="关闭设置"><svg viewBox="0 0 44 44" aria-hidden="true"><path d="M6 8L35 5 39 35 9 39Z" fill="#6487bd"/><path d="M4 4L33 3 36 32 6 35Z" fill="#fff8e7" stroke="${ink}" stroke-width="2" stroke-linejoin="round"/><path d="M13 12L26 25M26 12L13 25" fill="none" stroke="${ink}" stroke-width="2.2" stroke-linecap="round"/></svg></button></div>
     <div class="settings-sound-row"><span id="sound-label">音效</span><button id="sound-enabled" type="button" role="switch" aria-checked="true" aria-labelledby="sound-label"><svg viewBox="0 0 136 52" aria-hidden="true"><path d="M5 9L126 6 130 45 9 48Z" fill="#6487bd"/><path class="sound-paper" d="M3 4L124 3 126 41 6 43Z" stroke="${ink}" stroke-width="2" stroke-linejoin="round"/>${speaker}<text class="sound-value" x="78" y="28" text-anchor="middle">开启</text><circle class="sound-indicator" cx="110" cy="22" r="4" fill="${ink}"/></svg></button></div>
+    <div class="settings-sound-row settings-seed-row"><span id="seed-title">本局种子</span><span id="seed-value"></span></div>
     <div id="render-scale" role="radiogroup" aria-labelledby="scale-label"><span id="scale-label">渲染倍率</span><div class="scale-options">${RENDER_DPR_OPTIONS.map(scaleButton).join('')}</div></div>
     <div class="settings-actions"><button id="restart-game" type="button"><svg viewBox="0 0 180 54" aria-hidden="true"><path d="M8 9L170 6 174 46 11 49Z" fill="#6487bd"/><path d="M4 4L167 3 170 41 7 44Z" fill="#93d3b0" stroke="${ink}" stroke-width="2" stroke-linejoin="round"/><path d="M36 18A10 10 0 1 0 38 29M36 12V20H28" fill="none" stroke="${ink}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><text x="104" y="29" text-anchor="middle">重新开始</text></svg><span class="sr-only">重新开始</span></button>
     <button id="return-home" type="button"><svg viewBox="0 0 180 54" aria-hidden="true"><path d="M8 9L170 6 174 46 11 49Z" fill="#6487bd"/><path d="M4 4L167 3 170 41 7 44Z" fill="#f4b829" stroke="${ink}" stroke-width="2" stroke-linejoin="round"/><path d="M29 16L21 24 29 32M22 24H42" fill="none" stroke="${ink}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><text x="104" y="29" text-anchor="middle">返回主界面</text></svg><span class="sr-only">返回主界面</span></button></div>
@@ -46,6 +47,7 @@ export function mountSettings({ ui, audio }) {
       button.setAttribute('aria-checked', String(selected));
       button.tabIndex = selected ? 0 : -1;
     });
+    settings.querySelector('#seed-value').textContent = state.game.seed ?? '未指定（真随机）';
   };
   const choose = (button) => {
     setRenderDprSetting(button.dataset.scale);

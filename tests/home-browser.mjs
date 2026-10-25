@@ -7,6 +7,12 @@ const page = await browser.newPage({
   acceptDownloads: true,
 });
 const base = process.env.TEST_URL || 'http://127.0.0.1:5173/';
+// 固定随机种子：发牌与商店刷新完全可复现，测试结果不再随运行漂移。
+const home = () => {
+  const target = new URL(base);
+  target.searchParams.set('seed', 'dizhupai-347');
+  return target.href;
+};
 const errors = [];
 page.on('pageerror', (error) => errors.push(error.message));
 const slot = (i, action) => page.locator(`[data-slot="${i}"] [data-slot-action="${action}"]`);
@@ -17,7 +23,7 @@ const goHome = async () => {
 try {
   await mkdir('test-results', { recursive: true });
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await page.goto(base);
+  await page.goto(home());
   await page.evaluate(() => gameApp.ready());
   await page.evaluate(() => gameApp.homeAnimation.ready);
   const firstWave = await page.evaluate(() => gameApp.homeAnimation.snapshot());

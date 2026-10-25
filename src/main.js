@@ -43,7 +43,9 @@ const saveOptions = () => ({
   palette: state.pal,
 });
 const audio = createSounds();
-let controller, navigation;
+let controller,
+  navigation,
+  nextSeed = () => null;
 const isGamePage = () => navigation?.isGamePage() || false;
 const ui = mountFigure({
   fig: '01',
@@ -78,6 +80,7 @@ controller = createGameController({
   preferences,
   isGamePage,
   syncTableChoices: () => settings.syncTableChoices(),
+  seedSource: () => nextSeed(),
   onRestore: () => {
     settings.refresh();
     navigation.showPage('game');
@@ -111,6 +114,7 @@ navigation = mountNavigation({
   menu: view.menu,
   saveProgress,
 });
+nextSeed = navigation.nextSeed;
 bindGameKeyboard(game, controller);
 document.querySelector('.stage').addEventListener('click', (event) => {
   if (

@@ -2,6 +2,13 @@ import assert from 'node:assert/strict';
 import { chromium } from 'playwright';
 import { mkdir, writeFile } from 'node:fs/promises';
 const base = process.env.TEST_URL || 'http://127.0.0.1:5173/';
+// 固定随机种子：发牌与商店刷新完全可复现，测试结果不再随运行漂移。
+const url = (params = {}) => {
+  const target = new URL(base);
+  target.searchParams.set('seed', 'dizhupai-347');
+  for (const [key, value] of Object.entries(params)) target.searchParams.set(key, String(value));
+  return target.href;
+};
 const browser = await chromium.launch({ channel: 'chrome' });
 const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
 const errors = [];
@@ -17,7 +24,7 @@ const fit = async () =>
     'No page scrolling',
   );
 try {
-  await page.goto(base);
+  await page.goto(url());
   await page.evaluate(() => gameApp.ready());
   assert.ok(await page.locator('#home-screen').isVisible());
   await page.screenshot({ path: 'test-results/home-desktop.png' });
@@ -131,7 +138,7 @@ try {
   }
   // The Canvas renderer retains both sack palettes after a fresh page load.
   await page.evaluate(() => localStorage.clear());
-  await page.goto(new URL('?page=game', base).href);
+  await page.goto(url({ page: 'game' }));
   await page.evaluate(() => gameApp.ready());
   assert.equal(await page.locator('#cpu-scene').count(), 1);
   assert.equal(await page.locator('#gpu-scene').count(), 0);

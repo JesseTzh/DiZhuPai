@@ -1,5 +1,6 @@
 import { homeMarkup, mountHomeAnimation } from '../ui/home-art.js';
 import { mountGameEntry } from '../ui/game-entry.js';
+import { randomSeedString, SEED_MAX_LENGTH } from '../game/random.js';
 
 export function mountNavigation({
   state,
@@ -18,6 +19,18 @@ export function mountNavigation({
   document.body.append(home);
   const homeAnimation = mountHomeAnimation(home);
   let currentPage = null;
+  // A ?seed= link shares a reproducible match: it only pre-fills the input for the next new game.
+  const seedInput = home.querySelector('#seed-input');
+  const urlSeed = new URLSearchParams(location.search)
+    .get('seed')
+    ?.trim()
+    .slice(0, SEED_MAX_LENGTH);
+  if (urlSeed) seedInput.value = urlSeed;
+  seedInput.addEventListener('keydown', (event) => {
+    if (event.key !== 'Enter') return;
+    event.preventDefault();
+    entry.start();
+  });
   const entry = mountGameEntry({
     home,
     state,
@@ -102,9 +115,15 @@ export function mountNavigation({
   addEventListener('popstate', () =>
     showPage(new URLSearchParams(location.search).get('page'), false),
   );
+  // The seed for the next new match: the typed value, or a fresh shareable one.
+  function nextSeed() {
+    const value = seedInput.value.trim().slice(0, SEED_MAX_LENGTH);
+    return value || randomSeedString();
+  }
   return {
     showPage,
     homeAnimation,
+    nextSeed,
     isGamePage: () => currentPage === 'game' && !settings.element.open,
   };
 }

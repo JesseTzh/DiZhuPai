@@ -1,12 +1,14 @@
 import { sortHand, classify, beats, rankOf } from './rules.js';
 import { ITEMS, hasItemRule } from './items.js';
+import { gameRandom } from './random.js';
 export const PASS_COST = 5;
 export const STAGE_COUNT = 3;
 export const ROUNDS_PER_STAGE = 3;
 export const HAND_SIZE = 18;
 export const SHOP_SLOTS = 3;
-export const createGame = () => ({
+export const createGame = (seed = null) => ({
   phase: 'ready',
+  seed,
   items: [],
   shopStock: null,
   wildCard: null,
@@ -42,10 +44,11 @@ function finishOnBankruptcy(game, player) {
   game.message = player === 0 ? '你的金币已用完' : '电脑的金币已用完';
   return true;
 }
-export function deal(game, random = Math.random) {
+export function deal(game, random) {
   if (!['ready', 'over', 'shop'].includes(game.phase) || game.matchOver || game.matchWinner != null)
     return false;
   if (game.round >= STAGE_COUNT * ROUNDS_PER_STAGE) return false;
+  random = random ?? gameRandom(game, 'deal');
   const newStage = game.round % ROUNDS_PER_STAGE === 0;
   for (let p = 0; p < 2; p++) {
     if (newStage) {
@@ -176,7 +179,8 @@ export function ruleOptions(game, player = 0) {
 }
 
 // Every visit restocks the counter with three random toys from the ones still missing.
-export function pickShopStock(game, random = Math.random) {
+export function pickShopStock(game, random) {
+  random = random ?? gameRandom(game, 'shop');
   const pool = ITEMS.filter((item) => !game.items.includes(item.id)).map((item) => item.id);
   const stock = [];
   while (stock.length < SHOP_SLOTS && pool.length)
@@ -184,7 +188,7 @@ export function pickShopStock(game, random = Math.random) {
   return stock;
 }
 
-export function enterShop(game, random = Math.random) {
+export function enterShop(game, random) {
   if (game.phase !== 'over' || game.matchOver) return false;
   game.phase = 'shop';
   game.shopStock = pickShopStock(game, random);

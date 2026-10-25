@@ -2,6 +2,13 @@ import assert from 'node:assert/strict';
 import { chromium } from 'playwright';
 const browser = await chromium.launch({ channel: 'chrome' });
 const errors = [];
+// 固定随机种子：发牌与商店刷新完全可复现，测试结果不再随运行漂移。
+const url = (params = {}) => {
+  const target = new URL(process.env.TEST_URL || 'http://127.0.0.1:5173/');
+  target.searchParams.set('seed', 'dizhupai-347');
+  for (const [key, value] of Object.entries(params)) target.searchParams.set(key, String(value));
+  return target.href;
+};
 try {
   for (const viewport of [
     { width: 1440, height: 900 },
@@ -9,7 +16,7 @@ try {
   ]) {
     const page = await browser.newPage({ viewport });
     page.on('pageerror', (error) => errors.push(error.message));
-    await page.goto(process.env.TEST_URL || 'http://127.0.0.1:5173/');
+    await page.goto(url());
     await page.evaluate(() => gameApp.ready());
     assert.equal(await page.locator('#enter-game').textContent(), '开始游戏');
     assert.equal(await page.locator('svg.home-table').count(), 0);

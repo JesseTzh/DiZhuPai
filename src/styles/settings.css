@@ -86,10 +86,19 @@
   margin-bottom: 24px;
 }
 #sound-label,
-#scale-label {
+#scale-label,
+#seed-title {
   font-size: 15px;
   font-weight: 600;
   letter-spacing: 0.06em;
+}
+#seed-value {
+  max-width: 220px;
+  overflow-wrap: anywhere;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: #41538f;
 }
 #sound-enabled {
   width: 136px;

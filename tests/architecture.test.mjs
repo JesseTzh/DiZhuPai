@@ -51,6 +51,7 @@ test('engine stays independent, domain logic avoids UI, and module imports remai
     'src/game/state.js',
     'src/game/save.js',
     'src/game/items.js',
+    'src/game/random.js',
   ]);
   const visiting = new Set(),
     visited = new Set();

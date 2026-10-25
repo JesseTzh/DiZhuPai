@@ -9,6 +9,7 @@ import {
 } from './state.js';
 import { classify, beats, rankOf } from './rules.js';
 import { ITEMS, hasItemRule } from './items.js';
+import { SEED_MAX_LENGTH } from './random.js';
 import { TABLES } from './table.js';
 
 export const SAVE_KEY = 'dizhupai-save';
@@ -70,6 +71,11 @@ export function parseSave(text) {
       new Set(g.items).size === g.items.length,
   );
   requireValid(g.items.every((id) => ITEMS.some((item) => item.id === id)));
+  // The seed is optional so older saves keep playing with true randomness.
+  requireValid(
+    g.seed == null ||
+      (typeof g.seed === 'string' && g.seed.length <= SEED_MAX_LENGTH && g.seed.trim() !== ''),
+  );
   requireValid(
     g.coins[0] + g.coins[1] ===
       200 - g.items.reduce((sum, id) => sum + ITEMS.find((item) => item.id === id).price, 0),
@@ -169,6 +175,7 @@ export function parseSave(text) {
     (entry) => entry.type === 'pass' && entry.player === 0 && entry.amount === 0,
   );
   game.stealUsed = g.history.some((entry) => entry.type === 'steal');
+  game.seed = g.seed ?? null;
   game.stamp = g.stamp ?? null;
   game.shopStock = Array.isArray(g.shopStock) ? [...g.shopStock] : null;
   // Older saves predate the featured shelf; restock it while loading into the shop.
