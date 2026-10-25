@@ -45,6 +45,11 @@ jobs:
       - name: Verify Chrome availability
         run: google-chrome --version
 
+      # recordVideo requires Playwright's own bundled ffmpeg; the runner image's
+      # system ffmpeg is never consulted and preinstalled Chrome does not cover it.
+      - name: Install Playwright ffmpeg
+        run: npx playwright install ffmpeg
+
       # The browser tests drive the game on the development server with branded
       # Chrome (channel: "chrome"), which GitHub runners provide preinstalled.
       # Each script records a 1080p webm into test-results/videos; failures are
