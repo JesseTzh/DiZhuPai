@@ -4,7 +4,6 @@ export const ITEMS = [
   {
     id: 'frog',
     name: '赖子',
-    toy: '好运青蛙',
     price: 20,
     color: '#93d3b0',
     description: '每小局随机一张手牌成为赖子，可代替任意普通点数。',
@@ -14,7 +13,6 @@ export const ITEMS = [
   {
     id: 'hand',
     name: '三带二',
-    toy: '五指玩具手',
     price: 25,
     color: '#f3a6bb',
     description: '三张相同点数，可以带两张点数不同的单牌。',
@@ -24,7 +22,6 @@ export const ITEMS = [
   {
     id: 'dragon',
     name: '大顺',
-    toy: '中国龙玩具',
     price: 30,
     color: '#f4b829',
     description: '四张连续点数即可组成顺子，仍不能包含 2 和王。',
@@ -34,7 +31,6 @@ export const ITEMS = [
   {
     id: 'stamp',
     name: '印章',
-    toy: '橡皮印章',
     price: 25,
     color: '#e0574f',
     description: '每小局开始时，随机一张 Q 以下的牌点数 +1，牌面随之翻新。',
@@ -44,7 +40,6 @@ export const ITEMS = [
   {
     id: 'balance',
     name: '天平',
-    toy: '黄铜天平',
     price: 30,
     color: '#e2ab3d',
     description: '可以用相同点数的牌压过对方的出牌。',
@@ -54,7 +49,6 @@ export const ITEMS = [
   {
     id: 'mask',
     name: '口罩',
-    toy: '蓝布口罩',
     price: 20,
     color: '#8fb7e8',
     description: '每小局第一次过牌不需要扣金币。',
@@ -64,7 +58,6 @@ export const ITEMS = [
   {
     id: 'mouse',
     name: '小老鼠',
-    toy: '机灵小鼠',
     price: 30,
     color: '#a9b1c2',
     description: '每小局一次，可以把对方的出牌拿回自己的手牌。',

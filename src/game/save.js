@@ -185,7 +185,7 @@ export function parseSave(text) {
   if (game.phase === 'over' && !game.matchOver) game.phase = 'shop';
   game.message =
     game.phase === 'shop'
-      ? '逛逛小店，为下一局添件玩具'
+      ? '逛逛小店，为下一局添件道具'
       : game.phase === 'over'
         ? game.matchWinner === 0
           ? '你赢得了整场'

@@ -2,6 +2,8 @@ node_modules/
 test-results/
 .DS_Store
 .idea/
+.zcode/
+.tmp-shot-readme.mjs
 
 # Generated production bundle (created by `npm run build` or Docker)
 /dist/

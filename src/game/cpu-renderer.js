@@ -196,7 +196,7 @@ export async function createRenderer(art, svg) {
       drawTableItemShadow(canvas, model, B);
       parts.push({ ...model, draw: () => drawTableItem(canvas, model) });
       overlay.push(
-        `<g class="table-item" id="table-item-${id}" data-item="${id}" role="img" tabindex="0" aria-label="${item.toy}：${item.effect}" aria-describedby="item-tooltip"><path d="${tableItemHit(canvas, model)}" fill="transparent" pointer-events="all"/></g>`,
+        `<g class="table-item" id="table-item-${id}" data-item="${id}" role="img" tabindex="0" aria-label="${item.name}：${item.effect}" aria-describedby="item-tooltip"><path d="${tableItemHit(canvas, model)}" fill="transparent" pointer-events="all"/></g>`,
       );
     }
     // One flat fill for every tabletop shadow collected above (single clip, single fill).

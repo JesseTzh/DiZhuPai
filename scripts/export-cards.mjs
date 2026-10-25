@@ -3,6 +3,8 @@ import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { format, resolveConfig } from 'prettier';
 import { cardDeck, cardFrontPrints, cardBackPrint, cardSvg } from '../src/assets/cards/index.js';
+import { cardWildPrint } from '../src/assets/cards/wild.js';
+import { cardCream, cardGold } from '../src/assets/cards/palette.js';
 import { suits } from '../src/assets/cards/suits.js';
 import { PALS } from '../src/engine/palette.js';
 
@@ -57,6 +59,31 @@ await writeFile(
   path.join(output, 'preview.html'),
   await format(preview, { ...(await resolveConfig(output)), parser: 'html' }),
 );
+// 扑克牌 favicon：芥末金牌背 + 赖子青蛙牌。牌面整体复用 cardWildPrint，
+// 仅把墨线加粗一档再缩放进 64×64 图标画布，保证缩小后仍是手绘墨线风格。
+const faviconWild = cardWildPrint().replace(
+  /stroke-width="([\d.]+)"/g,
+  (_, w) => `stroke-width="${(+w * 2).toFixed(2)}"`,
+);
+const favicon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <g fill="#41538f" fill-opacity=".13">
+    <rect x="13.5" y="11" width="33" height="45" rx="4.5" transform="rotate(-14 27.5 30.5)"/>
+    <rect x="22.5" y="14" width="33" height="45" rx="4.5" transform="rotate(11 36.5 33.5)"/>
+  </g>
+  <g stroke="#292a28" stroke-linejoin="round" stroke-linecap="round">
+    <g transform="rotate(-14 27.5 30.5)">
+      <rect x="11" y="8" width="33" height="45" rx="4.5" fill="${cardCream}" stroke-width="2.6"/>
+      <rect x="14.75" y="11.75" width="25.5" height="37.5" rx="2.6" fill="${cardGold}" stroke-width="1.9"/>
+      <path d="M27.5 18.5 L34.5 30.5 L27.5 42.5 L20.5 30.5 Z" fill="none" stroke="${cardCream}" stroke-width="2.4"/>
+    </g>
+    <g transform="rotate(11 36.5 33.5)">
+      <rect x="20" y="11" width="33" height="45" rx="4.5" fill="${cardCream}" stroke-width="2.6"/>
+      <g transform="translate(20.4 11) scale(0.5114)">${faviconWild}</g>
+    </g>
+  </g>
+</svg>
+`;
+await writeFile(fileURLToPath(new URL('../src/assets/favicon.svg', import.meta.url)), favicon);
 console.log(
-  `Exported ${cardDeck.length} faces, ${Object.keys(PALS).length} backs and preview.html`,
+  `Exported ${cardDeck.length} faces, ${Object.keys(PALS).length} backs, preview.html and favicon.svg`,
 );

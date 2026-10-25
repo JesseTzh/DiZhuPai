@@ -32,7 +32,7 @@ export function mountGameTopbar(stage, menu, state) {
     hit.type = 'button';
     hit.className = 'topbar-hit topbar-item';
     hit.dataset.item = item.id;
-    hit.setAttribute('aria-label', `${item.toy} · ${item.name}：${item.description}`);
+    hit.setAttribute('aria-label', `${item.name}：${item.description}`);
     hit.hidden = true;
     return hit;
   });

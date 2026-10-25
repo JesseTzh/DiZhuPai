@@ -285,7 +285,7 @@ test('a stolen twin of a held card coexists and each play consumes one copy', ()
 
 test('every registered item carries a rule the shop and topbar can render', () => {
   for (const item of ITEMS) {
-    assert.ok(item.id && item.name && item.toy && item.price > 0 && item.description);
+    assert.ok(item.id && item.name && item.price > 0 && item.description);
     assert.ok(
       [
         'wildCard',

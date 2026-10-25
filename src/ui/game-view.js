@@ -224,7 +224,7 @@ export function mountGameView({ state, ui, actions: controller, isGamePage }) {
     buttons[2].disabled = !active || !game.target;
     buttons[3].disabled = !active;
     document.getElementById('game-message').textContent = state.shopTransition
-      ? '收起牌桌，玩具铺营业中…'
+      ? '收起牌桌，杂货铺营业中…'
       : state.locked && game.phase !== 'dealing'
         ? '金币结算中'
         : game.message === '轮到你出牌'

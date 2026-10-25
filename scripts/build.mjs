@@ -1,5 +1,5 @@
 import { build } from 'esbuild';
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { copyFile, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
@@ -15,6 +15,9 @@ const gameSounds = await Promise.all(
   ),
 );
 await mkdir(outputAssets, { recursive: true });
+for (const name of ['favicon.svg', 'favicon.png', 'apple-touch-icon.png']) {
+  await copyFile(path.join(source, 'assets', name), path.join(outputAssets, name));
+}
 // Keep the HTML documents small and readable. Bundled JavaScript and CSS remain
 // external files so the generated pages have the same structure as the source templates.
 const pages = [

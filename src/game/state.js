@@ -193,7 +193,7 @@ export function enterShop(game, random) {
   game.phase = 'shop';
   game.shopStock = pickShopStock(game, random);
   game.selected = [];
-  game.message = '逛逛小店，为下一局添件玩具';
+  game.message = '逛逛小店，为下一局添件道具';
   return true;
 }
 export function buyItem(game, id) {

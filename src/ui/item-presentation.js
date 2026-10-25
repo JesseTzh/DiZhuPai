@@ -4,10 +4,10 @@ import { TOYS } from '../assets/items/index.js';
 // One description model for the shop, tabletop and compact inventory.
 export function itemDetails(item) {
   return {
-    title: `${item.toy} · ${item.name}`,
+    title: item.name,
     description: item.description,
     footer: `${item.effect} · 本场持续生效`,
-    accessible: `${item.toy}：${item.name}，${item.description}`,
+    accessible: `${item.name}，${item.description}`,
   };
 }
 
