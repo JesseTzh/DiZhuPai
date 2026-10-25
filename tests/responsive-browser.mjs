@@ -1,13 +1,14 @@
-// 响应式布局走查:手机竖屏、小窗口、常见笔记本与全高清四档视口下,
-// 检查页面不横向溢出、控件可用、商店可购、道具提示被夹在视口内。
+// 响应式布局走查:手机横屏(19.5:9)、小窗口、常见笔记本与全高清四档视口下,
+// 检查页面不横向溢出、控件可用、商店可购、道具提示被夹在视口内;
+// 另用触屏页验证竖屏持机会提示横屏、转回横屏后提示消失。
 // 刻意不录像:本脚本中途切换视口,会把录像画布弄出灰边(录制器不放大画面)。
 import assert from 'node:assert/strict';
 import { chromium } from 'playwright';
 import { mkdir, writeFile } from 'node:fs/promises';
 
 const browser = await chromium.launch({ channel: 'chrome' });
-// 从手机视口开始,逐档放大;每档重新加载页面,状态互不粘连。
-const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+// 从手机横屏视口开始,逐档放大;每档重新加载页面,状态互不粘连。
+const page = await browser.newPage({ viewport: { width: 858, height: 396 } });
 const errors = [];
 page.on('pageerror', (error) => errors.push(error.message));
 // 固定随机种子：发牌与商店刷新完全可复现，测试结果不再随运行漂移。
@@ -18,7 +19,7 @@ const url = (params = {}) => {
   return target.href;
 };
 const sizes = [
-  [390, 844, '手机竖屏'],
+  [858, 396, '手机横屏(19.5:9)'],
   [800, 600, '小窗口'],
   [1280, 720, '笔记本 16:9'],
   [1920, 1080, '全高清(录像视口)'],
@@ -63,7 +64,8 @@ try {
     assert.ok(await page.locator('#play-cards').isVisible(), `${label}:出牌按钮`);
     await page.locator('.hand-card').nth(9).dispatchEvent('pointerdown', { button: 0 });
     assert.equal(await page.evaluate(() => gameApp.state.game.selected.length), 1);
-    await page.mouse.click(4, Math.min(220, height - 40));
+    // 点左上角空白处撤销选牌:任何视口下都不与牌面、顶栏命中区重叠。
+    await page.mouse.click(4, 4);
     assert.equal(await page.evaluate(() => gameApp.state.game.selected.length), 0);
     await noHorizontalScroll();
     await page.screenshot({ path: `test-results/responsive-game-${width}x${height}.png` });
@@ -92,7 +94,7 @@ try {
     await page.mouse.move(0, 0);
     assert.equal(await page.locator('#item-tooltip').isVisible(), false);
     // 性能页只抽查两端视口。
-    if (width === 390 || width === 1920) {
+    if (width === 858 || width === 1920) {
       await page.goto(new URL('performance.html', url()).href);
       await page.evaluate(() => performanceApp.ready());
       await page.waitForFunction(() => performanceApp.metrics.samples > 4);
@@ -106,6 +108,21 @@ try {
     console.log(`${label} ${width}x${height} 通过`);
   }
   assert.equal(errors.length, 0, errors.join('\n'));
+  // 手机端判定走查:触屏设备竖屏持机出现横屏提示,转回横屏后消失。
+  const touchPage = await browser.newPage({
+    viewport: { width: 390, height: 845 },
+    hasTouch: true,
+  });
+  touchPage.on('pageerror', (error) => errors.push(error.message));
+  await touchPage.goto(url());
+  await touchPage.evaluate(() => gameApp.ready());
+  assert.ok(await touchPage.locator('#rotate-hint').isVisible(), '触屏竖屏:横屏提示');
+  await touchPage.screenshot({ path: 'test-results/responsive-rotate-portrait.png' });
+  await touchPage.setViewportSize({ width: 858, height: 396 });
+  // matchMedia 的 change 事件在下一帧才派发,等监听器真正把提示隐藏再断言。
+  await touchPage.waitForFunction(() => document.getElementById('rotate-hint')?.hidden);
+  assert.equal(await touchPage.locator('#rotate-hint').isVisible(), false, '转回横屏:提示消失');
+  await touchPage.close();
   await writeFile(
     'test-results/responsive-report.json',
     JSON.stringify({ passed: true, results, errors }, null, 2),

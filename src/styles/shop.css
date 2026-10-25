@@ -24,6 +24,8 @@
   position: relative;
   width: 100%;
   aspect-ratio: var(--ratio, 1.45);
+  /* 商品与价格牌按货架自身宽度紧凑化(见下方容器查询),货架因此成为尺寸容器。 */
+  container: shop-stage / inline-size;
   /* the camera settles down to counter height as the shop opens */
   animation: shop-camera 1.1s cubic-bezier(0.2, 0.7, 0.2, 1) both;
 }
@@ -155,6 +157,10 @@
   #shop {
     padding: 10px;
   }
+}
+/* 价格牌等商品叠层按货架实际宽度紧凑化:窄视口与手机横屏(宽度受高度约束)都会
+   把货架压窄,视口宽度媒体查询覆盖不到后者,所以用容器查询表达"货架窄于 680px"。 */
+@container shop-stage (max-width: 680px) {
   .price-tag {
     min-width: 0;
     padding: 2px 4px 3px;

@@ -1,5 +1,6 @@
 import { cardFlip } from '../cards/animation.js';
 import { cardGroup } from '../cards/constants.js';
+import { mountMobileOrientationGuard } from './device-mode.js';
 
 // Chinese labels for the Colorfigures page shell, shared by every page in this project.
 export function mountShell(ui, { palette, swatches }) {
@@ -17,6 +18,7 @@ export function mountShell(ui, { palette, swatches }) {
     swatch.setAttribute('aria-label', swatch.title);
   });
   addEventListener('resize', () => ui.invalidate());
+  mountMobileOrientationGuard();
 }
 
 export function mountControls(ui) {

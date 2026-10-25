@@ -55,7 +55,8 @@ jobs:
       # Desktop scripts run at a 1920x1080 viewport so the recording canvas equals
       # the viewport and yields full-bleed 1080p webm (the recorder never upscales
       # frames; a smaller viewport would leave gray padding). mobile-game-browser
-      # records a 390x844 portrait webm and responsive-browser stays unrecorded.
+      # records an 858x396 landscape (exact 19.5:9) webm and responsive-browser
+      # stays unrecorded.
       # Failures are collected in failed.txt so one red script does not hide the rest.
       - name: Run Playwright browser tests
         run: |

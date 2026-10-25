@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { chromium } from 'playwright';
-import { FULL_HD, openRecording } from './video.mjs';
+import { FULL_HD, PHONE_LANDSCAPE, openRecording } from './video.mjs';
 const browser = await chromium.launch({ channel: 'chrome' });
 const errors = [];
 // 固定随机种子：发牌与商店刷新完全可复现，测试结果不再随运行漂移。
@@ -13,8 +13,8 @@ const url = (params = {}) => {
 try {
   for (const viewport of [
     FULL_HD,
-    // 手机段保持竖屏原尺寸录制(录制器不会放大画面,画布与视口一致即满幅)。
-    { width: 390, height: 844 },
+    // 手机段按 858×396 横屏原尺寸录制(精确 19.5:9,画布与视口一致即满幅)。
+    PHONE_LANDSCAPE,
   ]) {
     const recording = await openRecording(
       browser,

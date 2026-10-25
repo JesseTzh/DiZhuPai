@@ -1,13 +1,12 @@
-// 手机端对局走查:390×844 竖屏 + 真实触控(page.tap),从发牌一路打到商店再进下一局。
-// 视口全程固定,录像画布与视口一致,按手机原尺寸竖屏满幅录制。
+// 手机端对局走查:858×396 横屏(精确 19.5:9)+ 真实触控(page.tap),从发牌一路打到商店再进下一局。
+// 视口全程固定,录像画布与视口一致,按手机横屏原尺寸满幅录制。
 import assert from 'node:assert/strict';
 import { chromium } from 'playwright';
-import { openRecording } from './video.mjs';
+import { PHONE_LANDSCAPE, openRecording } from './video.mjs';
 
-const PHONE = { width: 390, height: 844 };
 const browser = await chromium.launch({ channel: 'chrome' });
 const recording = await openRecording(browser, 'mobile-game-browser', {
-  viewport: PHONE,
+  viewport: PHONE_LANDSCAPE,
   hasTouch: true,
 });
 const page = recording.page;
@@ -35,6 +34,18 @@ const waitMyTurn = () =>
 try {
   await page.goto(url({ page: 'game' }));
   await page.evaluate(() => gameApp.ready());
+  // 手机端判定走查:触屏与横屏两个能力媒体查询都命中,竖屏提示保持隐藏。
+  assert.equal(
+    await page.evaluate(() => matchMedia('(hover: none) and (pointer: coarse)').matches),
+    true,
+    '触屏判定',
+  );
+  assert.equal(
+    await page.evaluate(() => matchMedia('(orientation: landscape)').matches),
+    true,
+    '横屏判定',
+  );
+  assert.equal(await page.locator('#rotate-hint').isVisible(), false, '横屏下无竖屏提示');
   await page.tap('[data-slot="0"] [data-slot-action="new"]');
   await page.waitForFunction(() => gameApp.state.game.phase === 'playing');
   assert.ok(await page.locator('.game-topbar').isVisible());
@@ -106,7 +117,7 @@ try {
   assert.equal(await page.locator('.wild-card-model').count(), 1);
   assert.equal(errors.length, 0, errors.join('\n'));
   console.log(
-    'Mobile gameplay passed: touch select/deselect, play, pass transfer, shop purchase and next round on a 390x844 viewport.',
+    'Mobile gameplay passed: touch select/deselect, play, pass transfer, shop purchase and next round on an 858x396 landscape (19.5:9) viewport.',
   );
 } finally {
   await browser.close();

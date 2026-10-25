@@ -1,0 +1,88 @@
+/* 手机端与横屏模式。触屏/方向的媒体查询与 src/ui/device-mode.js 的
+   TOUCH_QUERY / LANDSCAPE_QUERY 逐字一致,两边必须同步修改。 */
+
+/* 触屏设备:去掉点按高亮,快速连续点选手牌也不会触发双击缩放。 */
+@media (hover: none) and (pointer: coarse) {
+  html {
+    -webkit-tap-highlight-color: transparent;
+  }
+  button,
+  a,
+  .hand-card,
+  [data-card] {
+    touch-action: manipulation;
+  }
+}
+
+/* 手机横屏(本项目的手机端模式):刘海在左右两侧,贴边 UI 让开安全区。 */
+@media (hover: none) and (pointer: coarse) and (orientation: landscape) {
+  .game-topbar {
+    left: max(8px, env(safe-area-inset-left));
+    right: max(8px, env(safe-area-inset-right));
+  }
+  /* 商店的宽度公式按竖屏顶栏预留 250px 竖向空间,横屏下高度稀缺,货架会被压到
+     商品互相重叠:改为贴底摆放,预留缩到"顶栏 + 留白",道具栏也挪到顶栏之下。 */
+  #shop {
+    place-items: end center;
+  }
+  .shop-box {
+    --w: min(calc(100vw - 32px), 1080px, calc((100dvh - 144px) * var(--ratio, 1.45)));
+  }
+  .item-inventory {
+    top: 100px;
+  }
+}
+
+/* 竖屏持机提示,由 device-mode.js 挂载并按方向显隐。 */
+#rotate-hint {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 24px;
+  text-align: center;
+  background: var(--paper);
+  color: var(--ink);
+}
+#rotate-hint[hidden] {
+  display: none;
+}
+#rotate-hint svg {
+  width: 88px;
+  height: 88px;
+  animation: rotate-hint-phone 2.8s ease-in-out infinite;
+}
+#rotate-hint .rotate-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+#rotate-hint .rotate-text {
+  margin: 0;
+  max-width: 30em;
+  color: var(--muted);
+}
+@keyframes rotate-hint-phone {
+  0%,
+  15% {
+    transform: rotate(0deg);
+  }
+  50%,
+  80% {
+    transform: rotate(90deg);
+  }
+  100% {
+    transform: rotate(0deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  #rotate-hint svg {
+    animation: none;
+    transform: rotate(90deg);
+  }
+}
