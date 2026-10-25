@@ -32,10 +32,16 @@ export function settingsIcon() {
   }
   return `<svg viewBox="0 0 30 30" aria-hidden="true"><path d="M${points.join(' L')}Z" transform="translate(1.2 1.7)" fill="#6487bd" opacity=".75"/><path d="M${points.join(' L')}Z" fill="#93d3b0" stroke="${INK}" stroke-width="1.7" stroke-linejoin="round"/><circle cx="15" cy="15" r="6.3" fill="#fff4d6" stroke="${INK}" stroke-width="1.7"/><circle cx="15" cy="15" r="2.5" fill="#93d3b0" stroke="${INK}" stroke-width="1.4"/></svg>`;
 }
+// Import: a cobalt tray catching a gold arrow, echoing the coin-drop motif.
+export function importIcon() {
+  const box = 'M5 16.5h20v5.6a4.4 4.4 0 0 1-4.4 4.4H9.4A4.4 4.4 0 0 1 5 22.1Z';
+  const arrow = 'M11.5 3h7v6.5h3.7L15 15.8 7.8 9.5h3.7Z';
+  return `<svg viewBox="0 0 30 30" aria-hidden="true"><path d="${box}" transform="translate(1.2 1.7)" fill="#6487bd" opacity=".75"/><path d="${box}" fill="#76a0e2" stroke="${INK}" stroke-width="1.7" stroke-linejoin="round"/><path d="${arrow}" fill="#f4b829" stroke="${INK}" stroke-width="1.7" stroke-linejoin="round"/></svg>`;
+}
 export function homeMarkup() {
   return `${tableBackdrop()}<a class="home-rocket" href="./performance.html" aria-label="进入性能测试页" title="性能测试"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M18 29L10 30 12 19 23 16M24 31L23 40 33 35 34 24" fill="#76a0e2" stroke="${INK}" stroke-width="2.2" stroke-linejoin="round"/><path d="M17 29C17 17 28 7 39 7 41 19 33 30 24 33Z" fill="#fff4d6" stroke="${INK}" stroke-width="2.2"/><circle cx="30" cy="17" r="4.5" fill="#93d3b0" stroke="${INK}" stroke-width="2"/><path d="M17 32L10 39 17 37 15 43 23 35" fill="#f4b829" stroke="${INK}" stroke-width="2" stroke-linejoin="round"/></svg></a>
     <div class="home-composition"><h1 class="home-title"><span class="sr-only">地主牌</span><svg id="home-art" viewBox="0 0 800 465" aria-hidden="true"><g transform="translate(-9,25)" opacity=".19">${stroke(allPaths, '#41538f', 24)}</g>${relief}${stroke(allPaths, INK, 21)}${stroke(allPaths, '#f4b829', 15)}<g transform="translate(-1,-3)">${stroke(allPaths, '#ffe194', 3)}</g><g id="home-bag"></g><g id="home-cards"></g><g id="home-coins"></g></svg></h1>
-    <div class="home-buttons"><label class="home-seed"><span class="sr-only">随机种子</span><input id="seed-input" type="text" maxlength="32" placeholder="随机种子 · 留空随机" autocomplete="off" spellcheck="false" enterkeyhint="go"></label><button id="enter-game" class="figure-button figure-primary"><svg viewBox="0 0 30 30" aria-hidden="true"><path d="M9 5L24 15 9 25Z" fill="#fff4d6" stroke="${INK}" stroke-width="2" stroke-linejoin="round"/></svg><span class="home-start-label">开始游戏</span></button><button id="home-catalogue" class="figure-button">${itemIconMarkup('frog')}道具图鉴</button><button id="home-import" class="figure-button">导入存档</button><button id="home-settings" class="figure-button">${settingsIcon()}设置</button></div></div>`;
+    <div class="home-buttons"><button id="enter-game" class="figure-button figure-primary"><svg viewBox="0 0 30 30" aria-hidden="true"><path d="M9 5L24 15 9 25Z" fill="#fff4d6" stroke="${INK}" stroke-width="2" stroke-linejoin="round"/></svg><span class="home-start-label">开始游戏</span></button><button id="home-catalogue" class="figure-button">${itemIconMarkup('frog')}道具图鉴</button><button id="home-import" class="figure-button">${importIcon()}导入存档</button><button id="home-settings" class="figure-button">${settingsIcon()}设置</button></div></div>`;
 }
 const ns = 'http://www.w3.org/2000/svg';
 const group = (root, markup) => {
@@ -75,8 +81,9 @@ export function mountHomeAnimation(home) {
     home.querySelector('#home-bag'),
     '<image x="-64" y="-64" width="128" height="128"/>',
   );
-  const bagX = 735,
-    bagY = 385;
+  // The sack tucks into the title's bottom-right corner (strokes end at 652,320), above the striking cards' row.
+  const bagX = 700,
+    bagY = 310;
   let bagBounce = 0;
   let mouth = { x: bagX, y: bagY - 29 };
   let artReady = false;

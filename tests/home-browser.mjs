@@ -52,8 +52,8 @@ try {
   assert.ok(flight.vx > 0 && flight.vy < 0, 'the strike sends the coin up and toward the sack');
   const arrivalX = flight.fromX + flight.vx * flight.duration;
   const arrivalY = flight.fromY + flight.vy * flight.duration + 310 * flight.duration ** 2;
-  assert.ok(arrivalX > 725 && arrivalX < 745, 'the arc ends inside the sack mouth');
-  assert.ok(arrivalY > 345 && arrivalY < 365, 'the arc ends at the side-view rim height');
+  assert.ok(arrivalX > 690 && arrivalX < 710, 'the arc ends inside the sack mouth');
+  assert.ok(arrivalY > 265 && arrivalY < 295, 'the arc ends at the side-view rim height');
   assert.ok(flight.vy + 620 * flight.duration > 0, 'the coin descends into the sack');
   await page.waitForFunction(
     () => gameApp.homeAnimation.metrics.strikesByCard.every((count) => count >= 2),

@@ -149,12 +149,14 @@
   font-size: 11px;
   color: #5d5041;
 }
-.game-page .zwrap {
+.game-page:not(.home-page) .zwrap {
   transition:
     translate 0.85s cubic-bezier(0.6, 0, 0.8, 0.5),
     opacity 0.65s;
 }
-.clearing-table .zwrap {
+/* The slide runs on the game page only: on home the same canvas paints the title
+   board, and even a mid-transition measurement would bake the offset into syncHome. */
+.clearing-table:not(.home-page) .zwrap {
   translate: 0 115vh;
   opacity: 0;
   pointer-events: none;

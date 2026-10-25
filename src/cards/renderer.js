@@ -1,4 +1,4 @@
-import { P, Dv, setOrigin, sepOrder, depthOf, pd, sp } from '../engine/camera.js';
+import { P, Dv, setOrigin, paintOrder, pd, sp } from '../engine/camera.js';
 import { hull } from '../engine/math.js';
 import { facing, tone, SH, SHADOW_LEN, SHADOW_K } from '../engine/shading.js';
 import { INK, SHADOW } from '../engine/palette.js';
@@ -164,7 +164,7 @@ export function createCardRenderer(art, svg) {
       });
     }
     const ordered = models.map((model, id) => ({ at: model.center, box: model.bounds, id }));
-    ordered.sort((a, b) => sepOrder(a, b) || depthOf(a.at) - depthOf(b.at));
+    ordered.sort(paintOrder);
     let cursor = deck.firstElementChild;
     for (const { id } of ordered) {
       const node = cards[id].group;

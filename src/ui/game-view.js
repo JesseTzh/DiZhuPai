@@ -185,8 +185,13 @@ export function mountGameView({ state, ui, actions: controller, isGamePage }) {
   result.setAttribute('aria-live', 'polite');
   stage.append(result);
   function sync() {
-    const inShop = game.phase === 'shop';
+    // The shop overlay and its hidden canvas belong to the game page only: on home the
+    // same canvas paints the title board, so a lingering shop phase must not hide it.
+    const inShop = game.phase === 'shop' && !state.visual.home;
     document.body.classList.toggle('shop-open', inShop);
+    // Leaving mid shop-transition must drop the table slide at once: syncHome measures
+    // the canvas through getScreenCTM, and the clearing translate would bake itself in.
+    if (state.visual.home) document.body.classList.remove('clearing-table');
     syncShop(game, inShop);
     tableControls.sync(!inShop && isGamePage() && !state.shopTransition);
     const active = controller.canAct(),
@@ -247,7 +252,7 @@ export function mountGameView({ state, ui, actions: controller, isGamePage }) {
     sync,
     menu,
     shopTransition(active) {
-      document.body.classList.toggle('clearing-table', active);
+      document.body.classList.toggle('clearing-table', active && !state.visual.home);
     },
     shopOpened() {
       document.getElementById('shop-notice').textContent = '';

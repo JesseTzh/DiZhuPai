@@ -1,5 +1,5 @@
 import { ModelCanvas } from './model-canvas.js';
-import { P, pd, depthOf, sepOrder, setCameraPitch } from '../engine/camera.js';
+import { P, pd, paintOrder, setCameraPitch } from '../engine/camera.js';
 import { tone, facing } from '../engine/shading.js';
 import { norm } from '../engine/math.js';
 import { PALS, INK } from '../engine/palette.js';
@@ -116,7 +116,7 @@ export async function createRenderer(art, svg) {
       [0, 1].map((end) =>
         [0, 1, 2].map((axis) => (end ? Math.max : Math.min)(...points.map((p) => p[axis]))),
       );
-    const order = (a, b) => sepOrder(a, b) || depthOf(a.at) - depthOf(b.at);
+    const order = paintOrder;
     for (const { id, pose, options } of frame.cards) {
       const hover = options.act ? hoverProgress.get(String(id)) || 0 : 0;
       // Slide on the tabletop; retain the resting pose for stacking and hit order.

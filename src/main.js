@@ -131,7 +131,15 @@ document.addEventListener('pointerover', (event) => {
 const draw = ui.render;
 ui.render = () => {
   draw();
-  if (game.phase === 'over' && !game.matchOver && !state.locked && !state.shopTransition)
+  // Only the game page runs the shop transition: opening it from home would slide the
+  // title board away for the clearing animation, so it waits until the table is back.
+  if (
+    isGamePage() &&
+    game.phase === 'over' &&
+    !game.matchOver &&
+    !state.locked &&
+    !state.shopTransition
+  )
     controller.openShop();
   view.sync();
   saveProgress();

@@ -109,37 +109,6 @@
   height: 27px;
   flex: 0 0 auto;
 }
-/* Seed entry shares the paper-button family; Enter starts the match. */
-.home-seed {
-  width: 240px;
-}
-#seed-input {
-  width: 100%;
-  min-height: 46px;
-  padding: 8px 14px;
-  border: 2.5px solid var(--ink);
-  border-radius: 12px;
-  background: #fff8e7;
-  color: var(--ink);
-  font: inherit;
-  font-size: 15px;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-align: center;
-  box-shadow:
-    3px 5px 0 #c6b88e,
-    3px 7px 0 1.5px var(--ink);
-}
-#seed-input::placeholder {
-  color: #8a7a58;
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: 0.05em;
-}
-#seed-input:focus-visible {
-  outline: 3px solid #46679e;
-  outline-offset: 3px;
-}
 button:focus-visible,
 .home-rocket:focus-visible {
   outline: 3px solid #46679e;
@@ -299,9 +268,6 @@ button:focus-visible,
   #home-screen .figure-button {
     width: 190px;
     min-height: 54px;
-  }
-  .home-seed {
-    width: 190px;
   }
 }
 @media (prefers-reduced-motion: reduce) {
