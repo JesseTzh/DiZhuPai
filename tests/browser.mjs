@@ -78,11 +78,18 @@ try {
   await shot('game-hand');
   // Hover returns promptly and leaves the viewport without a focus frame.
   const hoverCard = page.locator('.hand-card').last();
+  const hoverId = await hoverCard.getAttribute('data-card');
   const restingPath = await hoverCard.locator('path').getAttribute('d');
   await hoverCard.hover();
-  await page.waitForTimeout(110);
+  // 悬停进度按帧推进，慢速 CI 渲染器上需要等值到位而不是固定延时。
+  await page.waitForFunction(
+    (card) =>
+      [...document.querySelectorAll('.hand-card')].some(
+        (node) => node.dataset.card === card && node.dataset.hover === '1.000',
+      ),
+    hoverId,
+  );
   assert.equal(await hoverCard.locator('path').getAttribute('d'), restingPath);
-  assert.equal(await hoverCard.getAttribute('data-hover'), '1.000');
   await page.mouse.move(4, 4);
   await page.waitForTimeout(100);
   assert.equal(await hoverCard.locator('path').getAttribute('d'), restingPath);

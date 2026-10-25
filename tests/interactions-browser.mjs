@@ -12,6 +12,16 @@ const withSeed = (params = {}) => {
   for (const [key, value] of Object.entries(params)) target.searchParams.set(key, String(value));
   return target.href;
 };
+// 悬停进度按帧推进（dt 封顶 32ms），慢速 CI 渲染器上 80ms 的动画需要更多真实时间，
+// 所以等待 data-hover 到位而不是固定延时。
+const hoverDone = (id) =>
+  page.waitForFunction(
+    (card) =>
+      [...document.querySelectorAll('.hand-card')].some(
+        (node) => node.dataset.card === card && node.dataset.hover === '1.000',
+      ),
+    id,
+  );
 try {
   await page.goto(withSeed());
   await page.evaluate(() => gameApp.ready());
@@ -53,12 +63,12 @@ try {
     const cards = page.locator('.hand-card');
     const order = await cards.evaluateAll((nodes) => nodes.map((n) => n.dataset.card));
     const card = cards.nth(4);
+    const cardId = await card.getAttribute('data-card');
     const resting = await card.locator('path').getAttribute('d');
     const box = await card.boundingBox();
     await page.mouse.move(box.x + 4, box.y + box.height / 2);
-    await page.waitForTimeout(120);
+    await hoverDone(cardId);
     assert.equal(await card.locator('path').getAttribute('d'), resting);
-    assert.equal(await card.getAttribute('data-hover'), '1.000');
     assert.deepEqual(await cards.evaluateAll((nodes) => nodes.map((n) => n.dataset.card)), order);
     await card.dispatchEvent('pointerdown', { button: 0 });
     assert.equal(await page.evaluate(() => gameApp.state.game.selected.length), 1);
@@ -72,7 +82,7 @@ try {
     const edgeCard = cards.last(),
       edgeBox = await edgeCard.boundingBox();
     await page.mouse.move(edgeBox.x + edgeBox.width / 2, edgeBox.y + edgeBox.height - 2);
-    await page.waitForTimeout(180);
+    await hoverDone(await edgeCard.getAttribute('data-card'));
     const edgePath = await edgeCard.locator('path').getAttribute('d');
     for (let sample = 0; sample < 6; sample++) {
       await page.waitForTimeout(80);
