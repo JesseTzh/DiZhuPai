@@ -4,17 +4,10 @@ import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { chromium } from 'playwright';
 import { FULL_HD, openRecording, videoName } from './video.mjs';
+import { url } from './harness.mjs';
 const root = fileURLToPath(new URL('../', import.meta.url)),
   out = path.join(root, 'test-results');
 await mkdir(out, { recursive: true });
-const base = process.env.TEST_URL || 'http://127.0.0.1:5173/';
-// 固定随机种子：发牌与商店刷新完全可复现，测试结果不再随运行漂移。
-const url = (params = {}) => {
-  const target = new URL(base);
-  target.searchParams.set('seed', 'dizhupai-347');
-  for (const [key, value] of Object.entries(params)) target.searchParams.set(key, String(value));
-  return target.href;
-};
 const browser = await chromium.launch(
   process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH } : { channel: 'chrome' },
 );

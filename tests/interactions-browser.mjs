@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { chromium } from 'playwright';
 import { FULL_HD, openRecording } from './video.mjs';
+import { url } from './harness.mjs';
 
 const browser = await chromium.launch({ channel: 'chrome' });
 const recording = await openRecording(browser, 'interactions-browser', {
@@ -9,13 +10,6 @@ const recording = await openRecording(browser, 'interactions-browser', {
 const page = recording.page;
 const errors = [];
 page.on('pageerror', (error) => errors.push(error.message));
-// 固定随机种子：发牌与商店刷新完全可复现，测试结果不再随运行漂移。
-const withSeed = (params = {}) => {
-  const target = new URL(process.env.TEST_URL || 'http://127.0.0.1:5173/');
-  target.searchParams.set('seed', 'dizhupai-347');
-  for (const [key, value] of Object.entries(params)) target.searchParams.set(key, String(value));
-  return target.href;
-};
 // 悬停进度按帧推进（dt 封顶 32ms），慢速 CI 渲染器上 80ms 的动画需要更多真实时间，
 // 所以等待 data-hover 到位而不是固定延时。
 const hoverDone = (id) =>
@@ -27,7 +21,7 @@ const hoverDone = (id) =>
     id,
   );
 try {
-  await page.goto(withSeed());
+  await page.goto(url());
   await page.evaluate(() => gameApp.ready());
   await page.evaluate(() => {
     window.hoverSounds = 0;
@@ -39,9 +33,9 @@ try {
   });
   await page.locator('#enter-game').hover();
   assert.equal(await page.evaluate(() => window.hoverSounds), 1);
-  const url = page.url();
+  const homeUrl = page.url();
   await page.locator('#home-settings').click();
-  assert.equal(page.url(), url);
+  assert.equal(page.url(), homeUrl);
   assert.equal(await page.locator('#settings-screen').evaluate((node) => node.open), true);
   assert.equal(await page.locator('#home-screen').isVisible(), true);
   assert.equal(

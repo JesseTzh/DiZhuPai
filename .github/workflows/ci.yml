@@ -18,7 +18,7 @@ jobs:
   test:
     name: Checks and Playwright tests
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 40
 
     steps:
       - name: Checkout
@@ -56,7 +56,8 @@ jobs:
       # the viewport and yields full-bleed 1080p webm (the recorder never upscales
       # frames; a smaller viewport would leave gray padding). mobile-game-browser
       # records an 858x396 landscape (exact 19.5:9) webm and responsive-browser
-      # stays unrecorded.
+      # stays unrecorded. longplay-browser replays a full fixed-seed match and is
+      # listed last so its ~5 minutes do not delay the other reports.
       # Failures are collected in failed.txt so one red script does not hide the rest.
       - name: Run Playwright browser tests
         run: |
@@ -71,7 +72,7 @@ jobs:
           mkdir -p test-results
           : > test-results/failed.txt
           status=0
-          for t in entry-browser interactions-browser home-browser save-browser browser gameplay-browser shop-browser mobile-game-browser ui-pages responsive-browser; do
+          for t in entry-browser interactions-browser home-browser save-browser browser gameplay-browser items-browser shop-browser mobile-game-browser ui-pages responsive-browser longplay-browser; do
             if ! node "tests/${t}.mjs"; then
               echo "${t}" >> test-results/failed.txt
               status=1
@@ -87,21 +88,134 @@ jobs:
           exit "${status}"
 
       # Builds test-results/report/index.html from the recordings, screenshots and
-      # failed.txt; also appends a digest to the job summary when run on CI.
+      # failed.txt. The job summary is written later (--no-summary): its video links
+      # need the per-video artifacts uploaded below.
       - name: Generate video report
         if: always()
-        run: node scripts/video-report.mjs
+        run: node scripts/video-report.mjs --no-summary
 
       # Contains the 1080p recordings (test-results/videos), screenshots and the
       # offline report; unzip and open report/index.html in Chrome to replay.
       - name: Upload Playwright artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-results
           path: test-results/
           retention-days: 14
           if-no-files-found: ignore
+
+      # Each recording is also uploaded as its own non-zipped artifact
+      # (upload-artifact v7 archive:false supports a single file; the artifact is
+      # named after the file). GitHub renders browser-native types like webm
+      # inline, so the ▶ links in the job summary play the video directly instead
+      # of forcing a full archive download. Works on PR runs too.
+      - name: Upload video · browser
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          path: test-results/videos/browser.webm
+          archive: false
+          if-no-files-found: ignore
+      - name: Upload video · entry-browser-1920x1080
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          path: test-results/videos/entry-browser-1920x1080.webm
+          archive: false
+          if-no-files-found: ignore
+      - name: Upload video · entry-browser-858x396
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          path: test-results/videos/entry-browser-858x396.webm
+          archive: false
+          if-no-files-found: ignore
+      - name: Upload video · gameplay-browser
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          path: test-results/videos/gameplay-browser.webm
+          archive: false
+          if-no-files-found: ignore
+      - name: Upload video · home-browser
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          path: test-results/videos/home-browser.webm
+          archive: false
+          if-no-files-found: ignore
+      - name: Upload video · interactions-browser
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          path: test-results/videos/interactions-browser.webm
+          archive: false
+          if-no-files-found: ignore
+      - name: Upload video · items-browser
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          path: test-results/videos/items-browser.webm
+          archive: false
+          if-no-files-found: ignore
+      - name: Upload video · longplay-browser
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          path: test-results/videos/longplay-browser.webm
+          archive: false
+          if-no-files-found: ignore
+      - name: Upload video · mobile-game-browser
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          path: test-results/videos/mobile-game-browser.webm
+          archive: false
+          if-no-files-found: ignore
+      - name: Upload video · save-browser
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          path: test-results/videos/save-browser.webm
+          archive: false
+          if-no-files-found: ignore
+      - name: Upload video · shop-browser
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          path: test-results/videos/shop-browser.webm
+          archive: false
+          if-no-files-found: ignore
+      - name: Upload video · ui-pages
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          path: test-results/videos/ui-pages.webm
+          archive: false
+          if-no-files-found: ignore
+
+      # Map each webm artifact to its HTML URL (…/actions/runs/<run>/artifacts/<id>)
+      # for the summary table; a failure here only costs the inline links.
+      - name: Collect video artifact links
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          base="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/artifacts"
+          if ! gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/artifacts" --paginate \
+              --jq '.artifacts[] | select(.name | endswith(".webm")) | {key: .name, id: (.id | tostring)}' \
+              | jq -s --arg base "$base" 'map({(.key): "\($base)/\(.id)"}) | add // {}' > video-urls.json; then
+            echo "::warning::收集视频工件直链失败,summary 将不含在线回放链接"
+            echo '{}' > video-urls.json
+          fi
+          cat video-urls.json
+
+      # Re-runs the report script to append the job summary, now with the
+      # per-video ▶ links in the 视频回放 column.
+      - name: Write test summary
+        if: always()
+        run: node scripts/video-report.mjs --summary-only --video-urls video-urls.json
 
   deploy-pages:
     name: Publish to GitHub Pages

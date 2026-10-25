@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { chromium } from 'playwright';
 import { FULL_HD, openRecording } from './video.mjs';
+import { url } from './harness.mjs';
 const browser = await chromium.launch({ channel: 'chrome' });
 const recording = await openRecording(browser, 'shop-browser', {
   viewport: FULL_HD,
@@ -8,15 +9,8 @@ const recording = await openRecording(browser, 'shop-browser', {
 const page = recording.page;
 const errors = [];
 page.on('pageerror', (e) => errors.push(e.message));
-const base = process.env.TEST_URL || 'http://127.0.0.1:5173/';
-// 固定随机种子 dizhupai-347：第一轮货架恰好是经典三件套（frog/hand/dragon），
-// 之后每次补货同样可复现，无需再打补丁替换 Math.random。
-const url = (params = {}) => {
-  const target = new URL(base);
-  target.searchParams.set('seed', 'dizhupai-347');
-  for (const [key, value] of Object.entries(params)) target.searchParams.set(key, String(value));
-  return target.href;
-};
+// 固定随机种子 dizhupai-347（harness.TEST_SEED）：第一轮货架恰好是经典三件套
+// （frog/hand/dragon），之后每次补货同样可复现，无需再打补丁替换 Math.random。
 async function endRound() {
   await page.evaluate(() => {
     const s = gameApp.state,

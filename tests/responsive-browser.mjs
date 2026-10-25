@@ -5,19 +5,13 @@
 import assert from 'node:assert/strict';
 import { chromium } from 'playwright';
 import { mkdir, writeFile } from 'node:fs/promises';
+import { url } from './harness.mjs';
 
 const browser = await chromium.launch({ channel: 'chrome' });
 // 从手机横屏视口开始,逐档放大;每档重新加载页面,状态互不粘连。
 const page = await browser.newPage({ viewport: { width: 858, height: 396 } });
 const errors = [];
 page.on('pageerror', (error) => errors.push(error.message));
-// 固定随机种子：发牌与商店刷新完全可复现，测试结果不再随运行漂移。
-const url = (params = {}) => {
-  const target = new URL(process.env.TEST_URL || 'http://127.0.0.1:5173/');
-  target.searchParams.set('seed', 'dizhupai-347');
-  for (const [key, value] of Object.entries(params)) target.searchParams.set(key, String(value));
-  return target.href;
-};
 const sizes = [
   [858, 396, '手机横屏(19.5:9)'],
   [800, 600, '小窗口'],

@@ -2,14 +2,8 @@ import assert from 'node:assert/strict';
 import { chromium } from 'playwright';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { FULL_HD, openRecording } from './video.mjs';
+import { url } from './harness.mjs';
 const base = process.env.TEST_URL || 'http://127.0.0.1:5173/';
-// 固定随机种子：发牌与商店刷新完全可复现，测试结果不再随运行漂移。
-const url = (params = {}) => {
-  const target = new URL(base);
-  target.searchParams.set('seed', 'dizhupai-347');
-  for (const [key, value] of Object.entries(params)) target.searchParams.set(key, String(value));
-  return target.href;
-};
 const browser = await chromium.launch({ channel: 'chrome' });
 const recording = await openRecording(browser, 'ui-pages', {
   viewport: FULL_HD,

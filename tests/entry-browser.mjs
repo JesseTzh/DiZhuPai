@@ -1,15 +1,9 @@
 import assert from 'node:assert/strict';
 import { chromium } from 'playwright';
 import { FULL_HD, PHONE_LANDSCAPE, openRecording } from './video.mjs';
+import { url } from './harness.mjs';
 const browser = await chromium.launch({ channel: 'chrome' });
 const errors = [];
-// 固定随机种子：发牌与商店刷新完全可复现，测试结果不再随运行漂移。
-const url = (params = {}) => {
-  const target = new URL(process.env.TEST_URL || 'http://127.0.0.1:5173/');
-  target.searchParams.set('seed', 'dizhupai-347');
-  for (const [key, value] of Object.entries(params)) target.searchParams.set(key, String(value));
-  return target.href;
-};
 try {
   for (const viewport of [
     FULL_HD,

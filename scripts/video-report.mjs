@@ -1,8 +1,19 @@
 // 汇总浏览器测试的 1080p 录像、截图与结果为离线报告 test-results/report/index.html,
 // CI 上传在 playwright-results 工件里,下载解压后用 Chrome/Edge 打开即可回放(WebM 编码)。
+// 另外每段录像还会单独上传为非 zip 工件(upload-artifact archive:false),本脚本把
+// --video-urls 传入的「文件名 → 工件直链」映射填进 job summary,点击即在线回放,免下载。
+// 用法:node scripts/video-report.mjs [--no-summary] [--summary-only] [--video-urls <file>]
+//   --no-summary    只生成离线报告 HTML,不写 job summary(summary 要等直链收集完)
+//   --summary-only  只写 job summary(报告 HTML 已在此前生成并打进 zip 工件)
+//   --video-urls    读取「webm 文件名 → artifact URL」的 JSON 映射(CI 由 gh api 生成)
 import { appendFile, mkdir, readFile, readdir, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+
+const argv = process.argv.slice(2);
+const summaryOnly = argv.includes('--summary-only');
+const noSummary = argv.includes('--no-summary');
+const videoUrlsPath = argv.includes('--video-urls') ? argv[argv.indexOf('--video-urls') + 1] : null;
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const resultsDir = path.join(root, 'test-results');
@@ -15,11 +26,13 @@ const scripts = [
   ['home-browser', '首页与金币物理动画'],
   ['save-browser', '存档管理'],
   ['browser', '对局主流程'],
-  ['gameplay-browser', '玩法规则(顺子/压牌/炸弹/王炸/赖子/过牌/收牌)'],
+  ['gameplay-browser', '玩法规则(顺子/压牌/炸弹/王炸/过牌/收牌)'],
+  ['items-browser', '道具效果(七件逐一,真实 UI 触发)'],
   ['shop-browser', '商店流程'],
   ['mobile-game-browser', '手机端触控对局(858×396 横屏 · 19.5:9)'],
   ['ui-pages', '页面结构与音效'],
   ['responsive-browser', '响应式布局(手机/小窗/笔记本/全高清)'],
+  ['longplay-browser', '长程对局(固定种子整场 9 小局 · 真实 UI 游玩)'],
   ['performance-browser', '性能采样(只留指标,不录像)'],
 ];
 const jsonEvidence = {
@@ -89,6 +102,17 @@ const runLink =
   process.env.GITHUB_SERVER_URL && process.env.GITHUB_REPOSITORY && process.env.GITHUB_RUN_ID
     ? ` · <a href="${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}">本次 CI 运行</a>`
     : '';
+
+// 视频工件直链:{ 'browser.webm': 'https://github.com/.../artifacts/<id>' };缺失或
+// 解析失败都降级为 null,summary 退化为纯文件名(离线 zip 工件里仍能回放)。
+let videoUrls = null;
+if (videoUrlsPath) {
+  try {
+    videoUrls = JSON.parse(await readFile(videoUrlsPath, 'utf8'));
+  } catch (error) {
+    console.warn(`[report] 视频直链不可用(${error.message}),summary 将不含在线回放链接`);
+  }
+}
 const banner = rows.some((row) => row.status === 'fail')
   ? `<div class="banner">以下脚本失败:${rows
       .filter((row) => row.status === 'fail')
@@ -186,24 +210,37 @@ ${perfTable}
 </html>
 `;
 
-await mkdir(path.join(resultsDir, 'report'), { recursive: true });
-await writeFile(path.join(resultsDir, 'report', 'index.html'), html);
+if (!summaryOnly) {
+  await mkdir(path.join(resultsDir, 'report'), { recursive: true });
+  await writeFile(path.join(resultsDir, 'report', 'index.html'), html);
+}
 
-if (process.env.GITHUB_STEP_SUMMARY) {
+if (process.env.GITHUB_STEP_SUMMARY && !noSummary) {
+  const videoCell = (row) =>
+    row.videos
+      .map((video) => {
+        const file = path.basename(video.src);
+        const link = videoUrls?.[file];
+        return link ? `▶ [${file}](${link})` : `\`${file}\``;
+      })
+      .join('<br>') || '—';
   const lines = [
     '## 🎬 Playwright 浏览器测试录像',
     '',
-    '| 脚本 | 状态 | 录像 |',
+    '| 脚本 | 状态 | 视频回放 |',
     '| --- | --- | --- |',
     ...rows.map(
       (row) =>
-        `| \`${row.key}\` | ${failed.has(row.key) ? '❌ 失败' : row.status === 'pass' ? '✅ 通过' : '⏭️ 未运行'} | ${row.videos.length || '—'} |`,
+        `| \`${row.key}\` | ${failed.has(row.key) ? '❌ 失败' : row.status === 'pass' ? '✅ 通过' : '⏭️ 未运行'} | ${videoCell(row)} |`,
     ),
     '',
-    '录像与截图在 Artifact **playwright-results** 里,下载解压后打开 `report/index.html` 回放(WebM 请用 Chrome/Edge 打开)。',
+    '▶ 每段录像单独上传为非 zip 工件,点击链接即可在浏览器直接回放(需登录 GitHub)。',
+    '完整离线报告(录像 + 截图 + JSON)在 Artifact **playwright-results** 里,下载解压后打开 `report/index.html` 回放(WebM 请用 Chrome/Edge 打开)。',
     '',
   ];
   await appendFile(process.env.GITHUB_STEP_SUMMARY, lines.join('\n'));
+} else if (summaryOnly && !process.env.GITHUB_STEP_SUMMARY) {
+  console.warn('[report] --summary-only 需要 GITHUB_STEP_SUMMARY 环境,当前为本地运行,跳过');
 }
 
 const counted = rows.map((row) => `${row.key}=${badge[row.status]}`).join(' ');

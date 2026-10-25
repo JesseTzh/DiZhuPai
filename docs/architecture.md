@@ -38,7 +38,7 @@
 - 手写 JS/CSS 每文件最多 **400 行**，`main.js` 最多 **160 行**；接近上限时按职责拆分。不要靠压缩行数、无意义转发模块或 `utils.js` 杂物箱绕过。完整职责可小于上限，不要求机械拆碎。
 - 样式按页面归属放置，响应式规则跟随所属模块。HTML 显式声明 CSS 顺序，首页基础布局先于 `home.css`，避免跨文件重复覆盖。保留首页旧布局规则时需注意最终美术样式的覆盖关系。
 - `src/index.html`、`src/performance.html` 是开发入口，`npm run dev` 直接服务 `src/`。`npm run build` 将发布 HTML 和 JS/CSS bundle 输出到 `dist/`，不提交到 Git；牌面 SVG 和总览通过 `npm run assets:cards` 更新。Docker 多阶段构建执行发布命令，再将 `dist/` 交给 Nginx；`.agents/skills/` 不参与应用构建。
-- `npm test` 自动检查文件行数、引擎/规则依赖边界和循环导入，并验证规则、存档与渲染。提交前另跑 `npm run build`、`npm run format:check`；涉及交互跑 `test:home`、`test:browser`、`test:shop`，涉及性能再跑 `test:performance`。
+- `npm test` 自动检查文件行数、引擎/规则依赖边界和循环导入，并验证规则、存档与渲染。提交前另跑 `npm run build`、`npm run format:check`；涉及交互跑 `test:home`、`test:browser`、`test:shop`，涉及性能再跑 `test:performance`。浏览器测试共享工具在 `tests/harness.mjs`（固定种子 `dizhupai-347`、URL 构造、阶段等待、手牌/目标/道具注入）；道具逐件走查看 `test:items`，固定种子整场 9 小局的真实 UI 对局看 `test:longplay`（与 Node 侧参考模拟逐局比对）。CI 上每段录像额外上传为非 zip 工件，job summary 里的 ▶ 链接可在浏览器直接回放。
 - 新增模块或改变职责边界时同步更新本页。生成素材和构建产物不受手写 JS/CSS 行数限制；调整限制必须说明职责与原因。
 
 `window.gameApp` / `window.performanceApp` 仅用于调试；`ready()` 等待渲染器初始化。`window.cardPerformance` 区分真实 rAF 采样和同步提交耗时，后者不能当作 FPS。
