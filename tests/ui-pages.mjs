@@ -153,9 +153,11 @@ try {
   await page.locator('[data-slot="0"] [data-slot-action="new"]').click();
   await page.waitForFunction(() => gameApp.state.visual.dealTime > 0.4);
   await page.locator('#open-settings').click();
-  await page.locator('#sound-enabled').click();
+  // 发牌音乐只循环约 2.1s 动画时间；慢速 CI 上 Playwright 点击的动作稳定性等待
+  // 可能耗尽余量使发牌提前结束（loop 复位），因此开关用页面内同步点击完成。
+  await page.evaluate(() => document.getElementById('sound-enabled').click());
   assert.equal(await page.evaluate(() => gameApp.audio.tracks[0].paused), true);
-  await page.locator('#sound-enabled').click();
+  await page.evaluate(() => document.getElementById('sound-enabled').click());
   assert.equal(await page.evaluate(() => gameApp.audio.tracks[0].loop), true);
   await page.locator('#return-home').click();
   assert.equal(await page.evaluate(() => gameApp.audio.tracks[0].loop), false);
