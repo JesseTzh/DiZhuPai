@@ -1,8 +1,12 @@
 import assert from 'node:assert/strict';
 import { chromium } from 'playwright';
+import { openRecording } from './video.mjs';
 
 const browser = await chromium.launch({ channel: 'chrome' });
-const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+const recording = await openRecording(browser, 'interactions-browser', {
+  viewport: { width: 1280, height: 900 },
+});
+const page = recording.page;
 const errors = [];
 page.on('pageerror', (error) => errors.push(error.message));
 // 固定随机种子：发牌与商店刷新完全可复现，测试结果不再随运行漂移。
@@ -123,4 +127,5 @@ try {
   );
 } finally {
   await browser.close();
+  await recording.save();
 }

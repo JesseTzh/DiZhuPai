@@ -1,7 +1,11 @@
 import assert from 'node:assert/strict';
 import { chromium } from 'playwright';
+import { openRecording } from './video.mjs';
 const browser = await chromium.launch({ channel: 'chrome' });
-const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+const recording = await openRecording(browser, 'shop-browser', {
+  viewport: { width: 1440, height: 1000 },
+});
+const page = recording.page;
 const errors = [];
 page.on('pageerror', (e) => errors.push(e.message));
 const base = process.env.TEST_URL || 'http://127.0.0.1:5173/';
@@ -140,4 +144,5 @@ try {
   );
 } finally {
   await browser.close();
+  await recording.save();
 }

@@ -1,11 +1,13 @@
 import assert from 'node:assert/strict';
 import { chromium } from 'playwright';
 import { mkdir } from 'node:fs/promises';
+import { openRecording, videoName } from './video.mjs';
 const browser = await chromium.launch({ channel: 'chrome' });
-const page = await browser.newPage({
+const recording = await openRecording(browser, videoName(), {
   viewport: { width: 1440, height: 900 },
   acceptDownloads: true,
 });
+const page = recording.page;
 const base = process.env.TEST_URL || 'http://127.0.0.1:5173/';
 // 固定随机种子：发牌与商店刷新完全可复现，测试结果不再随运行漂移。
 const home = () => {
@@ -160,4 +162,5 @@ try {
   );
 } finally {
   await browser.close();
+  await recording.save();
 }

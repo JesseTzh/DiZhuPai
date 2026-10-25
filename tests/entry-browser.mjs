@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { chromium } from 'playwright';
+import { openRecording } from './video.mjs';
 const browser = await chromium.launch({ channel: 'chrome' });
 const errors = [];
 // 固定随机种子：发牌与商店刷新完全可复现，测试结果不再随运行漂移。
@@ -14,7 +15,12 @@ try {
     { width: 1440, height: 900 },
     { width: 390, height: 844 },
   ]) {
-    const page = await browser.newPage({ viewport });
+    const recording = await openRecording(
+      browser,
+      `entry-browser-${viewport.width}x${viewport.height}`,
+      { viewport },
+    );
+    const page = recording.page;
     page.on('pageerror', (error) => errors.push(error.message));
     await page.goto(url());
     await page.evaluate(() => gameApp.ready());
@@ -74,6 +80,7 @@ try {
     await page.waitForFunction(() => !document.body.classList.contains('home-page'));
     assert.equal(await page.evaluate(() => JSON.stringify(gameApp.state.game)), original);
     await page.close();
+    await recording.save();
   }
   assert.deepEqual(errors, []);
   console.log(

@@ -47,6 +47,8 @@ jobs:
 
       # The browser tests drive the game on the development server with branded
       # Chrome (channel: "chrome"), which GitHub runners provide preinstalled.
+      # Each script records a 1080p webm into test-results/videos; failures are
+      # collected in failed.txt so one red script does not hide the rest.
       - name: Run Playwright browser tests
         run: |
           node scripts/serve.mjs &
@@ -57,18 +59,32 @@ jobs:
             sleep 1
           done
           curl -fsS http://127.0.0.1:5173/ >/dev/null
-          node tests/entry-browser.mjs
-          node tests/interactions-browser.mjs
-          node tests/home-browser.mjs
-          node tests/save-browser.mjs
-          node tests/browser.mjs
-          node tests/shop-browser.mjs
-          node tests/ui-pages.mjs
+          mkdir -p test-results
+          : > test-results/failed.txt
+          status=0
+          for t in entry-browser interactions-browser home-browser save-browser browser shop-browser ui-pages; do
+            if ! node "tests/${t}.mjs"; then
+              echo "${t}" >> test-results/failed.txt
+              status=1
+            fi
+          done
           # Headless Chrome is required on runners; HEADED=0 opts the
           # performance test into its smoke thresholds (software rasterizing
           # runners cannot hold 60 Hz), and SECONDS trims sampling time.
-          HEADED=0 SECONDS=8 node tests/performance-browser.mjs
+          if ! HEADED=0 SECONDS=8 node tests/performance-browser.mjs; then
+            echo "performance-browser" >> test-results/failed.txt
+            status=1
+          fi
+          exit "${status}"
 
+      # Builds test-results/report/index.html from the recordings, screenshots and
+      # failed.txt; also appends a digest to the job summary when run on CI.
+      - name: Generate video report
+        if: always()
+        run: node scripts/video-report.mjs
+
+      # Contains the 1080p recordings (test-results/videos), screenshots and the
+      # offline report; unzip and open report/index.html in Chrome to replay.
       - name: Upload Playwright artifacts
         if: always()
         uses: actions/upload-artifact@v4

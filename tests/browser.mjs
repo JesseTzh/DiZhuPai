@@ -3,6 +3,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { chromium } from 'playwright';
+import { openRecording, videoName } from './video.mjs';
 const root = fileURLToPath(new URL('../', import.meta.url)),
   out = path.join(root, 'test-results');
 await mkdir(out, { recursive: true });
@@ -17,7 +18,10 @@ const url = (params = {}) => {
 const browser = await chromium.launch(
   process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH } : { channel: 'chrome' },
 );
-const page = await browser.newPage({ viewport: { width: 1280, height: 1000 } }),
+const recording = await openRecording(browser, videoName(), {
+    viewport: { width: 1280, height: 1000 },
+  }),
+  page = recording.page,
   errors = [],
   shots = [];
 page.on('pageerror', (e) => errors.push(e.message));
@@ -194,4 +198,5 @@ try {
   console.log(JSON.stringify(report, null, 2));
 } finally {
   await browser.close();
+  await recording.save();
 }

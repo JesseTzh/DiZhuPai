@@ -17,6 +17,7 @@
     "test:shop": "node tests/shop-browser.mjs",
     "test:pages": "node tests/ui-pages.mjs",
     "test:performance": "node tests/performance-browser.mjs",
+    "report:video": "node scripts/video-report.mjs",
     "format": "prettier --write src scripts tests",
     "format:check": "prettier --check src scripts tests"
   },
