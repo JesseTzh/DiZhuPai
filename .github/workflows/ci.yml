@@ -65,8 +65,9 @@ jobs:
           node tests/shop-browser.mjs
           node tests/ui-pages.mjs
           # Headless Chrome is required on runners; HEADED=0 opts the
-          # performance test out of its default foreground window.
-          HEADED=0 node tests/performance-browser.mjs
+          # performance test into its smoke thresholds (software rasterizing
+          # runners cannot hold 60 Hz), and SECONDS trims sampling time.
+          HEADED=0 SECONDS=8 node tests/performance-browser.mjs
 
       - name: Upload Playwright artifacts
         if: always()
