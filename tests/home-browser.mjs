@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict';
 import { chromium } from 'playwright';
 import { mkdir } from 'node:fs/promises';
-import { openRecording, videoName } from './video.mjs';
+import { FULL_HD, openRecording, videoName } from './video.mjs';
 const browser = await chromium.launch({ channel: 'chrome' });
 const recording = await openRecording(browser, videoName(), {
-  viewport: { width: 1440, height: 900 },
+  viewport: FULL_HD,
   acceptDownloads: true,
 });
 const page = recording.page;

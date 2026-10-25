@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { chromium } from 'playwright';
 import { mkdir, writeFile } from 'node:fs/promises';
-import { openRecording } from './video.mjs';
+import { FULL_HD, openRecording } from './video.mjs';
 const base = process.env.TEST_URL || 'http://127.0.0.1:5173/';
 // 固定随机种子：发牌与商店刷新完全可复现，测试结果不再随运行漂移。
 const url = (params = {}) => {
@@ -12,7 +12,7 @@ const url = (params = {}) => {
 };
 const browser = await chromium.launch({ channel: 'chrome' });
 const recording = await openRecording(browser, 'ui-pages', {
-  viewport: { width: 1440, height: 900 },
+  viewport: FULL_HD,
 });
 const page = recording.page;
 const errors = [];
@@ -116,7 +116,6 @@ try {
   await page.locator('#open-settings').click();
   await page.locator('[data-scale="2"]').click();
   await page.locator('#close-settings').click();
-  await page.setViewportSize({ width: 1440, height: 900 });
   // Force a substantial balance transfer to inspect the actual sack easing in both directions.
   const bags = await page.evaluate(async () => {
     const { state } = gameApp;
@@ -131,15 +130,10 @@ try {
   assert.ok(bags.after[0] < bags.before[0]);
   assert.ok(bags.after[1] > bags.before[1]);
   await page.screenshot({ path: 'test-results/sack-balance.png' });
-  for (const [width, height] of [
-    [1920, 1080],
-    [800, 600],
-  ]) {
-    await page.setViewportSize({ width, height });
-    await page.evaluate(() => gameApp.render());
-    await fit();
-    assert.ok(await page.locator('#play-cards, #pass-turn').first().isVisible());
-  }
+  // 小视口的适配检查在 responsive-browser;录像视口全程保持全高清不切换。
+  await page.evaluate(() => gameApp.render());
+  await fit();
+  assert.ok(await page.locator('#play-cards, #pass-turn').first().isVisible());
   // The Canvas renderer retains both sack palettes after a fresh page load.
   await page.evaluate(() => localStorage.clear());
   await page.goto(url({ page: 'game' }));
@@ -165,7 +159,6 @@ try {
   assert.equal(await page.evaluate(() => gameApp.audio.tracks[0].loop), true);
   await page.locator('#return-home').click();
   assert.equal(await page.evaluate(() => gameApp.audio.tracks[0].loop), false);
-  await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto(new URL('performance.html', base).href);
   await page.evaluate(() => performanceApp.ready());
   await page.waitForFunction(() => performanceApp.metrics.samples > 4);

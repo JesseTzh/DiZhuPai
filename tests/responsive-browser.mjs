@@ -1,0 +1,116 @@
+// 响应式布局走查:手机竖屏、小窗口、常见笔记本与全高清四档视口下,
+// 检查页面不横向溢出、控件可用、商店可购、道具提示被夹在视口内。
+// 刻意不录像:本脚本中途切换视口,会把录像画布弄出灰边(录制器不放大画面)。
+import assert from 'node:assert/strict';
+import { chromium } from 'playwright';
+import { mkdir, writeFile } from 'node:fs/promises';
+
+const browser = await chromium.launch({ channel: 'chrome' });
+// 从手机视口开始,逐档放大;每档重新加载页面,状态互不粘连。
+const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+const errors = [];
+page.on('pageerror', (error) => errors.push(error.message));
+// 固定随机种子：发牌与商店刷新完全可复现，测试结果不再随运行漂移。
+const url = (params = {}) => {
+  const target = new URL(process.env.TEST_URL || 'http://127.0.0.1:5173/');
+  target.searchParams.set('seed', 'dizhupai-347');
+  for (const [key, value] of Object.entries(params)) target.searchParams.set(key, String(value));
+  return target.href;
+};
+const sizes = [
+  [390, 844, '手机竖屏'],
+  [800, 600, '小窗口'],
+  [1280, 720, '笔记本 16:9'],
+  [1920, 1080, '全高清(录像视口)'],
+];
+await mkdir('test-results', { recursive: true });
+const noHorizontalScroll = async () =>
+  assert.ok(
+    await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+    '页面不应出现横向滚动',
+  );
+const endRound = () =>
+  page.evaluate(() => {
+    const state = gameApp.state,
+      game = state.game;
+    game.phase = 'playing';
+    game.turn = 0;
+    game.hands[0] = [0];
+    game.selected = [0];
+    game.target = null;
+    state.locked = false;
+    gameApp.play();
+  });
+const results = [];
+try {
+  for (const [width, height, label] of sizes) {
+    await page.setViewportSize({ width, height });
+    // 首页:入口按钮可见且不横向溢出。
+    await page.goto(url());
+    await page.evaluate(() => gameApp.ready());
+    assert.ok(await page.locator('#enter-game').isVisible(), `${label}:入口按钮`);
+    await noHorizontalScroll();
+    await page.screenshot({ path: `test-results/responsive-home-${width}x${height}.png` });
+    // 离开首页会经 pagehide 落盘存档;清空后下一页才能拿到干净的"新建游戏"槽位。
+    await page.evaluate(() => localStorage.clear());
+    // 对局:顶栏、手牌与行动按钮都在,选牌可撤销。
+    await page.goto(url({ page: 'game' }));
+    await page.evaluate(() => gameApp.ready());
+    await page.locator('[data-slot="0"] [data-slot-action="new"]').click();
+    await page.waitForFunction(() => gameApp.state.game.phase === 'playing');
+    assert.ok(await page.locator('.game-topbar').isVisible(), `${label}:顶栏`);
+    assert.equal(await page.locator('.hand-card').count(), 18, `${label}:整手牌`);
+    assert.ok(await page.locator('#play-cards').isVisible(), `${label}:出牌按钮`);
+    await page.locator('.hand-card').nth(9).dispatchEvent('pointerdown', { button: 0 });
+    assert.equal(await page.evaluate(() => gameApp.state.game.selected.length), 1);
+    await page.mouse.click(4, Math.min(220, height - 40));
+    assert.equal(await page.evaluate(() => gameApp.state.game.selected.length), 0);
+    await noHorizontalScroll();
+    await page.screenshot({ path: `test-results/responsive-game-${width}x${height}.png` });
+    // 商店:收下青蛙道具,下一局桌面上出现赖子模型。
+    await endRound();
+    await page.waitForFunction(() => gameApp.state.game.phase === 'shop');
+    assert.ok(await page.locator('#shop').isVisible(), `${label}:商店`);
+    assert.ok(await page.locator('#leave-shop').isVisible(), `${label}:离开商店`);
+    await page.locator('[data-buy="frog"]').click();
+    await noHorizontalScroll();
+    await page.screenshot({ path: `test-results/responsive-shop-${width}x${height}.png` });
+    await page.locator('#leave-shop').click();
+    await page.waitForFunction(() => gameApp.state.game.phase === 'playing');
+    await page.waitForSelector('.wild-card-model');
+    assert.equal(await page.locator('.wild-card-model').count(), 1, `${label}:赖子模型`);
+    assert.equal(await page.locator('.table-item').count(), 1, `${label}:桌面道具`);
+    // 道具提示必须在任何视口下都完整落在视口内(table-controls 负责夹紧)。
+    await page.locator('#table-item-frog').hover();
+    assert.ok(await page.locator('#item-tooltip').isVisible(), `${label}:道具提示`);
+    const tip = await page.locator('#item-tooltip').boundingBox();
+    assert.ok(tip.x >= 0 && tip.y >= 0, `${label}:提示不被夹出左/上边缘`);
+    assert.ok(
+      tip.x + tip.width <= width && tip.y + tip.height <= height,
+      `${label}:提示完整落在视口内`,
+    );
+    await page.mouse.move(0, 0);
+    assert.equal(await page.locator('#item-tooltip').isVisible(), false);
+    // 性能页只抽查两端视口。
+    if (width === 390 || width === 1920) {
+      await page.goto(new URL('performance.html', url()).href);
+      await page.evaluate(() => performanceApp.ready());
+      await page.waitForFunction(() => performanceApp.metrics.samples > 4);
+      assert.equal(await page.locator('[data-animation]').count(), 6, `${label}:性能页动画`);
+      await noHorizontalScroll();
+      await page.screenshot({
+        path: `test-results/responsive-performance-${width}x${height}.png`,
+      });
+    }
+    results.push({ viewport: `${width}x${height}`, label, passed: true });
+    console.log(`${label} ${width}x${height} 通过`);
+  }
+  assert.equal(errors.length, 0, errors.join('\n'));
+  await writeFile(
+    'test-results/responsive-report.json',
+    JSON.stringify({ passed: true, results, errors }, null, 2),
+  );
+  console.log('Responsive layout passed across phone, small window, laptop and full HD.');
+} finally {
+  await browser.close();
+}

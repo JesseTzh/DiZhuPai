@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
 import { chromium } from 'playwright';
-import { openRecording } from './video.mjs';
+import { FULL_HD, openRecording } from './video.mjs';
 const browser = await chromium.launch({ channel: 'chrome' });
 const recording = await openRecording(browser, 'shop-browser', {
-  viewport: { width: 1440, height: 1000 },
+  viewport: FULL_HD,
 });
 const page = recording.page;
 const errors = [];
@@ -95,10 +95,7 @@ try {
     68,
   );
   await page.screenshot({ path: 'test-results/shop-items-in-play.png' });
-  await page.setViewportSize({ width: 390, height: 844 });
-  await page.screenshot({ path: 'test-results/frog-wild-phone.png' });
   assert.equal(await page.locator('.wild-card-model').count(), 1);
-  await page.setViewportSize({ width: 1440, height: 1000 });
   // the next visit restocks from the toys still missing
   await endRound();
   await page.waitForFunction(() => gameApp.state.game.phase === 'shop');
@@ -108,9 +105,6 @@ try {
   assert.equal(await page.locator('.shop-product:visible').count(), 3);
   assert.equal(await page.locator('.toy-model:visible').count(), 3);
   await page.screenshot({ path: 'test-results/shop-restocked.png' });
-  await page.setViewportSize({ width: 390, height: 844 });
-  await page.screenshot({ path: 'test-results/shop-phone.png' });
-  await page.setViewportSize({ width: 1440, height: 1000 });
   await page.locator('#leave-shop').click();
   await page.waitForFunction(() => gameApp.state.game.phase === 'playing');
   assert.equal(await page.evaluate(() => gameApp.state.game.round), 3);

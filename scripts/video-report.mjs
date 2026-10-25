@@ -15,13 +15,17 @@ const scripts = [
   ['home-browser', '首页与金币物理动画'],
   ['save-browser', '存档管理'],
   ['browser', '对局主流程'],
+  ['gameplay-browser', '玩法规则(顺子/压牌/炸弹/王炸/赖子/过牌/收牌)'],
   ['shop-browser', '商店流程'],
+  ['mobile-game-browser', '手机端触控对局(390×844 竖屏)'],
   ['ui-pages', '页面结构与音效'],
+  ['responsive-browser', '响应式布局(手机/小窗/笔记本/全高清)'],
   ['performance-browser', '性能采样(只留指标,不录像)'],
 ];
 const jsonEvidence = {
   browser: 'browser-report.json',
   'ui-pages': 'ui-pages-report.json',
+  'responsive-browser': 'responsive-report.json',
   'performance-browser': 'performance-report.json',
 };
 
@@ -167,7 +171,7 @@ const html = `<!doctype html>
 </head>
 <body>
 <h1>地主牌 · Playwright 浏览器测试录像</h1>
-<p class="meta">生成于 ${new Date().toLocaleString('zh-CN')}${runLink} · 录像 1920×1080(WebM)</p>
+<p class="meta">生成于 ${new Date().toLocaleString('zh-CN')}${runLink} · 录像画布与各脚本视口一致(桌面 1920×1080,手机 390×844)(WebM)</p>
 ${banner}
 <h2>结果总览</h2>
 ${statusTable}
@@ -177,7 +181,7 @@ ${videoSections || '<p>暂无录像。</p>'}
 ${gallery}
 <h2>性能采样</h2>
 ${perfTable}
-<footer>视频为 WebM 编码,请用 Chrome / Edge 打开本报告;画面按各测试的原始视口等比缩放至 1920×1080,与视口比例不同的部分以黑边补齐。</footer>
+<footer>视频为 WebM 编码,请用 Chrome / Edge 打开本报告;桌面脚本以 1920×1080 视口满幅录制,手机脚本按 390×844 竖屏原尺寸录制,画布与视口一致、无黑边补齐。</footer>
 </body>
 </html>
 `;

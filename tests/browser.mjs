@@ -3,7 +3,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { chromium } from 'playwright';
-import { openRecording, videoName } from './video.mjs';
+import { FULL_HD, openRecording, videoName } from './video.mjs';
 const root = fileURLToPath(new URL('../', import.meta.url)),
   out = path.join(root, 'test-results');
 await mkdir(out, { recursive: true });
@@ -19,7 +19,7 @@ const browser = await chromium.launch(
   process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH } : { channel: 'chrome' },
 );
 const recording = await openRecording(browser, videoName(), {
-    viewport: { width: 1280, height: 1000 },
+    viewport: FULL_HD,
   }),
   page = recording.page,
   errors = [],
