@@ -10,6 +10,8 @@
     "assets:cards": "node scripts/export-cards.mjs",
     "test": "node --test tests/*.test.mjs",
     "test:browser": "node tests/browser.mjs",
+    "test:entry": "node tests/entry-browser.mjs",
+    "test:interactions": "node tests/interactions-browser.mjs",
     "test:home": "node tests/home-browser.mjs",
     "test:save": "node tests/save-browser.mjs",
     "test:shop": "node tests/shop-browser.mjs",

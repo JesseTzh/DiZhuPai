@@ -59,7 +59,7 @@ try {
   await page.waitForSelector('.wild-card-model');
   assert.equal(await page.locator('.wild-card-model').count(), 1);
   assert.equal(await page.locator('.center-label').count(), 0);
-  assert.doesNotMatch(await page.locator('#level-detail').textContent(), /余/);
+  assert.equal(await page.locator('#level-detail, .level-progress').count(), 0);
   assert.equal(await page.locator('.hand-card[aria-label*="赖子"]').count(), 1);
   assert.equal(await page.locator('.table-item').count(), 3);
   for (const id of ['frog', 'hand', 'dragon']) {

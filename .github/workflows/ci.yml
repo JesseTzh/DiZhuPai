@@ -1,0 +1,122 @@
+name: CI and GitHub Pages
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  test:
+    name: Checks and Playwright tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check formatting
+        run: npm run format:check
+
+      - name: Run unit tests
+        run: npm test
+
+      - name: Build production bundle
+        run: npm run build
+
+      - name: Verify Chrome availability
+        run: google-chrome --version
+
+      # The browser tests drive the game on the development server with branded
+      # Chrome (channel: "chrome"), which GitHub runners provide preinstalled.
+      - name: Run Playwright browser tests
+        run: |
+          node scripts/serve.mjs &
+          server_pid=$!
+          trap 'kill "${server_pid}"' EXIT
+          for _ in $(seq 1 30); do
+            curl -fsS http://127.0.0.1:5173/ >/dev/null 2>&1 && break
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:5173/ >/dev/null
+          node tests/entry-browser.mjs
+          node tests/interactions-browser.mjs
+          node tests/home-browser.mjs
+          node tests/save-browser.mjs
+          node tests/browser.mjs
+          node tests/shop-browser.mjs
+          node tests/ui-pages.mjs
+          # Headless Chrome is required on runners; HEADED=0 opts the
+          # performance test out of its default foreground window.
+          HEADED=0 node tests/performance-browser.mjs
+
+      - name: Upload Playwright artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-results
+          path: test-results/
+          retention-days: 14
+          if-no-files-found: ignore
+
+  deploy-pages:
+    name: Publish to GitHub Pages
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build production bundle
+        run: npm run build
+
+      - name: Disable Jekyll processing
+        run: touch dist/.nojekyll
+
+      - name: Upload GitHub Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+      - name: Publish URL in summary
+        run: echo "地主牌在线试玩：${{ steps.deployment.outputs.page_url }}" >> "$GITHUB_STEP_SUMMARY"

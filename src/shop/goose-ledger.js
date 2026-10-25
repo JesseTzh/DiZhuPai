@@ -1,4 +1,4 @@
-import { rod, slab, planeText, path, ink } from './stage3d.js';
+import { rod, slab, planeText, path, ink } from '../engine/stage3d.js';
 
 /* The shopkeeper's account book and brush: a stitched book that comes out of the jacket, opens toward the viewer,
  * takes two lines of brushwork and a red ring of approval, then closes again. */

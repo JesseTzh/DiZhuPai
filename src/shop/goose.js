@@ -1,4 +1,4 @@
-import { orb, rod, tube, meshFromRings, path, ink, lerp, mixP } from './stage3d.js';
+import { orb, rod, tube, meshFromRings, path, ink, lerp, mixP } from '../engine/stage3d.js';
 import { LEDGER_AT, ledger, brush, brushTip } from './goose-ledger.js';
 import { INK } from '../engine/palette.js';
 

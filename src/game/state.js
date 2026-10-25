@@ -1,5 +1,5 @@
 import { sortHand, classify, beats } from './rules.js';
-import { ITEMS } from './items.js';
+import { ITEMS, hasItemRule } from './items.js';
 export const PASS_COST = 5;
 export const STAGE_COUNT = 3;
 export const ROUNDS_PER_STAGE = 3;
@@ -53,7 +53,7 @@ export function deal(game, random = Math.random) {
     }
     game.hands[p] = sortHand(game.decks[p].splice(0, HAND_SIZE));
   }
-  game.wildCard = game.items.includes('frog')
+  game.wildCard = hasItemRule(game, 'wildCard')
     ? game.hands[0][Math.floor(random() * game.hands[0].length)]
     : null;
   game.round++;
@@ -125,8 +125,8 @@ export function ruleOptions(game, player = 0) {
   if (player !== 0) return {};
   return {
     wildCard: game.wildCard,
-    looseTriple: game.items.includes('hand'),
-    shortStraight: game.items.includes('dragon'),
+    looseTriple: hasItemRule(game, 'looseTriple'),
+    shortStraight: hasItemRule(game, 'shortStraight'),
   };
 }
 export function enterShop(game) {

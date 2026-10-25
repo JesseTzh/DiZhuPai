@@ -1,5 +1,6 @@
 import { tableGeometry } from '../game/table-geometry.js';
 import { INK, SHADOW } from '../engine/palette.js';
+import { TOYS } from '../assets/items/index.js';
 import { itemDetails, wrapItemText } from './item-presentation.js';
 
 const shape = (ctx, path, fill, stroke = INK, width = 1.5) => {
@@ -14,6 +15,7 @@ const shape = (ctx, path, fill, stroke = INK, width = 1.5) => {
     ctx.stroke(p);
   }
 };
+// stage/资源图标；道具图标在各道具文件（src/assets/items/<id>.js）的 icon 字段
 const icons = {
   kerchief: [
     ['M10 27 6 36 17 33 22 39 26 28Z', '#5a82c6'],
@@ -48,27 +50,6 @@ const icons = {
     ['M17 17a12.5 5 0 1 0 25 0a12.5 5 0 1 0-25 0', '#ffe194'],
     ['M25 16h8m-4-2v5M13 34v3m7-2v4m15-16v3', null],
   ],
-  frog: [
-    ['M10 33 14 17h20l5 16-15 6Z', '#65a784'],
-    ['M11 29c0-9 26-9 26 0v3c-4 7-22 7-26 0Z', '#93d3b0'],
-    ['M9 17a7 7 0 1 0 14 0a7 7 0 1 0-14 0', '#c5edcc'],
-    ['M25 17a7 7 0 1 0 14 0a7 7 0 1 0-14 0', '#c5edcc'],
-    ['M16 16v3m16-3v3m-14 9q6 5 12 0', null],
-  ],
-  hand: [
-    [
-      'M16 36 8 24q-2-5 2-5l7 6V13q0-6 4-4v13-16q4-4 5 1v15-13q4-3 5 2v13-9q5-2 5 3v13l-7 8Z',
-      '#f3a6bb',
-    ],
-    ['M16 36 29 39v5l-13-3Z', '#c37694'],
-    ['M20 28 28 30', null],
-  ],
-  dragon: [
-    ['M8 31q10 9 17-1t13-11l-7-9-12 6 7 6q-6 2-7 8t-11 1Z', '#f4b829'],
-    ['M20 15 21 8 26 13m4-2 4-6 1 10', '#e58448'],
-    ['M30 22 40 23 38 30 30 28', '#ffe194'],
-    ['M30 17h.1M12 31l3-5m5 3 2-5', null],
-  ],
 };
 
 export function drawIcon(ctx, name, x, y, size) {
@@ -76,10 +57,11 @@ export function drawIcon(ctx, name, x, y, size) {
   ctx.translate(x, y);
   ctx.scale(size / 48, size / 48);
   shape(ctx, 'M7 39 30 44 44 36 21 32Z', '#829ac7', null);
-  for (const [path, fill] of icons[name] || [
-    ['M12 12H36V36H12Z', '#fff4d6'],
-    ['M18 24H30M24 18V30', null],
-  ])
+  for (const [path, fill] of icons[name] ||
+    TOYS[name]?.icon || [
+      ['M12 12H36V36H12Z', '#fff4d6'],
+      ['M18 24H30M24 18V30', null],
+    ])
     shape(ctx, path, fill, INK, 2);
   ctx.restore();
 }

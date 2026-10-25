@@ -1,4 +1,4 @@
-import { orb, rod, block, slab, planeText, path, ink } from './stage3d.js';
+import { orb, rod, block, slab, planeText, path, ink } from '../engine/stage3d.js';
 import { INK } from '../engine/palette.js';
 
 /* 鹅掌柜杂货铺: an old shopfront seen level with its counter, like a pawnshop in a TV drama.

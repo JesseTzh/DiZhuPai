@@ -36,10 +36,9 @@ try {
   await page.locator('#enter-game').click();
   await page.waitForFunction(() => gameApp.state.game.phase === 'playing');
   assert.equal(await page.locator('#hint, #clear-selection, .zchip, .table-menu').count(), 0);
-  assert.equal(
-    await page.locator('#open-settings svg').innerHTML(),
-    await page.locator('#home-settings svg').innerHTML(),
-  );
+  // The game topbar paints its gear on canvas, so only a labelled hit area remains.
+  assert.equal(await page.locator('#open-settings.topbar-hit').count(), 1);
+  assert.equal(await page.locator('#open-settings').getAttribute('aria-label'), '设置');
   for (const width of [1280, 1440]) {
     await page.setViewportSize({ width, height: 900 });
     await page.mouse.move(0, 0);

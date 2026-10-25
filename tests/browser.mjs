@@ -138,15 +138,10 @@ try {
   );
   await page.locator('[data-scale="1"]').click();
   await page.locator('#close-settings').click();
-  // Dragging and double-clicking cannot change the fixed projection.
+  // Dragging and double-clicking cannot change the fixed projection. The scene
+  // labels are transient move captions now, so only the viewBox is compared.
   const projection = () =>
-    page.evaluate(() => ({
-      viewBox: document.getElementById('fig').getAttribute('viewBox'),
-      // The four bag/deck anchors stay fixed while the computer may change the center caption.
-      labels: [...document.querySelectorAll('.scene-label')]
-        .slice(0, 4)
-        .map((label) => [label.getAttribute('x'), label.getAttribute('y')]),
-    }));
+    page.evaluate(() => document.getElementById('fig').getAttribute('viewBox'));
   const viewBefore = await projection();
   await page.mouse.move(630, 390);
   await page.mouse.down();
@@ -154,7 +149,7 @@ try {
   await page.mouse.up();
   await page.mouse.dblclick(630, 390);
   await page.waitForTimeout(850);
-  assert.deepEqual(await projection(), viewBefore);
+  assert.equal(await projection(), viewBefore);
   assert.equal(await page.locator('#vreset, #vspin').count(), 0);
   assert.equal(await page.evaluate(() => 'setView' in gameApp || 'getView' in gameApp), false);
   await shot('game-fixed-view');

@@ -1,4 +1,4 @@
-import { slab, block, rod, drawParts, shadowOf, planeText, path, ink } from './stage3d.js';
+import { slab, block, rod, drawParts, shadowOf, planeText, path, ink } from '../engine/stage3d.js';
 
 /* Colorfigures construction: stone slabs rest on the ground; the timber post is
  * planted beside the path, with an arrow plank nailed across its front.

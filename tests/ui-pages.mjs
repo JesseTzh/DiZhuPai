@@ -24,21 +24,19 @@ try {
   await fit();
   await page.locator('#home-settings').click();
   assert.ok(await page.locator('#settings-screen').isVisible());
-  assert.equal(await page.locator('#render-scale').inputValue(), '2');
-  await page.locator('#render-scale').selectOption('4');
-  await page.locator('#sound-enabled').uncheck();
-  await page.locator('#sound-volume').fill('60');
+  assert.equal(await page.locator('[data-scale="2"]').getAttribute('aria-checked'), 'true');
+  await page.locator('[data-scale="4"]').click();
+  await page.locator('#sound-enabled').click();
+  assert.equal(await page.evaluate(() => gameApp.audio.muted), true);
   await page.screenshot({ path: 'test-results/settings-desktop.png' });
   await page.reload();
   await page.evaluate(() => gameApp.ready());
-  assert.equal(await page.locator('#render-scale').inputValue(), '4');
+  assert.equal(await page.locator('[data-scale="4"]').getAttribute('aria-checked'), 'true');
   assert.equal(await page.evaluate(() => gameApp.audio.muted), true);
-  assert.equal(await page.evaluate(() => gameApp.audio.tracks[0].volume), 0.6);
-  await page.locator('#render-scale').selectOption('2');
-  await page.locator('#sound-enabled').check();
-  await page.locator('#close-settings').click();
   await page.locator('#home-settings').click();
-  await page.locator('#settings-screen [data-table="marble"]').click();
+  await page.locator('[data-scale="2"]').click();
+  await page.locator('#sound-enabled').click();
+  assert.equal(await page.evaluate(() => gameApp.audio.muted), false);
   await page.locator('#close-settings').click();
   await page.locator('#enter-game').click();
   await page.waitForFunction(() => gameApp.state.visual.dealTime > 0.5);
@@ -57,9 +55,12 @@ try {
     const substage = ((round - 1) % 3) + 1;
     assert.equal(
       await page.evaluate(() => gameApp.state.tableStyle),
-      ['marble', 'planks', 'walnut'][stage - 1],
+      ['planks', 'walnut', 'marble'][stage - 1],
     );
-    assert.equal(await page.locator('#level-label').textContent(), `${stage}-${substage}`);
+    assert.equal(
+      await page.locator('#level-label').textContent(),
+      `第 ${stage} / 3 大关，第 ${substage} / 3 小关`,
+    );
     assert.equal(
       await page.evaluate(() => gameApp.state.game.decks[0].length),
       (3 - substage) * 18,
@@ -93,18 +94,16 @@ try {
   assert.deepEqual(await page.evaluate(() => gameApp.state.game.wins), [0, 0]);
   assert.deepEqual(await page.evaluate(() => gameApp.state.game.coins), [100, 100]);
   assert.equal(await page.evaluate(() => gameApp.state.game.stage), 1);
-  assert.equal(await page.evaluate(() => gameApp.state.tableStyle), 'marble');
+  assert.equal(await page.evaluate(() => gameApp.state.tableStyle), 'planks');
   // Settings changes apply without recreating or resetting the current deal.
   const hands = await page.evaluate(() => gameApp.state.game.hands);
-  await page.locator('.table-menu > summary').click();
   await page.locator('#open-settings').click();
-  await page.locator('#render-scale').selectOption('3');
+  await page.locator('[data-scale="3"]').click();
   await page.locator('#close-settings').click();
   assert.deepEqual(await page.evaluate(() => gameApp.state.game.hands), hands);
   await page.waitForFunction(() => document.getElementById('cpu-scene').width === innerWidth * 3);
-  await page.locator('.table-menu > summary').click();
   await page.locator('#open-settings').click();
-  await page.locator('#render-scale').selectOption('2');
+  await page.locator('[data-scale="2"]').click();
   await page.locator('#close-settings').click();
   await page.setViewportSize({ width: 1440, height: 900 });
   // Force a substantial balance transfer to inspect the actual sack easing in both directions.
@@ -128,7 +127,7 @@ try {
     await page.setViewportSize({ width, height });
     await page.evaluate(() => gameApp.render());
     await fit();
-    assert.ok(await page.locator('#hint').isVisible());
+    assert.ok(await page.locator('#play-cards, #pass-turn').first().isVisible());
   }
   // The Canvas renderer retains both sack palettes after a fresh page load.
   await page.evaluate(() => localStorage.clear());
@@ -146,10 +145,10 @@ try {
   );
   await page.locator('[data-slot="0"] [data-slot-action="new"]').click();
   await page.waitForFunction(() => gameApp.state.visual.dealTime > 0.4);
-  await page.locator('.table-menu > summary').click();
-  await page.locator('#sound').click();
+  await page.locator('#open-settings').click();
+  await page.locator('#sound-enabled').click();
   assert.equal(await page.evaluate(() => gameApp.audio.tracks[0].paused), true);
-  await page.locator('#sound').click();
+  await page.locator('#sound-enabled').click();
   assert.equal(await page.evaluate(() => gameApp.audio.tracks[0].loop), true);
   await page.locator('#return-home').click();
   assert.equal(await page.evaluate(() => gameApp.audio.tracks[0].loop), false);
@@ -178,12 +177,11 @@ try {
   assert.equal(await page.evaluate(() => performanceApp.metrics.redrawsPerSecond), 0);
   // Manual adjustments remain usable while the animation clocks are paused.
   await page.locator('.table-settings > summary').click();
-  assert.equal(await page.locator('#pals .sw').nth(1).isVisible(), false);
-  await page.locator('#pals button[title="芥末黄"]').click();
-  assert.equal(
-    await page.locator('.money-bag[data-player="0"]').getAttribute('data-palette'),
-    'mustard',
-  );
+  await page.locator('[data-table="walnut"]').click();
+  assert.equal(await page.locator('[data-table="walnut"]').getAttribute('aria-pressed'), 'true');
+  await page.locator('#stress-sound').click();
+  assert.equal(await page.locator('#stress-sound').getAttribute('aria-pressed'), 'true');
+  await page.locator('#stress-sound').click();
   assert.equal(await page.locator('#vreset, #vspin, [data-animation="camera"]').count(), 0);
   assert.deepEqual(await page.evaluate(() => performanceApp.clocks), before);
   await page.locator('.table-settings > summary').click();

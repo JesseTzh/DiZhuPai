@@ -1,4 +1,4 @@
-import { orb, rod, block, slab, planeText, path, ink } from './stage3d.js';
+import { orb, rod, block, slab, planeText, path, ink } from '../engine/stage3d.js';
 import { INK } from '../engine/palette.js';
 import { C, COUNTER_TOP } from './room.js';
 

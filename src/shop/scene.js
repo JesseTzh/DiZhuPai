@@ -1,9 +1,17 @@
-import { makeCamera, block, drawParts, shadowOf, path, smooth, clamp01 } from './stage3d.js';
-import { buildToy, REST } from './toys.js';
+import {
+  makeCamera,
+  block,
+  drawParts,
+  shadowOf,
+  path,
+  smooth,
+  clamp01,
+} from '../engine/stage3d.js';
+import { TOYS, buildToy, REST, toyPose, toyDuration, blend } from '../assets/items/index.js';
 import { buildGoose, GOOSE_REST, headCentre } from './goose.js';
 import { room, shopfront, C, COUNTER_TOP } from './room.js';
 import { counter, grille, abacus, deskProps } from './counter.js';
-import { TOY_TIME, toyPose, blend, goosePurchase, BUY_TIME } from './timelines.js';
+import { goosePurchase, BUY_TIME } from './timelines.js';
 import { filterFor } from '../engine/filter.js';
 import { SHADOW } from '../engine/palette.js';
 import { exitPathArtwork } from './exit-path.js';
@@ -11,11 +19,7 @@ import { exitPathArtwork } from './exit-path.js';
 /* Mounts the shop diorama: static room and counter drawn once; goose and toys redrawn only while they move. */
 export { BUY_TIME };
 // toy stands: centre on the counter, scale of toy units, and the widest the toy ever gets (screen hit area)
-export const SLOTS = {
-  frog: { x: -88, y: 20, s: 0.39 },
-  hand: { x: 0, y: 18, s: 0.38 },
-  dragon: { x: 66, y: 22, s: 0.43 },
-};
+const SLOTS = Object.fromEntries(Object.entries(TOYS).map(([id, toy]) => [id, toy.shop]));
 const STAND_H = 4;
 const W = 1000;
 
@@ -42,15 +46,14 @@ const toyMap = (slot) => ({
   n: ([x, y, z]) => [-x, -y, z],
 });
 function stand(cam, id) {
-  const { x, y } = SLOTS[id],
-    w = id === 'dragon' ? 15 : 22;
+  const { x, y, standHalf, standExtend } = SLOTS[id];
   return [
     Object.assign(
       block(
-        x - w,
+        x - standHalf,
         y - 13,
         COUNTER_TOP,
-        x + w + (id === 'dragon' ? 66 : 0),
+        x + standHalf + standExtend,
         y + 13,
         COUNTER_TOP + STAND_H,
         C.white,
@@ -156,9 +159,9 @@ export function mountShopScene(svg) {
       if (s.hover) {
         s.t += dt;
         s.pose = motion.matches ? toyPose(id, 99) : toyPose(id, s.t);
-        if (s.t < TOY_TIME[id]) busy = true;
+        if (s.t < toyDuration(id)) busy = true;
       } else if (s.out < 1) {
-        s.out = Math.min(1, s.out + dt / (id === 'dragon' ? 0.5 : 0.28));
+        s.out = Math.min(1, s.out + dt / SLOTS[id].withdraw);
         s.pose = blend(s.from, REST[id], smooth(s.out));
         busy = true;
       }
@@ -240,7 +243,7 @@ export function mountShopScene(svg) {
         ys = pts.map((p) => p[1]);
       return { x0: Math.min(...xs), x1: Math.max(...xs), y0: Math.min(...ys), y1: Math.max(...ys) };
     },
-    priceAt: (id) => cam.project([SLOTS[id].x + (id === 'dragon' ? 30 : 0), 1, 30]),
+    priceAt: (id) => cam.project([SLOTS[id].x + SLOTS[id].priceOffset, 1, 30]),
     headAt: () => cam.project(headCentre(GOOSE_REST)),
     hover(id, on) {
       const s = toys[id];

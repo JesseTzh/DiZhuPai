@@ -7,7 +7,7 @@ import {
   HAND_SIZE,
 } from './state.js';
 import { classify, beats } from './rules.js';
-import { ITEMS } from './items.js';
+import { ITEMS, hasItemRule } from './items.js';
 import { TABLES } from './table.js';
 
 export const SAVE_KEY = 'dizhupai-save';
@@ -68,7 +68,7 @@ export function parseSave(text) {
     g.coins[0] + g.coins[1] ===
       200 - g.items.reduce((sum, id) => sum + ITEMS.find((item) => item.id === id).price, 0),
   );
-  requireValid(g.wildCard === null || (g.items.includes('frog') && integer(g.wildCard, 0, 53)));
+  requireValid(g.wildCard === null || (hasItemRule(g, 'wildCard') && integer(g.wildCard, 0, 53)));
   requireValid(integer(g.turn, 0, 1) && (g.winner === null || integer(g.winner, 0, 1)));
   requireValid(
     typeof g.matchOver === 'boolean' && (g.matchWinner === null || integer(g.matchWinner, 0, 1)),

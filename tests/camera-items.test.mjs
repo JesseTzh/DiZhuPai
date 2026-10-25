@@ -4,6 +4,7 @@ import { P, setOrigin, setCenter, setCameraPitch, depthOf } from '../src/engine/
 import { world } from '../src/game/table.js';
 import { tableItemModel } from '../src/game/table-items.js';
 import { transferCoinPose, TRANSFER_COLLECT_AT } from '../src/game/transfer.js';
+import { ITEMS } from '../src/game/items.js';
 
 test('pitch changes elevation and perspective while retaining a fixed horizontal heading', () => {
   setOrigin(0, 0);
@@ -33,7 +34,7 @@ test('pitch changes elevation and perspective while retaining a fixed horizontal
 });
 
 test('purchased toys are solid meshes resting within the money bag corner on desktop', () => {
-  for (const id of ['frog', 'hand', 'dragon']) {
+  for (const id of ITEMS.map((item) => item.id)) {
     const model = tableItemModel(id);
     assert.ok(model.parts.length > 10);
     assert.ok(model.points.every((p) => p[2] >= 0.9));

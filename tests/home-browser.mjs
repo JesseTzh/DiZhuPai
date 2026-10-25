@@ -11,7 +11,7 @@ const errors = [];
 page.on('pageerror', (error) => errors.push(error.message));
 const slot = (i, action) => page.locator(`[data-slot="${i}"] [data-slot-action="${action}"]`);
 const goHome = async () => {
-  await page.locator('.table-menu > summary').click();
+  await page.locator('#open-settings').click();
   await page.locator('#return-home').click();
 };
 try {
@@ -62,7 +62,12 @@ try {
   await page.screenshot({ path: 'test-results/new-home-animation.png' });
   await page.locator('#home-settings').click();
   assert.equal(await page.locator('#settings-screen [id*="save"]').count(), 0);
-  assert.equal(await page.locator('#settings-screen [data-table]').count(), 3);
+  assert.equal(
+    await page
+      .locator('#settings-screen [role="switch"], #settings-screen [role="radiogroup"]')
+      .count(),
+    2,
+  );
   await page.locator('#close-settings').click();
   await page.locator('#enter-game').click();
   assert.ok(await page.locator('#saves-screen').isHidden(), 'start skips save selection');

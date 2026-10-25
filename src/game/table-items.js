@@ -1,19 +1,16 @@
-import { toyGeometry } from '../shop/toys.js';
+import { TOYS, toyGeometry } from '../assets/items/index.js';
 import { world } from './table.js';
 import { norm, hull } from '../engine/math.js';
 import { depthOf, sepOrder, sp } from '../engine/camera.js';
 import { facing, tone, SH, SHADOW_LEN, SHADOW_K } from '../engine/shading.js';
 import { INK, SHADOW } from '../engine/palette.js';
-import { ITEMS } from './items.js';
 
 const cache = new Map();
 // Keep the little collection in the money bag's corner, clear of the hand and coin landing area.
 export function tableItemModel(id) {
   const key = id;
   if (cache.has(key)) return cache.get(key);
-  const slot = ITEMS.findIndex((item) => item.id === id),
-    u = -315 + [-22, 8, 38][slot],
-    v = 242 + [0, -6, 0][slot],
+  const { u, v } = TOYS[id].table,
     scale = 0.25,
     map = ([x, y, z]) => world(u + x * scale, v + y * scale, 1 + z * scale);
   const parts = toyGeometry(id).map((part) => {
