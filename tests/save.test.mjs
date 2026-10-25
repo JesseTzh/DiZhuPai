@@ -1,16 +1,18 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { cardDeck } from '../src/assets/cards/deck.js';
 import {
   createGame,
   deal,
   finishDeal,
   play,
   pass,
+  steal,
   enterShop,
   buyItem,
   ruleOptions,
 } from '../src/game/state.js';
-import { chooseMove } from '../src/game/rules.js';
+import { chooseMove, sortHand, rankOf } from '../src/game/rules.js';
 import {
   loadSave,
   loadSaveSlots,
@@ -65,7 +67,7 @@ test('round trips every move, pass, shop purchase and all nine rounds', () => {
     }
     if (!game.matchOver) {
       enterShop(game);
-      for (const id of ['frog', 'hand', 'dragon']) buyItem(game, id);
+      for (const id of game.shopStock) buyItem(game, id);
       assert.deepEqual(parseSave(save(game)).game.items, game.items);
     }
   }
@@ -81,7 +83,7 @@ test('invalid imports are rejected before replacing any state', () => {
       v.version = 99;
     },
     (v) => {
-      v.game.hands[0][1] = v.game.hands[0][0];
+      v.game.hands[0] = Array.from({ length: 40 }, (_, i) => i % 54);
     },
     (v) => {
       v.game.hands[0][0] = 999;
@@ -108,6 +110,16 @@ test('invalid imports are rejected before replacing any state', () => {
       v.game.wildCard = 0;
     },
     (v) => {
+      v.game.stamp = { card: v.game.hands[0][0], rank: 3 };
+    },
+    (v) => {
+      v.game.shopStock = ['frog', 'frog', 'mask'];
+    },
+    (v) => {
+      v.game.shopStock = ['frog', 'mask', 'balance'];
+      v.game.items = ['balance'];
+    },
+    (v) => {
       v.tableStyle = 'unknown';
     },
     (v) => {
@@ -121,6 +133,95 @@ test('invalid imports are rejected before replacing any state', () => {
   assert.throws(() => parseSave('{bad json'));
   assert.throws(() => parseSave('a'.repeat(300000)));
   assert.throws(() => parseSave('null'));
+});
+
+test('stamp, free pass, mouse take and the featured shelf survive a save round trip', () => {
+  const game = createGame();
+  game.items = ['stamp', 'mask', 'mouse', 'balance'];
+  game.coins = [50, 45];
+  // a CPU-led round: the mouse steals the opening play
+  game.phase = 'over';
+  game.round = 1;
+  game.wins = [1, 0];
+  // round two continues each player's own deck with 36 cards still to come
+  game.decks = [
+    Array.from({ length: 36 }, (_, i) => i + 18),
+    Array.from({ length: 36 }, (_, i) => i + 18),
+  ];
+  assert.ok(deal(game));
+  assert.ok(game.stamp);
+  finishDeal(game);
+  const loaded = parseSave(save(game));
+  assert.deepEqual(loaded.game.stamp, game.stamp);
+  assert.deepEqual(loaded.game.hands[0], game.hands[0]);
+  assert.equal(loaded.game.freePassUsed, false);
+  assert.equal(loaded.game.stealUsed, false);
+  play(game, 1, chooseMove(game.hands[1], null, game.hands[0].length).cards);
+  assert.ok(steal(game, 0).cards);
+  play(game, 0, [game.hands[0].at(-1)]);
+  play(game, 1, chooseMove(game.hands[1], game.target?.move, game.hands[0].length).cards);
+  assert.equal(pass(game, 0).amount, 0);
+  const spent = parseSave(save(game)).game;
+  assert.equal(spent.stealUsed, true);
+  assert.equal(spent.freePassUsed, true);
+  assert.deepEqual(spent.hands[0], game.hands[0]);
+  // the shelf round trips on a properly finished round; older saves without a
+  // shelf are restocked while loading
+  const shopper = createGame();
+  assert.ok(deal(shopper));
+  finishDeal(shopper);
+  // the computer holds the tall cards and leads until its hand runs out
+  const all = Array.from({ length: 54 }, (_, i) => i);
+  const tallHand = sortHand(
+    cardDeck
+      .filter((c) => rankOf(c.id) > 10)
+      .map((c) => c.id)
+      .slice(0, 18),
+  );
+  shopper.hands = [sortHand(all.filter((id) => !tallHand.includes(id)).slice(0, 18)), tallHand];
+  shopper.decks = [
+    all.filter((id) => !shopper.hands[0].includes(id)),
+    all.filter((id) => !tallHand.includes(id)),
+  ];
+  let guard = 0;
+  while (shopper.phase === 'playing' && guard++ < 120) {
+    if (shopper.turn === 0) {
+      // the player leads one low single, then passes forever
+      if (shopper.target) pass(shopper, 0);
+      else play(shopper, 0, [shopper.hands[0].at(-1)]);
+    } else {
+      const move = chooseMove(shopper.hands[1], shopper.target?.move, shopper.hands[0].length);
+      if (move) play(shopper, 1, move.cards);
+      else pass(shopper, 1);
+    }
+  }
+  assert.equal(shopper.phase, 'over');
+  assert.ok(enterShop(shopper));
+  assert.deepEqual(parseSave(save(shopper)).game.shopStock, shopper.shopStock);
+  const legacy = JSON.parse(save(shopper));
+  delete legacy.game.shopStock;
+  delete legacy.game.freePassUsed;
+  delete legacy.game.stealUsed;
+  const old = parseSave(JSON.stringify(legacy)).game;
+  assert.ok(Array.isArray(old.shopStock));
+  assert.equal(old.freePassUsed, false);
+  assert.equal(old.stealUsed, false);
+});
+
+test('saves from before the new items load with derived per-round flags', () => {
+  const game = createGame();
+  deal(game);
+  const legacy = JSON.parse(save(game));
+  delete legacy.game.shopStock;
+  delete legacy.game.stamp;
+  delete legacy.game.freePassUsed;
+  delete legacy.game.stealUsed;
+  const old = parseSave(JSON.stringify(legacy)).game;
+  assert.deepEqual(old.hands, game.hands);
+  assert.equal(old.stamp, null);
+  assert.equal(old.freePassUsed, false);
+  assert.equal(old.stealUsed, false);
+  assert.equal(old.shopStock, null);
 });
 test('missing, corrupted and inaccessible browser storage do not crash loading', () => {
   assert.deepEqual(loadSave({ getItem: () => null }), { save: null, error: null });

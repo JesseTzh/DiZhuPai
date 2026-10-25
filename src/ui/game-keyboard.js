@@ -1,6 +1,6 @@
 export function bindGameKeyboard(
   game,
-  { canAct, select, playerPlay, playerPass, hint, clearSelection },
+  { canAct, select, playerPlay, playerPass, playerSteal, hint, clearSelection },
 ) {
   document.getElementById('fig').addEventListener('keydown', (e) => {
     if (e.target.closest('[data-act="poke-bag"]') && [' ', 'Enter'].includes(e.key)) {
@@ -24,6 +24,10 @@ export function bindGameKeyboard(
     if (e.key.toLowerCase() === 'p') {
       e.preventDefault();
       playerPass();
+    }
+    if (e.key.toLowerCase() === 't') {
+      e.preventDefault();
+      playerSteal();
     }
     if (e.key.toLowerCase() === 'h') {
       e.preventDefault();

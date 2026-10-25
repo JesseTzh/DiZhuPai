@@ -1,10 +1,17 @@
 import { cardThickness } from '../cards/constants.js';
 import { P, setOrigin, setCenter } from '../engine/camera.js';
 import { sackModel } from '../coins/sack.js';
-import { sortHand } from './rules.js';
+import { sortHand, rankIn } from './rules.js';
 import { world } from './table.js';
-import { wildReveal, DEAL_DURATION } from './wild-reveal.js';
-import { transferCoinPose, TRANSFER_DURATION } from './transfer.js';
+import {
+  wildReveal,
+  stampReveal,
+  stampSlide,
+  stampStart,
+  STAMP_REVEAL_DURATION,
+  DEAL_DURATION,
+} from './wild-reveal.js';
+import { transferCoinPose, TRANSFER_DURATION, STEAL_DURATION } from './transfer.js';
 
 // Layout and animation state only; no rendering calls.
 export const playerPalette = (key) => (key === 'tomato' ? 'cobalt' : key);
@@ -126,8 +133,32 @@ export function sceneFrame(st) {
       );
     }
     const hand = visual.entry && !game.round ? [] : game.hands[p];
+    // While dealing, the stamped card still sits at its natural spot; the reveal
+    // then slides the whole row from the natural order to the upgraded order.
+    const stamp = p === 0 ? game.stamp : null;
+    const naturalIndex =
+      stamp && game.phase === 'dealing'
+        ? new Map(
+            [...hand]
+              .sort((a, b) => rankIn(b, { stamp }) - rankIn(a, { stamp }) || a - b)
+              .map((id, index) => [id, index]),
+          )
+        : null;
+    const stampT =
+      stamp && game.phase === 'dealing'
+        ? (visual.dealTime - stampStart(game)) / STAMP_REVEAL_DURATION
+        : 0;
+    const stolen = visual.steal?.cards;
     for (let i = 0; i < hand.length; i++) {
-      let pose = handPose(p, i, hand.length);
+      if (p === 0 && stolen && visual.time - visual.steal.start < STEAL_DURATION) {
+        if (stolen.includes(hand[i])) continue;
+      }
+      let index = i;
+      if (naturalIndex) {
+        const from = naturalIndex.get(hand[i]);
+        index = stampT <= 0 ? from : from + (i - from) * stampSlide(stampT);
+      }
+      let pose = handPose(p, index, hand.length);
       if (game.phase === 'dealing') {
         const t = Math.max(0, Math.min(1, (visual.dealTime - (i * 2 + p) * 0.043) / 0.48));
         if (t === 0) continue;
@@ -142,24 +173,63 @@ export function sceneFrame(st) {
       }
       const isWild = p === 0 && hand[i] === game.wildCard;
       const reveal = isWild ? wildReveal(pose, visual.dealTime, game.phase === 'dealing') : null;
+      // the stamped card flips over mid-air and lands showing its upgraded face
+      const stamping = stamp && hand[i] === stamp.card && game.phase === 'dealing' && stampT > 0;
+      const stampFlip = stamping ? stampReveal(stampT) : null;
+      if (stampFlip) {
+        pose = { ...pose, flip: pose.flip + stampFlip.flip, z: pose.z + stampFlip.hop };
+      }
+      const shown =
+        !!stamp &&
+        hand[i] === stamp.card &&
+        (game.phase !== 'dealing' || (stamping && stampFlip.stamped));
       card(hand[i], reveal?.pose || pose, {
         dynamic:
           reveal?.dynamic ||
+          stampFlip?.dynamic ||
           (game.phase === 'dealing' && visual.dealTime < (i * 2 + p) * 0.043 + 0.48),
         back: p === 1,
         palette,
         selected: p === 0 && game.selected.includes(hand[i]),
         shadowEffect: st.hoverShadow,
         act: p === 0 ? `select-${hand[i]}` : null,
-        name: st.cardNames[hand[i]] + (p === 0 && hand[i] === game.wildCard ? ' · 赖子' : ''),
+        name:
+          st.cardNames[shown ? stamp.card + 1 : hand[i]] +
+          (isWild ? ' · 赖子' : shown && !isWild ? ' · 印章' : ''),
         wild: reveal?.wild || false,
         revealing: isWild && game.phase === 'dealing' && visual.dealTime > DEAL_DURATION,
+        stampFace: shown ? stamp.card + 1 : null,
       });
+    }
+  }
+  // The mouse drags the taken play from the table back into the growing hand.
+  if (visual.steal && visual.time - visual.steal.start < STEAL_DURATION) {
+    const t = Math.max(0, Math.min(1, (visual.time - visual.steal.start) / STEAL_DURATION)),
+      e = t * t * (3 - 2 * t);
+    for (const [i, id] of visual.steal.cards.entries()) {
+      const index = game.hands[0].indexOf(id);
+      if (index < 0) continue;
+      const to = handPose(0, index, game.hands[0].length);
+      card(
+        id,
+        {
+          u: visual.steal.from[i] + (to.u - visual.steal.from[i]) * e,
+          v: to.v * e,
+          z: 6 + (to.z - 6) * e + Math.sin(t * Math.PI) * 30,
+          scale: 0.86,
+          flip: 0,
+        },
+        {
+          dynamic: true,
+          palette: ownPalette,
+          stampFace: game.stamp?.card === id ? game.stamp.card + 1 : null,
+        },
+      );
     }
   }
   const lastPlay = game.target || (game.last?.type === 'play' ? game.last : null);
   if (lastPlay) {
-    const played = sortHand(lastPlay.cards),
+    const played = sortHand(lastPlay.cards, lastPlay.player === 0 ? { stamp: game.stamp } : null),
       n = played.length,
       gap = Math.min(42, 445 / Math.max(1, n - 1));
     for (let i = 0; i < n; i++) {
@@ -179,6 +249,8 @@ export function sceneFrame(st) {
         dynamic: !!from && t < 1,
         palette: lastPlay.player === 0 ? ownPalette : 'tomato',
         wild: lastPlay.player === 0 && played[i] === game.wildCard,
+        stampFace:
+          lastPlay.player === 0 && game.stamp?.card === played[i] ? game.stamp.card + 1 : null,
       });
     }
     label(`${lastPlay.player === 0 ? '你' : '电脑'} · ${lastPlay.move.name}`, 0, -63);

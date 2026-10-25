@@ -23,13 +23,24 @@ try {
   await page.evaluate(() => gameApp.ready());
   await page.locator('[data-slot="0"] [data-slot-action="new"]').click();
   await page.waitForFunction(() => gameApp.state.game.phase === 'playing');
+  // seed the shop's stocking roll so the counter features the classic trio
+  await page.evaluate(() => {
+    window.__fairRandom = Math.random;
+    Math.random = () => 0;
+  });
   await endRound();
   await page.waitForFunction(() => document.body.classList.contains('clearing-table'));
   await page.screenshot({ path: 'test-results/shop-table-exit.png' });
   await page.waitForFunction(() => gameApp.state.game.phase === 'shop');
   await page.waitForTimeout(700);
   assert.equal(await page.locator('#shop').isVisible(), true);
-  assert.equal(await page.locator('.toy-model').count(), 3);
+  assert.deepEqual(await page.evaluate(() => gameApp.state.game.shopStock), [
+    'frog',
+    'hand',
+    'dragon',
+  ]);
+  assert.equal(await page.locator('.toy-model').count(), 7);
+  assert.equal(await page.locator('.toy-model:visible').count(), 3);
   assert.equal(await page.locator('[data-part^="finger-"]').count(), 5);
   await page.screenshot({ path: 'test-results/shop-desktop.png' });
   assert.equal(await page.locator('.shop-wallet').innerText(), '100');
@@ -79,9 +90,18 @@ try {
   await page.screenshot({ path: 'test-results/frog-wild-phone.png' });
   assert.equal(await page.locator('.wild-card-model').count(), 1);
   await page.setViewportSize({ width: 1440, height: 1000 });
+  // the next visit restocks from the toys still missing
+  await page.evaluate(() => {
+    Math.random = window.__fairRandom;
+  });
   await endRound();
   await page.waitForFunction(() => gameApp.state.game.phase === 'shop');
-  assert.equal(await page.locator('.shop-product:visible, .toy-model:visible').count(), 0);
+  const restock = await page.evaluate(() => gameApp.state.game.shopStock);
+  assert.equal(restock.length, 3);
+  assert.ok(restock.every((id) => !['frog', 'hand', 'dragon'].includes(id)));
+  assert.equal(await page.locator('.shop-product:visible').count(), 3);
+  assert.equal(await page.locator('.toy-model:visible').count(), 3);
+  await page.screenshot({ path: 'test-results/shop-restocked.png' });
   await page.setViewportSize({ width: 390, height: 844 });
   await page.screenshot({ path: 'test-results/shop-phone.png' });
   await page.setViewportSize({ width: 1440, height: 1000 });

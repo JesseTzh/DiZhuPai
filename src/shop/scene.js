@@ -18,8 +18,10 @@ import { exitPathArtwork } from './exit-path.js';
 
 /* Mounts the shop diorama: static room and counter drawn once; goose and toys redrawn only while they move. */
 export { BUY_TIME };
-// toy stands: centre on the counter, scale of toy units, and the widest the toy ever gets (screen hit area)
-const SLOTS = Object.fromEntries(Object.entries(TOYS).map(([id, toy]) => [id, toy.shop]));
+// Every visit features three toys; the counter keeps three stands and the stocked toys take them in order.
+const BASE = Object.fromEntries(Object.entries(TOYS).map(([id, toy]) => [id, toy.shop]));
+const FEATURED_X = [-90, 0, 90];
+const SLOTS = Object.fromEntries(Object.keys(TOYS).map((id) => [id, null]));
 const STAND_H = 4;
 const W = 1000;
 
@@ -45,16 +47,16 @@ const toyMap = (slot) => ({
   d: ([x, y, z]) => [-x * slot.s, -y * slot.s, z * slot.s],
   n: ([x, y, z]) => [-x, -y, z],
 });
-function stand(cam, id) {
-  const { x, y, standHalf, standExtend } = SLOTS[id];
+function standParts(slot) {
+  const { x, standHalf, standExtend } = slot;
   return [
     Object.assign(
       block(
         x - standHalf,
-        y - 13,
+        slot.y - 13,
         COUNTER_TOP,
         x + standHalf + standExtend,
-        y + 13,
+        slot.y + 13,
         COUNTER_TOP + STAND_H,
         C.white,
       ),
@@ -98,7 +100,7 @@ export function mountShopScene(svg) {
   <g filter="url(#shop-hand)" id="shop-counter">${drawParts(counter(cam), cam)}${drawParts([...grille(), ...abacus(), ...deskProps()], cam)}${Object.keys(
     SLOTS,
   )
-    .map((id) => `<g data-toy-stand="${id}">${drawParts(stand(cam, id), cam)}</g>`)
+    .map((id) => `<g data-toy-stand="${id}"></g>`)
     .join('')}</g>
   <g filter="url(#shop-hand)" id="shop-goose-front"></g>
   ${Object.keys(SLOTS)
@@ -110,6 +112,9 @@ export function mountShopScene(svg) {
     gooseFront: svg.querySelector('#shop-goose-front'),
     toys: Object.fromEntries(
       Object.keys(SLOTS).map((id) => [id, svg.querySelector(`[data-toy="${id}"]`)]),
+    ),
+    stands: Object.fromEntries(
+      Object.keys(SLOTS).map((id) => [id, svg.querySelector(`[data-toy-stand="${id}"]`)]),
     ),
   };
   const toys = Object.fromEntries(
@@ -133,6 +138,11 @@ export function mountShopScene(svg) {
   function drawToy(id) {
     const s = toys[id],
       key = JSON.stringify(s.pose);
+    if (!SLOTS[id]) {
+      if (layers.toys[id].childNodes.length) layers.toys[id].innerHTML = '';
+      s.key = key;
+      return;
+    }
     if (key === s.key) return;
     s.key = key;
     const parts = buildToy(id, s.pose, toyMap(SLOTS[id]));
@@ -160,7 +170,7 @@ export function mountShopScene(svg) {
         s.t += dt;
         s.pose = motion.matches ? toyPose(id, 99) : toyPose(id, s.t);
         if (s.t < toyDuration(id)) busy = true;
-      } else if (s.out < 1) {
+      } else if (s.out < 1 && SLOTS[id]) {
         s.out = Math.min(1, s.out + dt / SLOTS[id].withdraw);
         s.pose = blend(s.from, REST[id], smooth(s.out));
         busy = true;
@@ -233,6 +243,7 @@ export function mountShopScene(svg) {
     width: W,
     // screen boxes (viewBox units) for the hover areas, price cards and the speech bubble
     toyBox(id) {
+      if (!SLOTS[id]) return { x0: 0, x1: 0, y0: 0, y1: 0 };
       const pts = [
         ...buildToy(id, REST[id], toyMap(SLOTS[id])),
         ...buildToy(id, toyPose(id, 99), toyMap(SLOTS[id])),
@@ -243,7 +254,8 @@ export function mountShopScene(svg) {
         ys = pts.map((p) => p[1]);
       return { x0: Math.min(...xs), x1: Math.max(...xs), y0: Math.min(...ys), y1: Math.max(...ys) };
     },
-    priceAt: (id) => cam.project([SLOTS[id].x + SLOTS[id].priceOffset, 1, 30]),
+    priceAt: (id) =>
+      SLOTS[id] ? cam.project([SLOTS[id].x + SLOTS[id].priceOffset, 1, 30]) : [0, 0, 0],
     headAt: () => cam.project(headCentre(GOOSE_REST)),
     hover(id, on) {
       const s = toys[id];
@@ -256,13 +268,23 @@ export function mountShopScene(svg) {
         s.from = s.pose;
         s.out = 0;
       }
-      goose.look = on ? Math.max(-1, Math.min(1, SLOTS[id].x / 90)) : 0;
+      goose.look = on && SLOTS[id] ? Math.max(-1, Math.min(1, SLOTS[id].x / 90)) : 0;
       kick();
     },
-    setAvailable(id, available) {
-      layers.toys[id].style.display = available ? '' : 'none';
-      svg.querySelector(`[data-toy-stand="${id}"]`).style.display = available ? '' : 'none';
-      if (!available && toys[id].hover) this.hover(id, false);
+    // Stock the counter: featured toys take the three stands in order, the rest leave the stage.
+    setStock(ids) {
+      for (const id of Object.keys(SLOTS)) {
+        const index = ids.indexOf(id);
+        const slot = index < 0 ? null : { ...BASE[id], x: FEATURED_X[index] };
+        if (JSON.stringify(slot) === JSON.stringify(SLOTS[id])) continue;
+        SLOTS[id] = slot;
+        layers.stands[id].innerHTML = slot ? drawParts(standParts(slot), cam) : '';
+        layers.stands[id].style.display = slot ? '' : 'none';
+        layers.toys[id].style.display = slot ? '' : 'none';
+        if (!slot && toys[id].hover) this.hover(id, false);
+        toys[id].key = '';
+        drawToy(id);
+      }
     },
     purchase() {
       goose.buy = 0;

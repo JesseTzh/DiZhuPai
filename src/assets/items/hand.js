@@ -56,7 +56,7 @@ export const hand = {
     ['M16 36 29 39v5l-13-3Z', '#c37694'],
     ['M20 28 28 30', null],
   ],
-  shop: { x: 0, y: 18, s: 0.38, standHalf: 22, standExtend: 0, priceOffset: 0, withdraw: 0.28 },
+  shop: { y: 18, s: 0.38, standHalf: 22, standExtend: 0, priceOffset: 0, withdraw: 0.28 },
   table: { u: -307, v: 236 },
 };
 // A spiral of gauze around fingers 2 and 3, wound from the knuckles upward, turn by turn.

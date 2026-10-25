@@ -102,7 +102,7 @@ export function mountGameTopbar(stage, menu, state) {
         hit = items[i];
       hit.hidden = index < 0;
       if (index < 0) continue;
-      const step = mobile ? Math.min(76, (width - itemX - 18) / 3) : 94;
+      const step = Math.min(mobile ? 76 : 94, (width - itemX - 20) / Math.max(1, owned.length));
       const x = itemX + index * step;
       drawIcon(ctx, item.id, x, itemY - 2, 34);
       place(hit, x, itemY - 5, step - 2, 40);

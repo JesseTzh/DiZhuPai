@@ -9,6 +9,7 @@ export function mountNavigation({
   session,
   settings,
   saves,
+  catalogue,
   saveProgress,
 }) {
   const home = document.createElement('main');
@@ -86,6 +87,7 @@ export function mountNavigation({
   }
   for (const id of ['home-settings', 'open-settings'])
     document.getElementById(id).onclick = openSettings;
+  document.getElementById('home-catalogue').onclick = () => catalogue.open();
   settings.element.querySelector('#return-home').onclick = () => {
     saveProgress();
     showPage('home');

@@ -176,7 +176,8 @@ html:has(.game-page) {
     background 0.12s;
 }
 .game-actions button#play-cards,
-.game-actions button#pass-turn {
+.game-actions button#pass-turn,
+.game-actions button#steal-cards {
   position: absolute;
   pointer-events: auto;
   z-index: 5;
@@ -189,8 +190,10 @@ html:has(.game-page) {
 }
 .game-actions button#play-cards:hover:enabled,
 .game-actions button#pass-turn:hover:enabled,
+.game-actions button#steal-cards:hover:enabled,
 .game-actions button#play-cards:active:enabled,
-.game-actions button#pass-turn:active:enabled {
+.game-actions button#pass-turn:active:enabled,
+.game-actions button#steal-cards:active:enabled {
   background: transparent;
   transform: none;
   box-shadow: none;

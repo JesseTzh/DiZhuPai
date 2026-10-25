@@ -3,6 +3,7 @@ import { world } from './table.js';
 
 export const TRANSFER_DURATION = 2.35;
 export const TRANSFER_COLLECT_AT = 1.2;
+export const STEAL_DURATION = 0.62;
 const clamp = (t) => Math.max(0, Math.min(1, t));
 const ease = (t) => t * t * (3 - 2 * t);
 export function transferTiming(amount, index) {

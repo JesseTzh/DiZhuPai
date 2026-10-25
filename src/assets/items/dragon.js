@@ -103,7 +103,7 @@ export const dragon = {
     ['M30 22 40 23 38 30 30 28', '#ffe194'],
     ['M30 17h.1M12 31l3-5m5 3 2-5', null],
   ],
-  shop: { x: 66, y: 22, s: 0.43, standHalf: 15, standExtend: 66, priceOffset: 30, withdraw: 0.5 },
+  shop: { y: 22, s: 0.36, standHalf: 15, standExtend: 50, priceOffset: 30, withdraw: 0.5 },
   table: { u: -277, v: 242 },
 };
 // spine from the neck base (s = 0) to the tail tip (s = length), running toward -x (the viewer's right)

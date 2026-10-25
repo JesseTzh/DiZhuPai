@@ -1,13 +1,18 @@
-import { sortHand, classify, beats } from './rules.js';
+import { sortHand, classify, beats, rankOf } from './rules.js';
 import { ITEMS, hasItemRule } from './items.js';
 export const PASS_COST = 5;
 export const STAGE_COUNT = 3;
 export const ROUNDS_PER_STAGE = 3;
 export const HAND_SIZE = 18;
+export const SHOP_SLOTS = 3;
 export const createGame = () => ({
   phase: 'ready',
   items: [],
+  shopStock: null,
   wildCard: null,
+  stamp: null,
+  freePassUsed: false,
+  stealUsed: false,
   hands: [[], []],
   decks: [[], []],
   coins: [100, 100],
@@ -56,6 +61,16 @@ export function deal(game, random = Math.random) {
   game.wildCard = hasItemRule(game, 'wildCard')
     ? game.hands[0][Math.floor(random() * game.hands[0].length)]
     : null;
+  // The stamp lifts one card below the queen a rank, then the hand re-sorts around it.
+  game.stamp = null;
+  if (hasItemRule(game, 'stampUp')) {
+    const stampable = game.hands[0].filter((id) => id !== game.wildCard && rankOf(id) < 12);
+    const pick = stampable[Math.floor(random() * stampable.length)];
+    if (pick !== undefined) game.stamp = { card: pick, rank: rankOf(pick) + 1 };
+  }
+  game.hands[0] = sortHand(game.hands[0], { stamp: game.stamp });
+  game.freePassUsed = false;
+  game.stealUsed = false;
   game.round++;
   game.stage = Math.floor((game.round - 1) / ROUNDS_PER_STAGE) + 1;
   game.substage = ((game.round - 1) % ROUNDS_PER_STAGE) + 1;
@@ -78,12 +93,16 @@ export function finishDeal(game) {
 export function play(game, p, cards) {
   if (game.phase !== 'playing' || game.turn !== p) return { error: '请等待你的回合' };
   if (!cards.length) return { error: '请先选牌' };
+  cards = [...cards];
   if (!cards.every((id) => game.hands[p].includes(id))) return { error: '只能打出自己的手牌' };
-  const move = classify(cards, ruleOptions(game, p), game.target?.move);
+  const options = ruleOptions(game, p);
+  const move = classify(cards, options, game.target?.move);
   if (!move) return { error: '这些牌不能组成有效牌型' };
-  if (!beats(move, game.target?.move))
+  if (!beats(move, game.target?.move, options))
     return { error: `请用更大的${game.target.move.name}，或炸弹、王炸` };
-  game.hands[p] = game.hands[p].filter((id) => !cards.includes(id));
+  // The mouse can bring home a twin of a card already held; every played id
+  // leaves the hand exactly once.
+  for (const id of cards) game.hands[p].splice(game.hands[p].indexOf(id), 1);
   game.selected = [];
   game.target = { player: p, move, cards: [...cards] };
   game.last = { player: p, type: 'play', move, cards: [...cards] };
@@ -108,7 +127,10 @@ export function play(game, p, cards) {
 export function pass(game, p) {
   if (game.phase !== 'playing' || game.turn !== p) return { error: '请等待你的回合' };
   if (!game.target || game.target.player === p) return { error: '新一轮必须出牌' };
-  const amount = Math.min(PASS_COST, game.coins[p]);
+  // The mask covers the first pass of every small round.
+  const free = p === 0 && hasItemRule(game, 'freePass') && !game.freePassUsed;
+  if (free) game.freePassUsed = true;
+  const amount = free ? 0 : Math.min(PASS_COST, game.coins[p]);
   game.coins[p] -= amount;
   game.coins[1 - p] += amount;
   game.last = { type: 'pass', player: p, amount };
@@ -117,8 +139,29 @@ export function pass(game, p) {
   game.selected = [];
   game.turn = 1 - p;
   if (!finishOnBankruptcy(game, p))
-    game.message = p === 0 ? '你过牌，电脑自由出牌' : '电脑过牌，你自由出牌';
+    game.message = free
+      ? '口罩护住了钱袋，你免费过牌'
+      : p === 0
+        ? '你过牌，电脑自由出牌'
+        : '电脑过牌，你自由出牌';
   return { amount };
+}
+
+// The mouse carries the opponent's tabled play back into the player's hand, once per small round.
+export function steal(game, p = 0) {
+  if (game.phase !== 'playing' || game.turn !== p) return { error: '请等待你的回合' };
+  if (!hasItemRule(game, 'stealPlay')) return { error: '没有小老鼠道具' };
+  if (game.stealUsed) return { error: '小老鼠本小局已经用过' };
+  if (!game.target || game.target.player === p) return { error: '桌上没有对方的出牌' };
+  const cards = [...game.target.cards];
+  game.hands[p] = sortHand([...game.hands[p], ...cards], { stamp: game.stamp });
+  game.stealUsed = true;
+  game.target = null;
+  game.selected = [];
+  game.last = { type: 'steal', player: p, cards };
+  game.history.push(game.last);
+  game.message = p === 0 ? '小老鼠把牌拖回了你手边，请出牌' : '电脑收走了你的出牌';
+  return { cards };
 }
 
 export function ruleOptions(game, player = 0) {
@@ -127,23 +170,38 @@ export function ruleOptions(game, player = 0) {
     wildCard: game.wildCard,
     looseTriple: hasItemRule(game, 'looseTriple'),
     shortStraight: hasItemRule(game, 'shortStraight'),
+    stamp: hasItemRule(game, 'stampUp') ? game.stamp : null,
+    equalBeat: hasItemRule(game, 'equalBeat'),
   };
 }
-export function enterShop(game) {
+
+// Every visit restocks the counter with three random toys from the ones still missing.
+export function pickShopStock(game, random = Math.random) {
+  const pool = ITEMS.filter((item) => !game.items.includes(item.id)).map((item) => item.id);
+  const stock = [];
+  while (stock.length < SHOP_SLOTS && pool.length)
+    stock.push(...pool.splice(Math.floor(random() * pool.length), 1));
+  return stock;
+}
+
+export function enterShop(game, random = Math.random) {
   if (game.phase !== 'over' || game.matchOver) return false;
   game.phase = 'shop';
+  game.shopStock = pickShopStock(game, random);
   game.selected = [];
   game.message = '逛逛小店，为下一局添件玩具';
   return true;
 }
 export function buyItem(game, id) {
   if (game.phase !== 'shop') return { error: '请在小关结束后进入商店' };
+  if (game.shopStock && !game.shopStock.includes(id)) return { error: '货架上没有这件道具' };
   const item = ITEMS.find((item) => item.id === id);
   if (!item) return { error: '没有这件道具' };
   if (game.items.includes(id)) return { error: '已经拥有这件道具' };
   if (game.coins[0] < item.price) return { error: '金币不足' };
   game.coins[0] -= item.price;
   game.items.push(id);
+  game.shopStock = game.shopStock?.filter((stocked) => stocked !== id) ?? null;
   finishOnBankruptcy(game, 0);
   return { item };
 }

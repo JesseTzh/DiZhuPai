@@ -121,6 +121,6 @@ export const frog = {
     ['M25 17a7 7 0 1 0 14 0a7 7 0 1 0-14 0', '#c5edcc'],
     ['M16 16v3m16-3v3m-14 9q6 5 12 0', null],
   ],
-  shop: { x: -88, y: 20, s: 0.39, standHalf: 22, standExtend: 0, priceOffset: 0, withdraw: 0.28 },
+  shop: { y: 20, s: 0.39, standHalf: 22, standExtend: 0, priceOffset: 0, withdraw: 0.28 },
   table: { u: -337, v: 242 },
 };

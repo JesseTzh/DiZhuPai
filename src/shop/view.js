@@ -44,18 +44,7 @@ export function mountShop(stage, buy, next) {
     height: pct(exit.y1 - exit.y0, scene.height),
   });
   for (const item of ITEMS) {
-    const article = shop.querySelector(`[data-item="${item.id}"]`),
-      b = scene.toyBox(item.id),
-      price = scene.priceAt(item.id),
-      pad = 6;
-    // the hover area covers the toy at its biggest pose and runs down to its price card on the counter front
-    Object.assign(article.style, {
-      left: pct(b.x0 - pad, scene.width),
-      top: pct(b.y0 - pad, scene.height),
-      width: pct(b.x1 - b.x0 + pad * 2, scene.width),
-      height: pct(price[1] - b.y0 + pad, scene.height),
-    });
-    article.style.setProperty('--price-x', pct(price[0] - (b.x0 - pad), b.x1 - b.x0 + pad * 2));
+    const article = shop.querySelector(`[data-item="${item.id}"]`);
     const on = () => scene.hover(item.id, true),
       off = () => scene.hover(item.id, false);
     article.addEventListener('pointerenter', on);
@@ -85,7 +74,7 @@ export function mountShop(stage, buy, next) {
     if (shop.hidden !== !visible && !visible) scene.reset();
     shop.hidden = !visible;
     if (!visible) return;
-    const key = JSON.stringify([game.coins[0], game.items, game.round, game.stage, game.substage]);
+    const key = JSON.stringify([game.coins[0], game.items, game.shopStock, game.round]);
     if (last === key) return;
     last = key;
     shop.querySelector('#shop-balance').textContent = game.coins[0];
@@ -93,14 +82,35 @@ export function mountShop(stage, buy, next) {
     shop.querySelector('.exit-sign-label').textContent = exitLabel;
     shop.querySelector('.exit-accessible-label').textContent = exitLabel;
     shop.querySelector('#leave-shop').setAttribute('aria-label', exitLabel);
+    // Featured toys take the three stands in stock order; everything else leaves the counter.
+    const stock =
+      game.shopStock ?? ITEMS.filter((i) => !game.items.includes(i.id)).map((i) => i.id);
+    scene.setStock(stock);
     for (const item of ITEMS) {
       const article = shop.querySelector(`[data-item="${item.id}"]`),
         b = article.querySelector('button');
-      const owned = game.items.includes(item.id),
-        affordable = game.coins[0] >= item.price;
-      article.hidden = owned;
-      scene.setAvailable(item.id, !owned);
-      b.disabled = owned || !affordable;
+      const stocked = stock.includes(item.id);
+      article.hidden = !stocked;
+      if (!stocked) {
+        b.disabled = true;
+        continue;
+      }
+      const box = scene.toyBox(item.id),
+        price = scene.priceAt(item.id),
+        pad = 6;
+      // the hover area covers the toy at its biggest pose and runs down to its price card on the counter front
+      Object.assign(article.style, {
+        left: pct(box.x0 - pad, scene.width),
+        top: pct(box.y0 - pad, scene.height),
+        width: pct(box.x1 - box.x0 + pad * 2, scene.width),
+        height: pct(price[1] - box.y0 + pad, scene.height),
+      });
+      article.style.setProperty(
+        '--price-x',
+        pct(price[0] - (box.x0 - pad), box.x1 - box.x0 + pad * 2),
+      );
+      const affordable = game.coins[0] >= item.price;
+      b.disabled = !affordable;
       b.querySelector('span').innerHTML =
         `${item.price} 金币<em> · ${affordable ? '买下' : '不够'}</em>`;
     }

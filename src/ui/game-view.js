@@ -1,5 +1,6 @@
 import { ROUNDS_PER_STAGE, ruleOptions, buyItem } from '../game/state.js';
 import { classify, beats } from '../game/rules.js';
+import { hasItemRule } from '../game/items.js';
 import { mountShop } from '../shop/view.js';
 import { mountTableControls } from './table-controls.js';
 import { mountGameTopbar } from './game-topbar.js';
@@ -91,6 +92,11 @@ export function mountGameView({ state, ui, actions: controller, isGamePage }) {
         actionCtx.moveTo(x + 16, y + 14);
         actionCtx.lineTo(x + 16, y + 29);
         actionCtx.lineTo(x + 25, y + 21.5);
+      } else if (icon === 'steal') {
+        actionCtx.arc(x + 19, y + 21, 7, Math.PI * 0.6, Math.PI * 1.9);
+        actionCtx.moveTo(x + 13.5, y + 15.5);
+        actionCtx.lineTo(x + 13, y + 22);
+        actionCtx.lineTo(x + 19.5, y + 21);
       } else {
         actionCtx.moveTo(x + 13, y + 15);
         actionCtx.lineTo(x + 25, y + 27);
@@ -103,54 +109,64 @@ export function mountGameView({ state, ui, actions: controller, isGamePage }) {
     const gap = 14;
     const passW = 112,
       playW = 112,
-      total = passW + playW + gap,
-      x = (w - total) / 2;
-    draw(x, passW, '#fff4d6', '过牌', 'pass', buttons[2]?.disabled, hoveredAction === 'pass');
-    draw(
-      x + passW + gap,
-      playW,
-      '#93d3b0',
-      '出牌',
-      'play',
-      buttons[1]?.disabled,
-      hoveredAction === 'play',
-    );
+      stealW = 96;
+    // The mouse button only takes space while the opponent's play sits on the table.
+    const stealShown = buttons[3] && buttons[3].style.display !== 'none';
+    const total = passW + playW + gap + (stealShown ? stealW + gap : 0);
+    const x = (w - total) / 2;
     const hitY = y - 5;
-    Object.assign(buttons[1].style, {
-      left: `${x + passW + gap}px`,
-      top: `${hitY}px`,
-      width: `${playW}px`,
-      height: '52px',
-    });
+    let cursor = x;
+    if (stealShown) {
+      draw(
+        cursor,
+        stealW,
+        '#cdd3de',
+        '收牌',
+        'steal',
+        buttons[3]?.disabled,
+        hoveredAction === 'steal',
+      );
+      Object.assign(buttons[3].style, {
+        left: `${cursor}px`,
+        top: `${hitY}px`,
+        width: `${stealW}px`,
+        height: '52px',
+      });
+      cursor += stealW + gap;
+    }
+    draw(cursor, passW, '#fff4d6', '过牌', 'pass', buttons[2]?.disabled, hoveredAction === 'pass');
     Object.assign(buttons[2].style, {
-      left: `${x}px`,
+      left: `${cursor}px`,
       top: `${hitY}px`,
       width: `${passW}px`,
+      height: '52px',
+    });
+    cursor += passW + gap;
+    draw(cursor, playW, '#93d3b0', '出牌', 'play', buttons[1]?.disabled, hoveredAction === 'play');
+    Object.assign(buttons[1].style, {
+      left: `${cursor}px`,
+      top: `${hitY}px`,
+      width: `${playW}px`,
       height: '52px',
     });
   };
   new ResizeObserver(paintActions).observe(stage);
   figure.addEventListener('scene-layout', paintActions);
   const buttons = [...actions.querySelectorAll('button')];
-  buttons.forEach((b, i) => (b.id = ['start-game', 'play-cards', 'pass-turn'][i]));
+  buttons.forEach((b, i) => (b.id = ['start-game', 'play-cards', 'pass-turn', 'steal-cards'][i]));
   buttons[1].classList.add('primary');
   buttons[0].classList.add('primary');
-  buttons[1].addEventListener('pointerenter', () => {
-    hoveredAction = 'play';
-    paintActions();
-  });
-  buttons[1].addEventListener('pointerleave', () => {
-    hoveredAction = null;
-    paintActions();
-  });
-  buttons[2].addEventListener('pointerenter', () => {
-    hoveredAction = 'pass';
-    paintActions();
-  });
-  buttons[2].addEventListener('pointerleave', () => {
-    hoveredAction = null;
-    paintActions();
-  });
+  for (const b of [buttons[1], buttons[2], buttons[3]]) {
+    if (!b) continue;
+    b.addEventListener('pointerenter', () => {
+      hoveredAction = b.id === 'play-cards' ? 'play' : b.id === 'pass-turn' ? 'pass' : 'steal';
+      paintActions();
+    });
+    b.addEventListener('pointerleave', () => {
+      hoveredAction = null;
+      paintActions();
+    });
+  }
   const tableControls = mountTableControls(stage, state);
   const syncShop = mountShop(
     stage,
@@ -175,7 +191,7 @@ export function mountGameView({ state, ui, actions: controller, isGamePage }) {
     tableControls.sync(!inShop && isGamePage() && !state.shopTransition);
     const active = controller.canAct(),
       move = classify(game.selected, ruleOptions(game), game.target?.move),
-      valid = beats(move, game.target?.move);
+      valid = beats(move, game.target?.move, ruleOptions(game));
     buttons[0].parentElement.hidden = !['ready', 'over'].includes(game.phase) || state.locked;
     buttons[0].textContent =
       game.phase === 'ready'
@@ -185,14 +201,23 @@ export function mountGameView({ state, ui, actions: controller, isGamePage }) {
           : game.substage === ROUNDS_PER_STAGE
             ? `进入第 ${game.stage + 1} 大关`
             : `下一小关 · ${game.stage}-${game.substage + 1}`;
-    syncTopbar(game);
-    paintActions();
     buttons.slice(1).forEach((b) => {
       b.parentElement.hidden = game.phase !== 'playing' && game.phase !== 'dealing';
       b.disabled = !active;
     });
+    // The mouse button only takes space while the opponent's play sits on the table.
+    buttons[3].style.display =
+      game.phase === 'playing' &&
+      hasItemRule(game, 'stealPlay') &&
+      !game.stealUsed &&
+      game.target?.player === 1
+        ? ''
+        : 'none';
+    syncTopbar(game);
+    paintActions();
     buttons[1].disabled = !active || !valid;
     buttons[2].disabled = !active || !game.target;
+    buttons[3].disabled = !active;
     document.getElementById('game-message').textContent = state.shopTransition
       ? '收起牌桌，玩具铺营业中…'
       : state.locked && game.phase !== 'dealing'

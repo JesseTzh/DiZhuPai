@@ -1,7 +1,16 @@
-import { createGame, deal, finishDeal, play, pass, ruleOptions, enterShop } from '../game/state.js';
+import {
+  createGame,
+  deal,
+  finishDeal,
+  play,
+  pass,
+  steal,
+  ruleOptions,
+  enterShop,
+} from '../game/state.js';
 import { chooseMove, legalMoves, sortHand } from '../game/rules.js';
 import { makeVisual, handPose, stepVisual, DEAL_DURATION } from '../game/scene.js';
-import { TRANSFER_DURATION, coinScatterSeed } from '../game/transfer.js';
+import { TRANSFER_DURATION, STEAL_DURATION, coinScatterSeed } from '../game/transfer.js';
 import { dealDuration } from '../game/wild-reveal.js';
 import { TABLES } from '../game/table.js';
 
@@ -130,6 +139,7 @@ export function createGameController({
     visual.playTime = 2;
     visual.transfer = null;
     visual.spill = null;
+    visual.steal = null;
     if (game.substage === 1) sound(2);
     setTimeout(() => {
       if (token === epoch && game.phase === 'dealing' && isGamePage()) audio.startDeal();
@@ -150,7 +160,7 @@ export function createGameController({
   }
   function afterPlay(p, cards) {
     const before = [...game.hands[p]],
-      ordered = sortHand(cards);
+      ordered = sortHand(cards, p === 0 ? { stamp: game.stamp } : null);
     const response = play(game, p, cards);
     if (response.error) {
       ui.flash(response.error);
@@ -177,6 +187,12 @@ export function createGameController({
     }
     const token = epoch;
     hintIndex = 0;
+    if (!response.amount) {
+      // The mask covered it: no coins move, so the computer simply plays on.
+      ui.render();
+      queueComputer();
+      return;
+    }
     state.locked = true;
     visual.spill = null;
     visual.transfer = {
@@ -217,6 +233,36 @@ export function createGameController({
   }
   function playerPass() {
     if (canAct()) afterPass(0);
+  }
+  function playerSteal() {
+    if (!canAct()) return;
+    const response = steal(game, 0);
+    if (response.error) {
+      ui.flash(response.error);
+      return;
+    }
+    hintIndex = 0;
+    // The taken cards slide back along the layout they sat in on the table.
+    const ordered = sortHand(response.cards, { stamp: game.stamp }),
+      n = ordered.length,
+      gap = Math.min(42, 445 / Math.max(1, n - 1));
+    state.locked = true;
+    visual.steal = {
+      cards: [...response.cards],
+      from: ordered.map((_, i) => (i - (n - 1) / 2) * gap),
+      start: visual.time,
+    };
+    sound(1);
+    animate();
+    ui.render();
+    const token = epoch,
+      end = visual.time + STEAL_DURATION;
+    ui.animate(() => {
+      if (token !== epoch) return false;
+      if (visual.time < end) return true;
+      state.locked = false;
+      return false;
+    });
   }
   function queueComputer() {
     clearTimeout(aiTimer);
@@ -260,6 +306,7 @@ export function createGameController({
     hint,
     playerPlay,
     playerPass,
+    playerSteal,
     pokeBag,
     queueComputer,
     openShop,

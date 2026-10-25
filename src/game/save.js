@@ -2,11 +2,12 @@ import {
   createGame,
   finishDeal,
   ruleOptions,
+  pickShopStock,
   STAGE_COUNT,
   ROUNDS_PER_STAGE,
   HAND_SIZE,
 } from './state.js';
-import { classify, beats } from './rules.js';
+import { classify, beats, rankOf } from './rules.js';
 import { ITEMS, hasItemRule } from './items.js';
 import { TABLES } from './table.js';
 
@@ -21,6 +22,9 @@ const cards = (value, max = 54) =>
   value.length <= max &&
   value.every((id) => integer(id, 0, 53)) &&
   new Set(value).size === value.length;
+// like cards, but tolerant of repeated ids (a hand may hold twins of a stolen card)
+const loose = (value, max = 54) =>
+  Array.isArray(value) && value.length <= max && value.every((id) => integer(id, 0, 53));
 const same = (a, b) =>
   a === b ||
   (a !== null &&
@@ -54,8 +58,10 @@ export function parseSave(text) {
   requireValid(integer(g.round, 1, STAGE_COUNT * ROUNDS_PER_STAGE));
   requireValid(g.stage === Math.ceil(g.round / ROUNDS_PER_STAGE));
   requireValid(g.substage === ((g.round - 1) % ROUNDS_PER_STAGE) + 1);
+  // The mouse can grow a hand past its deal size and twin a held card, so hands
+  // are multisets; decks stay duplicate-free.
   requireValid(
-    pair(g.hands, (hand) => cards(hand, HAND_SIZE)) && pair(g.decks, (deck) => cards(deck)),
+    pair(g.hands, (hand) => loose(hand, HAND_SIZE * 2)) && pair(g.decks, (deck) => cards(deck)),
   );
   requireValid(pair(g.coins, (n) => integer(n, 0, 200)) && pair(g.wins, (n) => integer(n, 0, 9)));
   requireValid(
@@ -69,6 +75,21 @@ export function parseSave(text) {
       200 - g.items.reduce((sum, id) => sum + ITEMS.find((item) => item.id === id).price, 0),
   );
   requireValid(g.wildCard === null || (hasItemRule(g, 'wildCard') && integer(g.wildCard, 0, 53)));
+  requireValid(
+    g.stamp == null ||
+      (hasItemRule(g, 'stampUp') &&
+        typeof g.stamp === 'object' &&
+        integer(g.stamp.card, 0, 53) &&
+        g.stamp.rank === rankOf(g.stamp.card) + 1 &&
+        rankOf(g.stamp.card) < 12),
+  );
+  requireValid(
+    g.shopStock == null ||
+      (Array.isArray(g.shopStock) &&
+        g.shopStock.length <= 3 &&
+        new Set(g.shopStock).size === g.shopStock.length &&
+        g.shopStock.every((id) => ITEMS.some((item) => item.id === id) && !g.items.includes(id))),
+  );
   requireValid(integer(g.turn, 0, 1) && (g.winner === null || integer(g.winner, 0, 1)));
   requireValid(
     typeof g.matchOver === 'boolean' && (g.matchWinner === null || integer(g.matchWinner, 0, 1)),
@@ -80,17 +101,34 @@ export function parseSave(text) {
     last = null,
     turn = (g.round - 1) % 2;
   const played = [[], []];
+  let stolen = [];
   for (const entry of g.history) {
     requireValid(entry && entry.player === turn);
     if (entry.type === 'play') {
       requireValid(cards(entry.cards, HAND_SIZE) && entry.cards.length > 0);
       const move = classify(entry.cards, ruleOptions(g, turn), target?.move);
-      requireValid(beats(move, target?.move));
+      requireValid(beats(move, target?.move, ruleOptions(g, turn)));
       // Recompute names and rule metadata rather than trusting imported markup.
       requireValid(same(entry.move, move));
       last = { player: turn, type: 'play', move, cards: [...entry.cards] };
       target = { player: turn, move, cards: [...entry.cards] };
       played[turn].push(...entry.cards);
+    } else if (entry.type === 'steal') {
+      // The mouse takes the whole tabled play once per round; the same player leads again.
+      requireValid(
+        turn === 0 &&
+          hasItemRule(g, 'stealPlay') &&
+          !stolen.length &&
+          target &&
+          target.player !== turn &&
+          cards(entry.cards, HAND_SIZE) &&
+          entry.cards.length > 0 &&
+          entry.cards.every((id) => target.cards.includes(id)),
+      );
+      last = { type: 'steal', player: turn, cards: [...entry.cards] };
+      stolen = [...entry.cards];
+      target = null;
+      continue;
     } else {
       requireValid(
         entry.type === 'pass' && target && target.player !== turn && integer(entry.amount, 0, 5),
@@ -103,13 +141,18 @@ export function parseSave(text) {
   requireValid(same(g.last, last) && same(g.target, target));
   for (let p = 0; p < 2; p++) {
     requireValid(g.decks[p].length === (ROUNDS_PER_STAGE - g.substage) * HAND_SIZE);
-    requireValid(g.hands[p].length + played[p].length === HAND_SIZE);
-    requireValid(cards([...g.hands[p], ...played[p], ...g.decks[p]]));
+    requireValid(g.hands[p].length + played[p].length - (p ? 0 : stolen.length) === HAND_SIZE);
+    requireValid(loose(g.hands[p], HAND_SIZE * 2) && loose(played[p]) && cards(g.decks[p]));
   }
   requireValid(g.wildCard === null || [...g.hands[0], ...played[0]].includes(g.wildCard));
+  requireValid(g.stamp == null || [...g.hands[0], ...played[0]].includes(g.stamp.card));
   const ended = g.phase === 'over' || g.phase === 'shop';
   requireValid(ended === (g.winner !== null));
-  requireValid(g.wins[0] + g.wins[1] === g.round - (ended ? 0 : 1));
+  // Buying toys down to the last coin ends the match after the round was already
+  // counted, so that bankruptcy win lands one above the usual tally.
+  const boughtOut =
+    g.matchOver && g.coins[1 - g.matchWinner] === 0 && g.hands.some((hand) => !hand.length);
+  requireValid(g.wins[0] + g.wins[1] === g.round - (ended ? 0 : 1) + (ended && boughtOut ? 1 : 0));
   if (ended) {
     requireValid(g.hands[g.winner].length === 0 || (g.matchOver && g.coins[1 - g.winner] === 0));
     requireValid(g.wins[g.winner] > 0 && last?.player !== undefined);
@@ -121,6 +164,15 @@ export function parseSave(text) {
     if (g.phase === 'dealing') requireValid(g.history.length === 0);
   }
   const game = Object.fromEntries(Object.keys(createGame()).map((key) => [key, g[key]]));
+  // The free pass and the mouse are once per round, so history tells whether they were spent.
+  game.freePassUsed = g.history.some(
+    (entry) => entry.type === 'pass' && entry.player === 0 && entry.amount === 0,
+  );
+  game.stealUsed = g.history.some((entry) => entry.type === 'steal');
+  game.stamp = g.stamp ?? null;
+  game.shopStock = Array.isArray(g.shopStock) ? [...g.shopStock] : null;
+  // Older saves predate the featured shelf; restock it while loading into the shop.
+  if (game.phase === 'shop' && !game.shopStock) game.shopStock = pickShopStock(game);
   // Animation effects already have their final balances in the logical game state.
   finishDeal(game);
   if (game.phase === 'over' && !game.matchOver) game.phase = 'shop';

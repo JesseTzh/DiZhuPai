@@ -1,4 +1,4 @@
-import { TRANSFER_DURATION, TRANSFER_COLLECT_AT } from './transfer.js';
+import { TRANSFER_DURATION, TRANSFER_COLLECT_AT, STEAL_DURATION } from './transfer.js';
 import { coinState, coinStep } from '../coins/scene.js';
 import { createCanvasRenderer } from '../engine/canvas-renderer.js';
 export { world } from './table.js';
@@ -12,6 +12,7 @@ export function makeVisual() {
     playFrom: null,
     transfer: null,
     spill: null,
+    steal: null,
     bags: [coinState(), coinState()],
   };
 }
@@ -51,6 +52,10 @@ export function stepVisual(st, dt) {
   }
   if (v.spill) {
     if (v.time - v.spill.start > TRANSFER_DURATION) v.spill = null;
+    else active = true;
+  }
+  if (v.steal) {
+    if (v.time - v.steal.start > STEAL_DURATION) v.steal = null;
     else active = true;
   }
   return active;

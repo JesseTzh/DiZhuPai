@@ -131,7 +131,9 @@ export async function createRenderer(art, svg) {
         facing(g.N) && !options.back
           ? options.wild
             ? images.wild
-            : images.fronts[id]
+            : options.stampFace
+              ? images.fronts[options.stampFace]
+              : images.fronts[id]
           : images.backs[options.palette || st.pal];
       const box = bounds([...resting.A, ...resting.B]);
       parts.push({ at: resting.c, box, draw: () => canvas.card(g, image, options) });

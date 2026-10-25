@@ -8,11 +8,19 @@ export const rankOf = (id) => {
       : 16
     : { J: 11, Q: 12, K: 13, A: 14, 2: 15 }[c.rank] || +c.rank;
 };
-export const sortHand = (cards) => [...cards].sort((a, b) => rankOf(b) - rankOf(a) || a - b);
-const groups = (cards, wildCard = null, wildRank = null) => {
+// The stamp lifts one card a rank for the whole round; the wild card keeps its own override.
+export const rankIn = (id, options = null, wildRank = null) =>
+  id === options?.wildCard && wildRank != null
+    ? wildRank
+    : id === options?.stamp?.card
+      ? options.stamp.rank
+      : rankOf(id);
+export const sortHand = (cards, options = null) =>
+  [...cards].sort((a, b) => rankIn(b, options) - rankIn(a, options) || a - b);
+const groups = (cards, options = null, wildRank = null) => {
   const m = new Map();
   for (const id of cards) {
-    const r = id === wildCard && wildRank != null ? wildRank : rankOf(id);
+    const r = rankIn(id, options, wildRank);
     if (!m.has(r)) m.set(r, []);
     m.get(r).push(id);
   }
@@ -42,7 +50,7 @@ function classifyAs(cards, options = {}, wildRank = null) {
     cards.some((id) => !Number.isInteger(id) || !cardDeck[id])
   )
     return null;
-  const g = groups(cards, options.wildCard, wildRank),
+  const g = groups(cards, options, wildRank),
     n = cards.length,
     rs = g.map(([r]) => r);
   const out = (type, main) => ({ type, main, length: n, name: names[type] });
@@ -95,24 +103,26 @@ function classifyAs(cards, options = {}, wildRank = null) {
 export function classify(cards, options = {}, target = null) {
   const natural = classifyAs(cards, options);
   if (!cards.includes(options.wildCard)) return natural;
-  if (natural && beats(natural, target)) return natural;
+  if (natural && beats(natural, target, options)) return natural;
   const candidates = [];
   for (let rank = 3; rank <= 15; rank++) {
     const move = classifyAs(cards, options, rank);
-    if (move && beats(move, target)) candidates.push({ ...move, wildRank: rank });
+    if (move && beats(move, target, options)) candidates.push({ ...move, wildRank: rank });
   }
   return (
     candidates.sort((a, b) => (a.type === 'bomb') - (b.type === 'bomb') || a.main - b.main)[0] ||
     natural
   );
 }
-export function beats(move, target) {
+export function beats(move, target, options = {}) {
   if (!move) return false;
   if (!target) return true;
   if (target.type === 'rocket') return false;
   if (move.type === 'rocket') return true;
   if (move.type === 'bomb' && target.type !== 'bomb') return true;
-  return move.type === target.type && move.length === target.length && move.main > target.main;
+  if (move.type !== target.type || move.length !== target.length) return false;
+  // The balance scale lets an equal response tip the comparison its way.
+  return move.main > target.main || (options.equalBeat && move.main === target.main);
 }
 function combinations(list, k, visit, chosen = [], from = 0) {
   if (!k) {
@@ -127,22 +137,20 @@ export function legalMoves(hand, target = null, options = {}) {
     seen = new Set();
   const add = (cards) => {
     const move = classify(cards, options, target);
-    if (!beats(move, target)) return;
+    if (!beats(move, target, options)) return;
     const key = [...cards].sort((a, b) => a - b).join();
     if (!seen.has(key)) {
       seen.add(key);
-      result.push({ ...move, cards: sortHand(cards) });
+      result.push({ ...move, cards: sortHand(cards, options) });
     }
   };
   const variants = hand.includes(options.wildCard)
     ? [null, ...Array.from({ length: 13 }, (_, i) => i + 3)]
     : [null];
   for (const wildRank of variants) {
-    const g = groups(hand, options.wildCard, wildRank);
+    const g = groups(hand, options, wildRank);
     const wings = (core, k, pairs = false) => {
-      const ranks = new Set(
-          core.map((id) => (id === options.wildCard && wildRank != null ? wildRank : rankOf(id))),
-        ),
+      const ranks = new Set(core.map((id) => rankIn(id, options, wildRank))),
         rest = g.filter(([r]) => !ranks.has(r));
       if (pairs)
         combinations(

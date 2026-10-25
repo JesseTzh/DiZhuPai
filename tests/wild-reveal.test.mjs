@@ -1,9 +1,16 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createGame, deal, finishDeal, play } from '../src/game/state.js';
+import { createGame, deal, finishDeal, play, ruleOptions } from '../src/game/state.js';
 import { makeVisual } from '../src/game/scene.js';
 import { sceneFrame, handPose } from '../src/game/scene-frame.js';
-import { dealDuration, DEAL_DURATION, WILD_REVEAL_DURATION } from '../src/game/wild-reveal.js';
+import {
+  dealDuration,
+  DEAL_DURATION,
+  WILD_REVEAL_DURATION,
+  STAMP_REVEAL_DURATION,
+  stampStart,
+} from '../src/game/wild-reveal.js';
+import { rankOf } from '../src/game/rules.js';
 
 const state = () => ({ game: createGame(), visual: makeVisual(), pal: 'cobalt', cardNames: [] });
 test('only the randomly chosen card lifts and changes model during the round opening', () => {
@@ -38,6 +45,51 @@ test('only the randomly chosen card lifts and changes model during the round ope
     sceneFrame(st).cards.find((card) => card.id === id && !card.options.back).options.wild,
     true,
   );
+});
+
+test('the stamped card flips mid-deal and settles into its upgraded slot', () => {
+  const st = state();
+  st.game.items = ['stamp'];
+  assert.ok(deal(st.game, () => 0));
+  const stamp = st.game.stamp;
+  assert.ok(stamp);
+  const oldIndex = [...st.game.hands[0]]
+    .slice()
+    .sort((a, b) => rankOf(b) - rankOf(a) || a - b)
+    .indexOf(stamp.card);
+  const newIndex = st.game.hands[0].indexOf(stamp.card);
+  const chosen = () =>
+    sceneFrame(st).cards.find((card) => card.options.act === `select-${stamp.card}`);
+  assert.equal(dealDuration(st.game), DEAL_DURATION + STAMP_REVEAL_DURATION);
+  // dealt to its natural spot with its original face showing
+  st.visual.dealTime = stampStart(st.game) - 0.1;
+  const before = chosen();
+  assert.equal(before.options.stampFace, null);
+  assert.equal(before.options.name.includes(' · 印章'), false);
+  // mid-flip: airborne, face already turned over to the upgraded rank
+  st.visual.dealTime = stampStart(st.game) + STAMP_REVEAL_DURATION * 0.45;
+  const mid = chosen();
+  assert.equal(mid.options.stampFace, stamp.card + 1);
+  assert.ok(mid.options.name.includes(' · 印章'));
+  assert.ok(mid.pose.flip > 0.5);
+  assert.ok(mid.pose.z > handPose(0, newIndex, 18).z);
+  assert.equal(mid.options.dynamic, true);
+  // settled: the upgraded face stays and the card sits at its new slot
+  st.visual.dealTime = dealDuration(st.game);
+  const done = chosen();
+  assert.equal(done.options.stampFace, stamp.card + 1);
+  const rest = handPose(0, newIndex, 18);
+  for (const key of ['u', 'v', 'z', 'scale'])
+    assert.ok(Math.abs(done.pose[key] - rest[key]) < 1e-6, `${key} settles`);
+  assert.ok(Math.abs(done.pose.flip - Math.PI * 2) < 1e-6);
+  assert.equal(done.options.dynamic, false);
+  finishDeal(st.game);
+  assert.equal(chosen().options.stampFace, stamp.card + 1);
+  // the stamped card plays as its upgraded rank on the table too
+  st.game.turn = 0;
+  assert.ok(play(st.game, 0, [stamp.card]).move);
+  const played = sceneFrame(st).cards.find((card) => card.id === stamp.card && !card.options.back);
+  assert.equal(played.options.stampFace, stamp.card + 1);
 });
 
 test('ordinary deals keep their timing and the table has no remaining counts or center hints', () => {

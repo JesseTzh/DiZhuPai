@@ -1,0 +1,170 @@
+/* 道具图鉴：与设置弹窗同一张纸质底，卡片沿用存档槽的纸片投影和商店的玩具色。 */
+#item-catalogue {
+  width: min(720px, calc(100vw - 24px));
+  max-width: none;
+  max-height: calc(100vh - 24px);
+  margin: auto;
+  padding: 0;
+  overflow: auto;
+  color: #292a28;
+  background: transparent;
+  border: 0;
+  font-family: ui-monospace, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+}
+#item-catalogue::backdrop {
+  background: #231e164d;
+}
+.catalogue-content {
+  position: relative;
+  padding: 24px 30px 30px 26px;
+  isolation: isolate;
+}
+#catalogue-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 218px;
+  margin: 0;
+  line-height: 0;
+}
+#catalogue-title > svg:first-child {
+  width: 168px;
+}
+#catalogue-title > svg:last-child {
+  width: 42px;
+  flex: 0 0 auto;
+}
+#catalogue-title text {
+  font:
+    800 34px 'Songti SC',
+    ui-serif,
+    serif;
+  fill: #292a28;
+}
+#item-catalogue button {
+  display: block;
+  padding: 0;
+  min-width: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: inherit;
+  cursor: pointer;
+  transition: transform 0.12s ease;
+}
+#item-catalogue button:hover {
+  background: transparent;
+  transform: translateY(-2px);
+}
+#item-catalogue button:active {
+  transform: translateY(1px);
+}
+#item-catalogue button:focus-visible {
+  outline: 2px dashed #6487bd;
+  outline-offset: 3px;
+}
+#item-catalogue button svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+#close-catalogue {
+  width: 40px;
+}
+.catalogue-note {
+  margin: 0 0 20px;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  color: #706856;
+}
+.catalogue-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(196px, 1fr));
+  gap: 16px;
+}
+.catalogue-card {
+  position: relative;
+  min-width: 0;
+  padding: 14px 14px 12px;
+  border: 2px solid var(--ink);
+  border-radius: 14px;
+  background: #fff8e7;
+  box-shadow:
+    3px 4px 0 #dbd0b5,
+    3px 6px 0 1px var(--ink),
+    -6px 11px 0 #41538f20;
+}
+.catalogue-card.owned {
+  background: #fffdf4;
+}
+.catalogue-icon {
+  width: 74px;
+  height: 62px;
+  margin-bottom: 10px;
+  padding: 5px 8px 1px;
+  border: 2px solid var(--ink);
+  border-radius: 10px;
+  background: var(--toy-color);
+  box-shadow: inset 0 -5px 0 #231e1626;
+}
+.catalogue-icon svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  overflow: visible;
+}
+.catalogue-card h3 {
+  margin: 0 0 6px;
+  font-size: 14px;
+  letter-spacing: 0.05em;
+}
+.catalogue-card p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.7;
+  color: #5d5648;
+}
+.catalogue-card footer {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 10px;
+  font-size: 11px;
+  color: #426b4d;
+}
+.catalogue-card footer b {
+  flex: 0 0 auto;
+  color: #a3691b;
+  font-size: 12px;
+}
+.catalogue-owned {
+  position: absolute;
+  top: -9px;
+  right: 10px;
+  padding: 2px 8px;
+  border: 1.6px solid var(--ink);
+  border-radius: 7px;
+  background: #f4b829;
+  color: #231e16;
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  box-shadow: 1.5px 2px 0 #231e1655;
+}
+@media (prefers-reduced-motion: reduce) {
+  #item-catalogue button {
+    transition: none;
+  }
+}
+@media (max-width: 480px) {
+  .catalogue-content {
+    padding: 20px 20px 24px;
+  }
+  .catalogue-grid {
+    grid-template-columns: 1fr;
+  }
+}

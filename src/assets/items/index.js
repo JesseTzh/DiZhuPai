@@ -3,11 +3,15 @@ import { palettes } from './palettes.js';
 import { frog } from './frog.js';
 import { hand } from './hand.js';
 import { dragon } from './dragon.js';
+import { stamp } from './stamp.js';
+import { balance } from './balance.js';
+import { mask } from './mask.js';
+import { mouse } from './mouse.js';
 
-/* 道具玩具美术注册表：一个道具一个文件（frog.js / hand.js / dragon.js），统一在此聚合。
- * 商店柜台（shop/scene.js）、游戏桌面（game/table-items.js）与顶栏图标（ui/topbar-art.js）
+/* 道具玩具美术注册表：一个道具一个文件（frog.js / hand.js / dragon.js / stamp.js / balance.js / mask.js / mouse.js），
+ * 统一在此聚合。商店柜台（shop/scene.js）、游戏桌面（game/table-items.js）与顶栏图标（ui/topbar-art.js）
  * 都从这里取同一份几何体、动画与摆放配置。新增道具见 README.md。 */
-export const TOYS = { frog, hand, dragon };
+export const TOYS = { frog, hand, dragon, stamp, balance, mask, mouse };
 
 export const REST = Object.fromEntries(Object.entries(TOYS).map(([id, toy]) => [id, toy.REST]));
 

@@ -11,5 +11,6 @@ export const palettes = {
   white: ['#fffdf0', '#ece5d3', '#b6b2a5'],
   bandage: ['#fffaf0', '#efe6d2', '#cbbfa5'],
   card: ['#fffdf6', '#f1ead9', '#cfc5ae'],
+  mouse: ['#d3d8e2', '#adb5c5', '#78808f'],
   ink: ['#393329', '#29251e', '#231e16'],
 };

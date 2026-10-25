@@ -6,6 +6,7 @@ import { createSounds } from './game/sound.js';
 import { mountShell } from './ui/controls.js';
 import { mountZoom } from './ui/zoom.js';
 import { mountSettings } from './ui/settings-screen.js';
+import { mountItemCatalogue } from './ui/item-catalogue.js';
 import { mountGameView } from './ui/game-view.js';
 import { bindGameKeyboard } from './ui/game-keyboard.js';
 import { mountSaveScreen } from './ui/save-screen.js';
@@ -62,6 +63,7 @@ const ui = mountFigure({
     { label: '开始发牌', onClick: () => controller.start() },
     { label: '出牌', onClick: () => controller.playerPlay() },
     { label: `过牌 · ${PASS_COST} 金币`, onClick: () => controller.playerPass() },
+    { label: '收牌', onClick: () => controller.playerSteal() },
   ],
 });
 mountShell(ui, { palette: '玩家配色', swatches: ['芥末黄', null, '薄荷绿', '钴蓝', '玫瑰粉'] });
@@ -86,6 +88,7 @@ controller = createGameController({
 });
 const view = mountGameView({ state, ui, actions: controller, isGamePage });
 const settings = mountSettings({ state, ui, audio });
+const catalogue = mountItemCatalogue({ state });
 const saves = mountSaveScreen({
   session,
   exportSlot: (index) => session.export(index, game, saveOptions()),
@@ -104,6 +107,7 @@ navigation = mountNavigation({
   session,
   settings,
   saves,
+  catalogue,
   menu: view.menu,
   saveProgress,
 });

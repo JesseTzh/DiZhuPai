@@ -30,7 +30,7 @@ try {
     Math.max(...firstWave.map((coin) => coin.y)) - Math.min(...firstWave.map((coin) => coin.y)) < 1,
   );
   await page.emulateMedia({ reducedMotion: 'no-preference' });
-  assert.equal(await page.locator('#home-screen button').count(), 3);
+  assert.equal(await page.locator('#home-screen button').count(), 4);
   await page.locator('#home-import').click();
   assert.equal(await page.locator('.save-slot').count(), 1);
   await page.locator('#close-saves').click();
@@ -69,6 +69,20 @@ try {
     2,
   );
   await page.locator('#close-settings').click();
+  await page.locator('#home-catalogue').click();
+  assert.ok(await page.locator('#item-catalogue').evaluate((el) => el.open));
+  assert.equal(await page.locator('#item-catalogue .catalogue-card').count(), 7);
+  assert.equal(await page.locator('#item-catalogue .catalogue-card svg').count(), 7);
+  assert.equal(await page.locator('#item-catalogue .catalogue-owned').count(), 0);
+  await page.screenshot({ path: 'test-results/item-catalogue.png' });
+  await page.locator('#close-catalogue').click();
+  assert.ok(await page.locator('#item-catalogue').evaluate((el) => !el.open));
+  await page.evaluate(() => gameApp.state.game.items.push('frog'));
+  await page.locator('#home-catalogue').click();
+  assert.equal(await page.locator('#item-catalogue .catalogue-owned').count(), 1);
+  await page.evaluate(() => gameApp.state.game.items.pop());
+  await page.locator('#close-catalogue').click();
+  assert.ok(await page.locator('#item-catalogue').evaluate((el) => !el.open));
   await page.locator('#enter-game').click();
   assert.ok(await page.locator('#saves-screen').isHidden(), 'start skips save selection');
   await page.waitForFunction(() => gameApp.state.game.phase === 'playing');
@@ -136,7 +150,7 @@ try {
   assert.equal(await page.evaluate(() => gameApp.homeAnimation.metrics.frames), frames);
   assert.deepEqual(errors, []);
   console.log(
-    'Home, physics contacts/strikes, single save, direct start/resume, export/import, invalid input, delete confirmation, reload, settings separation passed.',
+    'Home, physics contacts/strikes, single save, direct start/resume, export/import, invalid input, delete confirmation, reload, settings separation, item catalogue passed.',
   );
 } finally {
   await browser.close();
