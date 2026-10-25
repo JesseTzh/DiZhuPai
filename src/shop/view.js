@@ -1,7 +1,3 @@
-import { ModelCanvas } from '../game/model-canvas.js';
-import { cpuArt } from '../game/cpu-art.js';
-import { cameraView, setCameraPitch } from '../engine/camera.js';
-import { coinShape } from '../coins/coin.js';
 import { ITEMS } from '../game/items.js';
 import { itemDetails, itemTooltipMarkup } from '../ui/item-presentation.js';
 import { mountShopScene, BUY_TIME } from './scene.js';
@@ -11,24 +7,8 @@ export function mountShop(stage, buy, next) {
   shop.id = 'shop';
   shop.hidden = true;
   shop.setAttribute('aria-label', '关间道具商店');
-  shop.innerHTML = `<div class="shop-box"><div class="shop-stage"><svg id="shop-art" role="img" aria-label="鹅掌柜杂货铺：大鹅掌柜站在当铺式柜台后，柜台上摆着算盘和三件玩具"></svg><button id="leave-shop" aria-label="前往下一关"><span class="sr-only exit-accessible-label">前往下一关</span></button><div class="goose-bubble" aria-hidden="true">嘎嘎～承惠承惠！</div>${ITEMS.map((item) => `<article class="shop-product toy-${item.id}" data-item="${item.id}" style="--toy-color:${item.color}"><div class="toy-hit" tabindex="0" role="img" aria-label="${itemDetails(item).accessible}"></div><div class="toy-tooltip" role="tooltip">${itemTooltipMarkup(item)}</div><button class="price-tag" data-buy="${item.id}" aria-label="购买${item.name}，${item.price}金币"><b>${item.name}</b><span></span></button></article>`).join('')}<div class="shop-wallet" aria-label="金币余额"><canvas class="shop-coin" width="112" height="112" aria-hidden="true"></canvas><strong id="shop-balance"></strong></div></div><p id="shop-notice" role="status" aria-live="polite"></p></div>`;
+  shop.innerHTML = `<div class="shop-box"><div class="shop-stage"><svg id="shop-art" role="img" aria-label="鹅掌柜杂货铺：大鹅掌柜站在当铺式柜台后，柜台上摆着算盘和三件玩具"></svg><button id="leave-shop" aria-label="前往下一关"><span class="sr-only exit-accessible-label">前往下一关</span></button><div class="goose-bubble" aria-hidden="true">嘎嘎～承惠承惠！</div>${ITEMS.map((item) => `<article class="shop-product toy-${item.id}" data-item="${item.id}" style="--toy-color:${item.color}"><div class="toy-hit" tabindex="0" role="img" aria-label="${itemDetails(item).accessible}"></div><div class="toy-tooltip" role="tooltip">${itemTooltipMarkup(item)}</div><button class="price-tag" data-buy="${item.id}" aria-label="购买${item.name}，${item.price}金币"><b>${item.name}</b><span></span></button></article>`).join('')}</div><p id="shop-notice" role="status" aria-live="polite"></p></div>`;
   stage.append(shop);
-  cpuArt().then((art) => {
-    const canvas = shop.querySelector('.shop-coin'),
-      ctx = canvas.getContext('2d'),
-      view = cameraView();
-    // Use the table's coin mesh, shaded rim and printed faces at an icon-sized scale.
-    setCameraPitch(90);
-    try {
-      ctx.translate(56, 56);
-      ctx.scale(7, 7);
-      ctx.lineJoin = 'round';
-      const painter = ModelCanvas.forContext(ctx);
-      painter.coin(coinShape([0, 0, 0], 0.45, -Math.PI / 4), art.coin);
-    } finally {
-      setCameraPitch(view.pitch, view.distance);
-    }
-  });
   const svg = shop.querySelector('#shop-art'),
     scene = mountShopScene(svg),
     bubble = shop.querySelector('.goose-bubble');
@@ -77,7 +57,6 @@ export function mountShop(stage, buy, next) {
     const key = JSON.stringify([game.coins[0], game.items, game.shopStock, game.round]);
     if (last === key) return;
     last = key;
-    shop.querySelector('#shop-balance').textContent = game.coins[0];
     const exitLabel = game.substage === 3 ? `进入第 ${game.stage + 1} 大关` : '前往下一关';
     shop.querySelector('.exit-sign-label').textContent = exitLabel;
     shop.querySelector('.exit-accessible-label').textContent = exitLabel;

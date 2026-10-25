@@ -12,12 +12,13 @@ export async function createRenderer(art, svg) {
     canvas.begin();
     const model = canvas.sackGeometry(state, 0),
       m = model.m;
-    canvas.shadow([...m.body[2], ...m.body[8], ...m.shell.at(-1)]);
+    canvas.addShadow([...m.body[2], ...m.body[8], ...m.shell.at(-1)]);
     for (const coin of state.coins)
       if (coin.mode !== 'rain') {
         const g = canvas.coinGeometry(coin);
-        canvas.shadow([...g.A, ...g.B]);
+        canvas.addShadow([...g.A, ...g.B]);
       }
+    canvas.flushShadows();
     canvas.sack(model, state, material, [48, 48, 0], 1, image);
     canvas.finish(+document.getElementById('wb').value);
   };

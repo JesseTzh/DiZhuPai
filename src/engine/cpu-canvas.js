@@ -75,6 +75,7 @@ export class CPUCanvas {
     );
     ctx.lineJoin = 'round';
     ctx.lineCap = 'round';
+    this.shadowRun = null;
     this.origin = P(0, 0, 0);
     this.axes = [Dv(1, 0, 0), Dv(0, 1, 0), Dv(0, 0, 1)];
     this.perspective = hasPerspective();
@@ -127,21 +128,61 @@ export class CPUCanvas {
     ctx.stroke(this.path(points, closed));
   }
   shadow(points, z = 0, clip = null) {
+    this.addShadow(points, z);
+    this.flushShadows(clip);
+  }
+  // Shadows are an opaque flat colour, so many small hulls may share one fill:
+  // add each silhouette, then a single clipped flush paints them all.
+  addShadow(points, z = 0) {
     const [sx, sy] = SH,
-      k = SHADOW_LEN / SHADOW_K,
-      ctx = this.ctx;
-    const projected = hull(
-      points.map(([x, y, h]) => [x + (h - z) * sx * k, y + (h - z) * sy * k]),
-    ).map(([x, y]) => [x, y, z]);
-    if (clip) {
-      ctx.save();
-      ctx.clip(this.path(clip));
+      k = SHADOW_LEN / SHADOW_K;
+    const flat = points.map(([x, y, h]) => [x + (h - z) * sx * k, y + (h - z) * sy * k, z]),
+      ring = hull(flat),
+      run = (this.shadowRun ??= new Path2D());
+    for (let i = 0; i < ring.length; i++) {
+      const p = this.project(ring[i]);
+      if (i) run.lineTo(p[0], p[1]);
+      else run.moveTo(p[0], p[1]);
     }
-    this.polygon(projected, SHADOW);
-    if (clip) ctx.restore();
+    run.closePath();
+  }
+  flushShadows(clip = null) {
+    if (!this.shadowRun) return;
+    const ctx = this.ctx;
+    ctx.save();
+    if (clip) ctx.clip(this.path(clip));
+    ctx.fillStyle = SHADOW;
+    ctx.fill(this.shadowRun);
+    ctx.restore();
+    this.shadowRun = null;
   }
   image(image, o, u, v, width, height) {
-    if (this.perspective) return this.perspectiveImage(image, o, u, v, width, height);
+    if (this.perspective) {
+      // Small or distant prints warp less than a fraction of a pixel across: one affine
+      // drawImage then matches the tessellated triangles and skips their clip per cell.
+      const a = this.project(o),
+        b = this.project(o.map((q, k) => q + u[k] * width)),
+        d = this.project(o.map((q, k) => q + v[k] * height)),
+        c = this.project(o.map((q, k) => q + u[k] * width + v[k] * height)),
+        ux = (b[0] - a[0]) / width,
+        uy = (b[1] - a[1]) / width,
+        vx = (d[0] - a[0]) / height,
+        vy = (d[1] - a[1]) / height;
+      if (
+        Math.hypot(
+          a[0] + (ux * width + vx * height) - c[0],
+          a[1] + (uy * width + vy * height) - c[1],
+        ) < 0.25
+      ) {
+        const ctx = this.ctx;
+        ctx.save();
+        ctx.transform(ux, uy, vx, vy, a[0], a[1]);
+        ctx.drawImage(image, 0, 0, width, height);
+        ctx.restore();
+        return;
+      }
+      return this.perspectiveImage(image, o, u, v, width, height);
+    }
     const ctx = this.ctx,
       O = this.project(o),
       U = Dv(...u),
@@ -153,7 +194,8 @@ export class CPUCanvas {
   }
   perspectiveImage(image, o, u, v, width, height) {
     // Tessellate the print so its corners follow the same projection as its solid body.
-    const steps = width > 50 ? 4 : 2,
+    // 3×3 keeps the warp error of a hand card under a tenth of a view-box unit.
+    const steps = width > 50 ? 3 : 2,
       ctx = this.ctx,
       grid = Array.from({ length: steps + 1 }, (_, y) =>
         Array.from({ length: steps + 1 }, (_, x) =>

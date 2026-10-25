@@ -47,8 +47,9 @@ try {
   assert.equal(await page.locator('.toy-model:visible').count(), 3);
   assert.equal(await page.locator('[data-part^="finger-"]').count(), 5);
   await page.screenshot({ path: 'test-results/shop-desktop.png' });
-  assert.equal(await page.locator('.shop-wallet').innerText(), '100');
-  assert.equal(await page.locator('.shop-coin').count(), 1);
+  // the account plaque is gone; the topbar carries the coin balance instead
+  assert.equal(await page.locator('.shop-wallet, .shop-coin').count(), 0);
+  assert.equal(await page.locator('#current-coins').textContent(), '当前金币 100');
   assert.equal(await page.locator('#shop-result, .shop-heading h1, .owned-mark').count(), 0);
   assert.doesNotMatch(
     await page.locator('#shop').innerText(),
@@ -62,7 +63,7 @@ try {
     assert.equal(await page.locator(`[data-toy-stand="${id}"]`).isVisible(), false);
   }
   await page.screenshot({ path: 'test-results/shop-purchased.png' });
-  assert.equal(await page.locator('#shop-balance').textContent(), '25');
+  assert.equal(await page.locator('#current-coins').textContent(), '当前金币 25');
   assert.equal(await page.locator('[data-buy="frog"]').isDisabled(), true);
   await page.locator('#leave-shop').click();
   await page.waitForFunction(() => gameApp.state.visual.dealTime > 2.38);

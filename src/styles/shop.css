@@ -34,55 +34,9 @@
   height: 100%;
   overflow: visible;
 }
-/* Keep the account plaque above the shop’s upper-left corner, clear of the sign. */
-.shop-wallet {
-  position: absolute;
-  left: 0;
-  bottom: calc(100% + 8px);
-  z-index: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 5px;
-  width: clamp(64px, 10.5%, 104px);
-  padding: 5px 4px;
-  border: 1.5px solid #6c492d;
-  border-radius: 2px;
-  background: #f3dfad;
-  box-shadow: 1px 2px 0 #6a3728;
-  pointer-events: none;
-}
-.shop-wallet::before,
-.shop-wallet::after {
-  content: '';
-  position: absolute;
-  top: 50%;
-  width: 3px;
-  height: 3px;
-  border-radius: 50%;
-  background: #a8752a;
-  transform: translateY(-50%);
-}
-.shop-wallet::before {
-  left: 3px;
-}
-.shop-wallet::after {
-  right: 3px;
-}
-.shop-coin {
-  width: clamp(16px, 2vw, 23px);
-  height: clamp(16px, 2vw, 23px);
-  flex: 0 0 auto;
-}
 .toy-body {
   filter: drop-shadow(1px 0 0 #fff4d6) drop-shadow(-1px 0 0 #fff4d6) drop-shadow(0 -1px 0 #fff4d6)
     drop-shadow(0 2px 1px #332b2640);
-}
-.shop-wallet strong {
-  color: #70451e;
-  font-size: clamp(16px, 1.65vw, 23px);
-  font-variant-numeric: tabular-nums;
-  line-height: 1.15;
 }
 /* Hover zone over each toy, down to its price card on the counter front. */
 .shop-product {
@@ -200,13 +154,6 @@
   }
   #shop {
     padding: 10px;
-  }
-  .shop-wallet {
-    gap: 3px;
-    padding: 4px;
-  }
-  .shop-wallet strong {
-    font-size: 16px;
   }
   .price-tag {
     min-width: 0;

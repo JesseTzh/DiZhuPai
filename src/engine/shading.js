@@ -1,9 +1,6 @@
-import { rotV } from './camera.js';
-import { norm, dot } from './math.js';
-const vis = (n) => {
-  const r = rotV(n);
-  return r[0] + r[1] + r[2] > 1e-6;
-}; // viewer looks from (+1,+1,+1) after the turn
+import { camDot, visDot, lightDots, foldLights } from './camera.js';
+import { norm } from './math.js';
+const vis = (n) => visDot(n) > 1e-6; // viewer looks from (+1,+1,+1) after the turn
 const facing = vis; // readable alias: is this face toward the viewer?
 const SHADOW_K = 0.85,
   AZ_MIN = 20,
@@ -17,8 +14,10 @@ function setLight(deg) {
   const a = (deg * Math.PI) / 180;
   SH = [SHADOW_K * Math.cos(a), SHADOW_K * Math.sin(a)];
   L = norm([-SH[0], -SH[1], 1]);
+  foldLights([L, LIN]);
 }
 const LIN = norm([0.6, 0.2, 1]); // fixed light for interiors / small props
+foldLights([L, LIN]);
 // Three flat tones, but blended across a narrow band at each step, so a face that turns past a threshold while the
 // figure rotates fades between tones instead of snapping (at rest almost every face still sits on a pure tone).
 const SOFT = 0.18;
@@ -31,8 +30,8 @@ const step3 = (d, hi, lo, m) => {
     b = ss(lo - SOFT, lo + SOFT, d);
   return a >= 1 ? m.l : b <= 0 ? m.d : a > 0 ? mix(m.m, m.l, a) : b < 1 ? mix(m.d, m.m, b) : m.m;
 };
-const tone = (n, m) => step3(dot(rotV(n), L), -0.15, -0.45, m); // exterior, follows the sun
-const toneI = (n, m) => step3(dot(rotV(n), LIN), 0.6, 0.05, m); // interior / props
+const tone = (n, m) => step3(camDot(n, lightDots[0]), -0.15, -0.45, m); // exterior, follows the sun
+const toneI = (n, m) => step3(camDot(n, lightDots[1]), 0.6, 0.05, m); // interior / props
 const mix = (a, b, t) =>
   '#' +
   [1, 3, 5]

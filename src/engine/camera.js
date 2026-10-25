@@ -35,6 +35,7 @@ export function setCameraPitch(degrees, distance = 0) {
   }
   cameraDistance = Math.max(0, distance);
   cameraPitch = pitch;
+  refold();
   return pitch;
 }
 export const hasPerspective = () => cameraDistance > 0;
@@ -42,9 +43,40 @@ const camDot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 const rotV = (n) => {
   const r = camDot(n, CAM_R),
     u = camDot(n, CAM_U),
-    v = camDot(n, CAM_V);
-  return [0, 1, 2].map((i) => CAM_B0.R[i] * r + CAM_B0.U[i] * u + CAM_B0.V[i] * v);
+    v = camDot(n, CAM_V),
+    { R, U, V } = CAM_B0;
+  return [
+    R[0] * r + U[0] * u + V[0] * v,
+    R[1] * r + U[1] * u + V[1] * v,
+    R[2] * r + U[2] * u + V[2] * v,
+  ];
 };
+/* vis() and tone() ask two scalar questions about rotV(n) — the component sum and a dot with
+ * a light — for every face of every part each frame. Both are linear in n, so each folds into
+ * one world-space vector, refreshed on pitch and light changes; the hot queries then cost a
+ * single dot product and allocate nothing. */
+const foldVec = (w) => [0, 1, 2].map((j) => CAM_R[j] * w[0] + CAM_U[j] * w[1] + CAM_V[j] * w[2]);
+let foldedLights = null;
+export let visDot = null,
+  lightDots = null;
+function refold() {
+  const B0 = CAM_B0,
+    sumVis = [
+      B0.R[0] + B0.R[1] + B0.R[2],
+      B0.U[0] + B0.U[1] + B0.U[2],
+      B0.V[0] + B0.V[1] + B0.V[2],
+    ],
+    vis = foldVec(sumVis);
+  visDot = (n) => camDot(n, vis);
+  lightDots = foldedLights
+    ? foldedLights.map((l) => foldVec([camDot(B0.R, l), camDot(B0.U, l), camDot(B0.V, l)]))
+    : null;
+}
+export function foldLights(lights) {
+  foldedLights = lights;
+  refold();
+}
+refold();
 const P = (x, y, z) => {
   const q = [x - RC[0], y - RC[1], z - RCZ];
   const scale = cameraDistance
@@ -117,6 +149,7 @@ export {
   RC,
   RCZ,
   CAM_V,
+  camDot,
   rotV,
   P,
   Dv,

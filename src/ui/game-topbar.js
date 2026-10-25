@@ -97,12 +97,12 @@ export function mountGameTopbar(stage, menu, state) {
     const itemY = mobile ? 65 : 26;
     const itemX = mobile ? 20 : 330;
     const owned = ITEMS.filter((item) => state.game.items.includes(item.id));
+    const step = Math.min(mobile ? 56 : 68, (width - itemX - 20) / Math.max(1, owned.length));
     for (const [i, item] of ITEMS.entries()) {
       const index = owned.indexOf(item),
         hit = items[i];
       hit.hidden = index < 0;
       if (index < 0) continue;
-      const step = Math.min(mobile ? 76 : 94, (width - itemX - 20) / Math.max(1, owned.length));
       const x = itemX + index * step;
       drawIcon(ctx, item.id, x, itemY - 2, 34);
       place(hit, x, itemY - 5, step - 2, 40);
@@ -122,7 +122,7 @@ export function mountGameTopbar(stage, menu, state) {
     if (hint) {
       const boxWidth = Math.min(260, width - 18);
       const index = owned.indexOf(hint);
-      const x = Math.min(width - boxWidth - 9, itemX + index * (mobile ? 76 : 94));
+      const x = Math.min(width - boxWidth - 9, itemX + index * step);
       drawItemHint(ctx, hint, x, height + 6, boxWidth);
     }
   }

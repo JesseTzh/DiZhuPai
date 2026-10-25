@@ -1,6 +1,6 @@
 # 代码结构与开发约定
 
-项目采用原生 ES Modules、Canvas 2D 和 SVG 交互外壳，无框架、CDN 或 WebGPU 后端。新增功能先找到下表对应模块，保持入口只做组装。
+项目采用原生 ES Modules、Canvas 2D 和 SVG 交互外壳，无框架、CDN 或 WebGPU 后端。新增功能先找到下表对应模块，保持入口只做组装。渲染管线的逐帧流程、相机/着色约定与性能测量见 [rendering.md](rendering.md)。
 
 ## 职责分布
 

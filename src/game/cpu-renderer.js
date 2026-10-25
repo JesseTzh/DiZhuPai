@@ -25,6 +25,8 @@ export async function createRenderer(art, svg) {
     lastTime = 0;
   const hoverProgress = new Map();
   svg.classList.add('cpu-active');
+  // Stable DOM anchors; per-frame lookups would cost more than the draw itself.
+  let stageEl, topbarEl, wbEl;
   function refresh() {
     if (!redraw && !disposed)
       redraw = requestAnimationFrame(() => {
@@ -50,9 +52,10 @@ export async function createRenderer(art, svg) {
     if (!moving) lastTime = 0;
   };
   const updateHover = (id) => {
-    if (id === hover) return;
-    hover = id;
-    if (id != null && !hoverProgress.has(id)) hoverProgress.set(id, 0);
+    const key = id == null ? null : Number(id);
+    if (key === hover) return;
+    hover = key;
+    if (key != null && !hoverProgress.has(key)) hoverProgress.set(key, 0);
     if (!animation) animation = requestAnimationFrame(animate);
   };
   const setHover = (event) => {
@@ -74,15 +77,15 @@ export async function createRenderer(art, svg) {
       { A, B, outline } = table;
     // CSS transforms must not change the viewport or raster resolution.
     canvas.size = { width: svg.clientWidth, height: svg.clientHeight };
-    const stage = svg.closest('.stage'),
-      topbar = stage?.querySelector('.game-topbar');
+    stageEl ||= svg.closest('.stage');
+    topbarEl ||= stageEl?.querySelector('.game-topbar');
     const layout =
-      topbar && !home
+      topbarEl && !home
         ? {
             zoom: 1.02,
             surface: [...A, ...B],
             centerY:
-              (topbar.offsetTop + topbar.offsetHeight + stage.clientHeight) / 2 -
+              (topbarEl.offsetTop + topbarEl.offsetHeight + stageEl.clientHeight) / 2 -
               svg.parentElement.offsetTop,
           }
         : {};
@@ -118,15 +121,15 @@ export async function createRenderer(art, svg) {
       );
     const order = paintOrder;
     for (const { id, pose, options } of frame.cards) {
-      const hover = options.act ? hoverProgress.get(String(id)) || 0 : 0;
+      const hover = options.act ? hoverProgress.get(id) || 0 : 0;
       // Slide on the tabletop; retain the resting pose for stacking and hit order.
       const lift = options.selected ? 22 : 12 * hover;
       const resting = canvas.cardGeometry(pose);
-      const g = canvas.cardGeometry({ ...pose, v: pose.v - lift });
+      const g = lift ? canvas.cardGeometry({ ...pose, v: pose.v - lift }) : resting;
       // Hover never moves its own hit area: a stationary pointer cannot retrigger it.
-      const hit = options.selected ? canvas.cardGeometry({ ...pose, v: pose.v - 22 }) : resting;
+      const hit = options.selected ? g : resting;
       const ring = facing(hit.N) ? hit.B : hit.A;
-      if (options.shadow !== false) canvas.shadow([...g.A, ...g.B], 0, B);
+      if (options.shadow !== false) canvas.addShadow([...g.A, ...g.B], 0);
       const image =
         facing(g.N) && !options.back
           ? options.wild
@@ -166,11 +169,11 @@ export async function createRenderer(art, svg) {
       const model = canvas.sackGeometry(state, player),
         m = model.m;
       const map = (p) => p.map((q, i) => pos[i] + 1.08 * (q - (i === 2 ? 0 : 48)));
-      canvas.shadow([...m.body[2], ...m.body[8], ...m.shell.at(-1)].map(map), 0, B);
+      canvas.addShadow([...m.body[2], ...m.body[8], ...m.shell.at(-1)].map(map), 0);
       for (const c of state.coins)
         if (c.mode !== 'rain') {
           const g = canvas.coinGeometry(c);
-          canvas.shadow([...g.A, ...g.B].map(map), 0, B);
+          canvas.addShadow([...g.A, ...g.B].map(map), 0);
         }
       parts.push({
         at: pos.map((q, i) => q + (i === 2 ? 30 : 0)),
@@ -184,7 +187,7 @@ export async function createRenderer(art, svg) {
     }
     for (const { c, tilt, heading, psi } of frame.coins) {
       const g = coinShape(c, tilt, heading, psi);
-      canvas.shadow([...g.A, ...g.B], 0, B);
+      canvas.addShadow([...g.A, ...g.B], 0);
       parts.push({ at: c, box: bounds([...g.A, ...g.B]), draw: () => canvas.coin(g, images.coin) });
     }
     for (const id of home ? [] : st.game.items) {
@@ -196,11 +199,13 @@ export async function createRenderer(art, svg) {
         `<g class="table-item" id="table-item-${id}" data-item="${id}" role="img" tabindex="0" aria-label="${item.toy}：${item.effect}" aria-describedby="item-tooltip"><path d="${tableItemHit(canvas, model)}" fill="transparent" pointer-events="all"/></g>`,
       );
     }
+    // One flat fill for every tabletop shadow collected above (single clip, single fill).
+    canvas.flushShadows(B);
     parts.sort(order);
     hitTargets.sort(order);
     overlay.push(...hitTargets.map((target) => target.markup));
     for (const part of parts) part.draw();
-    canvas.finish(+document.getElementById('wb').value);
+    canvas.finish(+((wbEl ||= document.getElementById('wb'))?.value ?? 2.4));
     for (const { text, u, v, z, cls } of frame.labels) {
       const [x, y] = P(...world(u, v, z));
       overlay.push(
