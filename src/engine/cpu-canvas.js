@@ -75,10 +75,15 @@ export class CPUCanvas {
     );
     ctx.lineJoin = 'round';
     ctx.lineCap = 'round';
+    // Raster size and view transform: with the camera key, it decides when sprites expire.
+    this.transform = `${w}x${h}|${scale}|${(w - view.width * scale) / 2 - view.x * scale}|${(h - view.height * scale) / 2 - view.y * scale}`;
     this.shadowRun = null;
     this.origin = P(0, 0, 0);
     this.axes = [Dv(1, 0, 0), Dv(0, 1, 0), Dv(0, 0, 1)];
     this.perspective = hasPerspective();
+  }
+  transformKey() {
+    return this.transform;
   }
   finish(grain = 2.4) {
     if (!grain) return;
@@ -134,17 +139,38 @@ export class CPUCanvas {
   // Shadows are an opaque flat colour, so many small hulls may share one fill:
   // add each silhouette, then a single clipped flush paints them all.
   addShadow(points, z = 0) {
+    this.addShadowRing(this.shadowRing(points, z));
+  }
+  // The projected outline a part casts on the plane at height z (view coordinates).
+  shadowRing(points, z = 0) {
     const [sx, sy] = SH,
       k = SHADOW_LEN / SHADOW_K;
-    const flat = points.map(([x, y, h]) => [x + (h - z) * sx * k, y + (h - z) * sy * k, z]),
-      ring = hull(flat),
-      run = (this.shadowRun ??= new Path2D());
+    return hull(points.map(([x, y, h]) => [x + (h - z) * sx * k, y + (h - z) * sy * k, z])).map(
+      (p) => this.project(p),
+    );
+  }
+  addShadowRing(ring) {
+    const run = (this.shadowRun ??= new Path2D());
     for (let i = 0; i < ring.length; i++) {
-      const p = this.project(ring[i]);
-      if (i) run.lineTo(p[0], p[1]);
-      else run.moveTo(p[0], p[1]);
+      if (i) run.lineTo(ring[i][0], ring[i][1]);
+      else run.moveTo(ring[i][0], ring[i][1]);
     }
     run.closePath();
+  }
+  // View-space bounding box [x0, y0, x1, y1] of projected points, grown by `pad` units.
+  extent(points, pad = 0) {
+    let x0 = Infinity,
+      y0 = Infinity,
+      x1 = -Infinity,
+      y1 = -Infinity;
+    for (const point of points) {
+      const [x, y] = this.project(point);
+      if (x < x0) x0 = x;
+      if (x > x1) x1 = x;
+      if (y < y0) y0 = y;
+      if (y > y1) y1 = y;
+    }
+    return [x0 - pad, y0 - pad, x1 + pad, y1 + pad];
   }
   flushShadows(clip = null) {
     if (!this.shadowRun) return;
@@ -194,106 +220,101 @@ export class CPUCanvas {
   }
   perspectiveImage(image, o, u, v, width, height) {
     // Tessellate the print so its corners follow the same projection as its solid body.
-    // 3×3 keeps the warp error of a hand card under a tenth of a view-box unit.
+    // Each cell of a 3×3 grid is one affine drawImage fitted to its four projected corners
+    // (mean of opposite edges, centred on the cell), so a hand card warps by under a tenth of
+    // a view-box unit. Cells overlap their neighbours by one texel instead of clipping, which
+    // hides seams without a clip per cell; the caller's outline clip trims the outer edge.
     const steps = width > 50 ? 3 : 2,
       ctx = this.ctx,
-      grid = Array.from({ length: steps + 1 }, (_, y) =>
-        Array.from({ length: steps + 1 }, (_, x) =>
-          this.project(
-            o.map((q, k) => q + (u[k] * width * x) / steps + (v[k] * height * y) / steps),
-          ),
-        ),
-      );
-    const triangle = (a, b, c, sa, sb, sc) => {
-      const det = (sb[0] - sa[0]) * (sc[1] - sa[1]) - (sc[0] - sa[0]) * (sb[1] - sa[1]);
-      const axis = (k) => [
-        ((b[k] - a[k]) * (sc[1] - sa[1]) - (c[k] - a[k]) * (sb[1] - sa[1])) / det,
-        ((c[k] - a[k]) * (sb[0] - sa[0]) - (b[k] - a[k]) * (sc[0] - sa[0])) / det,
-      ];
-      const X = axis(0),
-        Y = axis(1);
-      ctx.save();
-      ctx.beginPath();
-      // Subpixel overlap prevents hairline seams between adjacent textured triangles.
-      const center = [0, 1].map((k) => (a[k] + b[k] + c[k]) / 3);
-      for (const [i, p] of [a, b, c].entries()) {
-        const q = p.map((n, k) => n + (n - center[k]) * 0.006);
-        if (i) ctx.lineTo(...q);
-        else ctx.moveTo(...q);
-      }
-      ctx.closePath();
-      ctx.clip();
-      ctx.transform(
-        X[0],
-        Y[0],
-        X[1],
-        Y[1],
-        a[0] - X[0] * sa[0] - X[1] * sa[1],
-        a[1] - Y[0] * sa[0] - Y[1] * sa[1],
-      );
-      // Sample only this cell, with a texel gutter for the overlapping seams.
-      // Drawing the complete texture for every triangle wastes raster work.
-      const padX = width / image.width,
-        padY = height / image.height,
-        left = Math.max(0, Math.min(sa[0], sb[0], sc[0]) - padX),
-        top = Math.max(0, Math.min(sa[1], sb[1], sc[1]) - padY),
-        right = Math.min(width, Math.max(sa[0], sb[0], sc[0]) + padX),
-        bottom = Math.min(height, Math.max(sa[1], sb[1], sc[1]) + padY);
-      ctx.drawImage(
-        image,
-        left / padX,
-        top / padY,
-        (right - left) / padX,
-        (bottom - top) / padY,
-        left,
-        top,
-        right - left,
-        bottom - top,
-      );
-      ctx.restore();
-    };
+      cw = width / steps,
+      ch = height / steps,
+      padX = width / image.width,
+      padY = height / image.height,
+      grid = [];
+    for (let y = 0; y <= steps; y++)
+      for (let x = 0; x <= steps; x++)
+        grid.push(this.project(o.map((q, k) => q + u[k] * cw * x + v[k] * ch * y)));
+    const row = steps + 1;
     for (let y = 0; y < steps; y++)
       for (let x = 0; x < steps; x++) {
-        const a = grid[y][x],
-          b = grid[y][x + 1],
-          c = grid[y + 1][x + 1],
-          d = grid[y + 1][x];
-        const sa = [(width * x) / steps, (height * y) / steps],
-          sb = [(width * (x + 1)) / steps, sa[1]],
-          sc = [sb[0], (height * (y + 1)) / steps],
-          sd = [sa[0], sc[1]];
-        triangle(a, b, c, sa, sb, sc);
-        triangle(a, c, d, sa, sc, sd);
+        const a = grid[y * row + x],
+          b = grid[y * row + x + 1],
+          c = grid[(y + 1) * row + x + 1],
+          d = grid[(y + 1) * row + x];
+        const ux = (b[0] - a[0] + c[0] - d[0]) / (2 * cw),
+          uy = (b[1] - a[1] + c[1] - d[1]) / (2 * cw),
+          vx = (d[0] - a[0] + c[0] - b[0]) / (2 * ch),
+          vy = (d[1] - a[1] + c[1] - b[1]) / (2 * ch),
+          left = x ? padX : 0,
+          top = y ? padY : 0,
+          right = x < steps - 1 ? padX : 0,
+          bottom = y < steps - 1 ? padY : 0;
+        ctx.save();
+        ctx.transform(
+          ux,
+          uy,
+          vx,
+          vy,
+          (a[0] + b[0] + c[0] + d[0]) / 4 - (ux * cw + vx * ch) / 2,
+          (a[1] + b[1] + c[1] + d[1]) / 4 - (uy * cw + vy * ch) / 2,
+        );
+        ctx.drawImage(
+          image,
+          (x * cw - left) / padX,
+          (y * ch - top) / padY,
+          (cw + left + right) / padX,
+          (ch + top + bottom) / padY,
+          -left,
+          -top,
+          cw + left + right,
+          ch + top + bottom,
+        );
+        ctx.restore();
       }
   }
+  /* A lofted mesh: faces between consecutive rings, face (i, j) spanning ring i and i + 1
+   * from vertex j to j + 1, with mesh.normals[i][j] its normal. Each vertex is projected once;
+   * visible faces are filled per tone in one path each, then the silhouette edges are inked. */
   skin(mesh, palette, map, inside = false) {
-    const groups = new Map(),
-      ctx = this.ctx,
-      visible = mesh.normals.map((row) => row.map(facing));
-    for (const { q, n } of mesh.faces)
-      if (facing(n)) {
-        const color = (inside ? toneI : tone)(n, palette);
+    const ctx = this.ctx,
+      shade = inside ? toneI : tone,
+      rings = mesh.rings.map((ring) => ring.map((p) => this.project(map(p)))),
+      visible = mesh.normals.map((row) => row.map(facing)),
+      groups = new Map();
+    for (let i = 0; i < visible.length; i++) {
+      const A = rings[i],
+        B = rings[i + 1],
+        n = A.length;
+      for (let j = 0; j < n; j++) {
+        if (!visible[i][j]) continue;
+        const color = shade(mesh.normals[i][j], palette),
+          k = (j + 1) % n;
         let path = groups.get(color);
         if (!path) groups.set(color, (path = new Path2D()));
-        path.addPath(this.path(q.map(map)));
+        path.moveTo(A[j][0], A[j][1]);
+        path.lineTo(A[k][0], A[k][1]);
+        path.lineTo(B[k][0], B[k][1]);
+        path.lineTo(B[j][0], B[j][1]);
+        path.closePath();
       }
+    }
+    ctx.lineWidth = 0.35;
     for (const [color, path] of groups) {
       ctx.fillStyle = ctx.strokeStyle = color;
-      ctx.lineWidth = 0.35;
       ctx.fill(path);
       ctx.stroke(path);
     }
     const edges = new Path2D(),
       segment = (a, b) => {
-        edges.moveTo(...this.project(map(a)));
-        edges.lineTo(...this.project(map(b)));
+        edges.moveTo(a[0], a[1]);
+        edges.lineTo(b[0], b[1]);
       };
     for (let i = 0; i < visible.length; i++)
       for (let j = 0; j < visible[i].length; j++) {
         const k = (j + 1) % visible[i].length;
-        if (visible[i][j] !== visible[i][k]) segment(mesh.rings[i][k], mesh.rings[i + 1][k]);
+        if (visible[i][j] !== visible[i][k]) segment(rings[i][k], rings[i + 1][k]);
         if (!inside && i + 1 < visible.length && visible[i][j] !== visible[i + 1][j])
-          segment(mesh.rings[i + 1][j], mesh.rings[i + 1][k]);
+          segment(rings[i + 1][j], rings[i + 1][k]);
       }
     ctx.strokeStyle = INK;
     ctx.lineWidth = inside ? 1.4 : 1.8;

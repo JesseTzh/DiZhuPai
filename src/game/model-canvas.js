@@ -9,6 +9,15 @@ import { coinShape, COIN_R, COIN_T } from '../coins/coin.js';
 import { cardCream } from '../assets/cards/palette.js';
 import { cardCoinGold } from '../assets/cards/back.js';
 
+// A few coins lying on top of the heap, fixed so the heap doesn't shuffle as it rises.
+const HEAP = [
+  [0, 0, 0.6, 0.15, 0.2],
+  [3.2, 1.5, 0, 0.35, 1.9],
+  [-2.8, 2.4, 0.2, 0.3, 3.6],
+  [-1.5, -3.3, -0.1, 0.4, 5.1],
+  [2.6, -2.6, 0.3, 0.25, 0.9],
+];
+
 // Shared game objects sit above the generic Canvas surface and projection layer.
 export class ModelCanvas extends CPUCanvas {
   static forContext(ctx) {
@@ -17,6 +26,7 @@ export class ModelCanvas extends CPUCanvas {
   static initializeModels(painter) {
     painter.models = new Map();
     painter.restCoins = new WeakMap();
+    painter.mouths = new WeakMap();
     return painter;
   }
   constructor(svg) {
@@ -52,17 +62,17 @@ export class ModelCanvas extends CPUCanvas {
     ctx.strokeStyle = INK;
     ctx.lineWidth = 1.5;
     ctx.stroke(path);
-    if (options.deckCount) {
-      // Paper edge layers expose the stack's height beneath the top print.
+    if (options.deckCount > 1) {
+      // Paper edge layers expose the stack's height beneath the top print. They share one
+      // colour and width, so a single stroked path draws them all.
+      const edges = new Path2D();
       for (let i = 1; i < options.deckCount; i++) {
         const h = thickness * (i / options.deckCount - 0.5);
-        this.line(
-          cardOutline.map(([a, b]) => point(a, b, h)),
-          '#887e6b',
-          0.3,
-          true,
-        );
+        edges.addPath(this.path(cardOutline.map(([a, b]) => point(a, b, h))));
       }
+      ctx.strokeStyle = '#887e6b';
+      ctx.lineWidth = 0.3;
+      ctx.stroke(edges);
     }
     ctx.save();
     ctx.clip(this.path(ring));
@@ -87,11 +97,34 @@ export class ModelCanvas extends CPUCanvas {
   }
   coin(g, image, map = (p) => p) {
     const front = facing(g.n),
-      cap = front ? g.B : g.A;
-    for (let i = 0; i < g.A.length; i++) {
-      const j = (i + 1) % g.A.length,
-        n = norm(sub(avg([g.A[i], g.A[j], g.B[j], g.B[i]]), g.c));
-      if (facing(n)) this.polygon([g.A[i], g.A[j], g.B[j], g.B[i]].map(map), tone(n, cardCoinGold));
+      cap = front ? g.B : g.A,
+      ctx = this.ctx,
+      A = g.A.map((p) => this.project(map(p))),
+      B = g.B.map((p) => this.project(map(p)));
+    // Rim faces in rim order; neighbours that share a tone share one fill.
+    let color = null,
+      path = null;
+    for (let i = 0; i < A.length; i++) {
+      const j = (i + 1) % A.length,
+        n = norm(sub(avg([g.A[i], g.A[j], g.B[j], g.B[i]]), g.c)),
+        shade = facing(n) && tone(n, cardCoinGold);
+      if (shade !== color && path) {
+        ctx.fillStyle = color;
+        ctx.fill(path);
+        path = null;
+      }
+      color = shade;
+      if (!shade) continue;
+      path ??= new Path2D();
+      path.moveTo(A[i][0], A[i][1]);
+      path.lineTo(A[j][0], A[j][1]);
+      path.lineTo(B[j][0], B[j][1]);
+      path.lineTo(B[i][0], B[i][1]);
+      path.closePath();
+    }
+    if (path) {
+      ctx.fillStyle = color;
+      ctx.fill(path);
     }
     this.polygon(cap.map(map), cardCoinGold.m, INK, 0.65);
     const center = avg(cap),
@@ -132,13 +165,15 @@ export class ModelCanvas extends CPUCanvas {
       outer = mesh(m.shell),
       inner = mesh(m.shell, true);
     const weave = [];
-    const surface = (samples, color, width) =>
+    const surface = (samples, color, width) => {
+      const frames = samples.map(([th, z]) => m.frame(th, z, 0.18));
       weave.push({
-        points: samples.map(([th, z]) => m.surf(th, z, 0.18)),
-        normals: samples.map(([th, z]) => m.normal(th, z)),
+        points: frames.map((f) => f[0]),
+        normals: frames.map((f) => f[1]),
         color,
         width,
       });
+    };
     for (let j = 0; j < 15; j++)
       for (const sign of [-1, 1])
         surface(
@@ -167,7 +202,28 @@ export class ModelCanvas extends CPUCanvas {
   }
   sack(model, st, palette, pos, scale, coinImage) {
     const { m, body, outer, inner, weave } = model,
-      map = (p) => p.map((q, i) => pos[i] + scale * (q - (i === 2 ? 0 : 48)));
+      [px, py, pz] = pos,
+      map = (p) => [px + scale * (p[0] - 48), py + scale * (p[1] - 48), pz + scale * p[2]];
+    // The mouth floor and the heap on it follow the shape alone: build them once per shape.
+    let mouthParts = this.mouths.get(m);
+    if (!mouthParts) {
+      const zp = pileZ(m),
+        [x, y] = m.axis(zp);
+      this.mouths.set(
+        m,
+        (mouthParts = {
+          floor: Array.from({ length: 32 }, (_, j) =>
+            m.at((j / 32) * 2 * Math.PI, m.Hb, NECK_R * 0.97),
+          ),
+          heap:
+            zp > m.Hb - 1
+              ? HEAP.map(([dx, dy, dz, a, b]) =>
+                  coinShape([x + dx, y + dy, zp + dz + COIN_T / 2], a, b),
+                )
+              : [],
+        }),
+      );
+    }
     this.skin(body, palette, map);
     const ctx = this.ctx;
     for (const { points, normals, color, width } of weave) {
@@ -209,30 +265,17 @@ export class ModelCanvas extends CPUCanvas {
     const mouth = m.shell.at(-1);
     ctx.save();
     ctx.clip(this.path(mouth.map(map)));
-    this.polygon(
-      Array.from({ length: 32 }, (_, j) => map(m.at((j / 32) * 2 * Math.PI, m.Hb, NECK_R * 0.97))),
-      palette.d,
-    );
-    if (pileZ(m) > m.Hb - 1) {
-      const zp = pileZ(m),
-        [x, y] = m.axis(zp);
-      for (const [dx, dy, dz, a, b] of [
-        [0, 0, 0.6, 0.15, 0.2],
-        [3.2, 1.5, 0, 0.35, 1.9],
-        [-2.8, 2.4, 0.2, 0.3, 3.6],
-        [-1.5, -3.3, -0.1, 0.4, 5.1],
-        [2.6, -2.6, 0.3, 0.25, 0.9],
-      ])
-        this.coin(coinShape([x + dx, y + dy, zp + dz + COIN_T / 2], a, b), coinImage, map);
-    }
-    const loose = [];
+    this.polygon(mouthParts.floor.map(map), palette.d);
+    for (const g of mouthParts.heap) this.coin(g, coinImage, map);
+    const loose = [],
+      [mx, my] = m.axis(m.top);
     for (const c of st.coins) {
       if (c.mode === 'rain' && c.z < m.Hb) continue;
       const g = this.coinGeometry(c);
       const inMouth =
         c.z < m.rimZ + COIN_R * 0.6 &&
         c.z > m.Hb - COIN_R &&
-        Math.hypot(c.x - m.axis(m.top)[0], c.y - m.axis(m.top)[1]) < m.rimR;
+        Math.hypot(c.x - mx, c.y - my) < m.rimR;
       if (inMouth) this.coin(g, coinImage, map);
       else loose.push(g);
     }

@@ -39,6 +39,9 @@ export function setCameraPitch(degrees, distance = 0) {
   return pitch;
 }
 export const hasPerspective = () => cameraDistance > 0;
+// Every input of P(), visibility and tone, as one comparable value for retained sprites.
+export const viewKey = () =>
+  [cameraPitch, cameraDistance, OX, OY, RC[0], RC[1], RCZ, ...(lightDots?.flat() ?? [])].join();
 const camDot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 const rotV = (n) => {
   const r = camDot(n, CAM_R),
@@ -90,9 +93,8 @@ const P = (x, y, z) => {
 const Dv = (x, y, z) => [CAM_K * camDot([x, y, z], CAM_R), CAM_K * camDot([x, y, z], CAM_D)];
 // distance toward the viewer: draw parts with smaller depth first
 const depthOf = (p) => camDot(p, CAM_V);
-// sort [{at:[x,y,z], svg}] back-to-front for the current camera. A part may also give box:[[x0,y0,z0],[x1,y1,z1]]:
-// when two boxes are separated along x, y or z, the one on the viewer's side goes last (a centre point alone gets long
-// or wrapping parts wrong: a pole beside a row of keys, a spout reaching past a cup).
+// A part may give box:[[x0,y0,z0],[x1,y1,z1]]: when two boxes are separated along x, y or z, the one on the
+// viewer's side goes last (a centre point alone gets long or wrapping parts wrong: a pole beside a row of keys).
 const boxMid = (b) => [0, 1, 2].map((k) => (b[0][k] + b[1][k]) / 2);
 const sepOrder = (p, q) => {
   if (!p.box || !q.box) return 0;
@@ -103,24 +105,11 @@ const sepOrder = (p, q) => {
   }
   return 0;
 };
-const byDepth = (parts) =>
-  parts
-    .filter(Boolean)
-    .sort(
-      (p, q) => sepOrder(p, q) || depthOf(p.at || boxMid(p.box)) - depthOf(q.at || boxMid(q.box)),
-    )
-    .map((p) => p.svg)
-    .join('');
 // sepOrder cannot order a sort by itself: three mutually offset boxes can separate along different
 // axes (a cycle), and the sort then scrambles rows of overlapping cards — one card covered from both
 // sides. Scene sorts use this scalar key instead: back-to-front by part depth, for the flat cards on
 // the table exactly their stacking z.
 export const paintOrder = (a, b) => depthOf(a.at ?? boxMid(a.box)) - depthOf(b.at ?? boxMid(b.box));
-// the half of a vertical ring that faces the viewer / is turned away, as [from, to] angles in degrees (0 = +x, 90 = +y)
-const nearHalf = () => [-45, 135],
-  farHalf = () => [135, 315];
-// an open container (cup, bin, cone, drum) between two rings: far inner wall, then its contents, then the near outer wall
-
 const f = (v) => v.toFixed(1);
 const pd = (pts, close = true) =>
   'M' +
@@ -141,25 +130,4 @@ export function setCenter(xy, z) {
   RC = xy;
   RCZ = z;
 }
-export {
-  C,
-  S,
-  OX,
-  OY,
-  RC,
-  RCZ,
-  CAM_V,
-  camDot,
-  rotV,
-  P,
-  Dv,
-  depthOf,
-  boxMid,
-  sepOrder,
-  byDepth,
-  nearHalf,
-  farHalf,
-  f,
-  pd,
-  sp,
-};
+export { C, S, OX, OY, RC, RCZ, CAM_V, camDot, rotV, P, Dv, depthOf, boxMid, sepOrder, f, pd, sp };

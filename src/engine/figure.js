@@ -62,7 +62,7 @@ export function mountFigure(cfg) {
     readout = document.getElementById('readout');
   const ui = { st };
   const renderScene = cfg.renderer
-    ? cfg.renderer(art, svg)
+    ? cfg.renderer(art, svg, ui)
     : (state, material) => patchSvg(art, inkScale(cfg.scene(state, material)));
   let lastPalette;
   ui.render = () => {

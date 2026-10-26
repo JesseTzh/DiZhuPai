@@ -1,8 +1,5 @@
-import { P, byDepth, f } from '../engine/camera.js';
-import { ink, fill } from '../engine/primitives.js';
-import { cardCream } from '../assets/cards/palette.js';
-import { COIN_R, COIN_T, coinDefs, coinShape, coinSvg, coinShadow } from './coin.js';
-import { PUNCH_AT, sackModel, sackSvg, sackShadow, pileZ, pileFloor } from './sack.js';
+import { COIN_R, COIN_T } from './coin.js';
+import { PUNCH_AT, sackModel } from './sack.js';
 
 /* How it plays out
    1. Rain: coins appear above the frame, tumble down and drop through the open mouth. Each one that passes the
@@ -38,9 +35,6 @@ export const coinState = () => ({
   coins: [],
   running: false,
 });
-
-const airborne = (st) => st.coins.filter((c) => c.mode === 'rain').length;
-export const coinsOnFloor = (st) => st.coins.filter((c) => c.mode !== 'rain').length;
 
 function spawnRain(st, m) {
   const a = rnd() * 2 * Math.PI,
@@ -194,124 +188,5 @@ export function coinStep(st, dt) {
     st.coins.some((c) => c.mode !== 'rest') ||
     st.fillShow !== target ||
     st.squash > 0
-  );
-}
-
-function run(st, ui) {
-  if (st.running) return;
-  st.running = true;
-  ui.animate((dt) => {
-    const on = coinStep(st, dt);
-    if (!on) st.running = false;
-    return on;
-  });
-}
-
-export function coinRain(st, ui) {
-  const room = COIN_FULL - st.count - airborne(st) - st.rainLeft;
-  if (room <= 0) return ui.flash(st.rainLeft || airborne(st) ? '金币正在落下' : '麻袋已经装满了');
-  st.rainLeft += room;
-  run(st, ui);
-}
-
-export function coinPunch(st, ui) {
-  if (st.count === 0) return ui.flash(airborne(st) ? '先等金币落进袋里' : '麻袋是空的，先撒金币');
-  st.punchT = 0;
-  st.punchOut = 0;
-  st.punchLeft = Math.max(1, Math.min(14, Math.round(st.count * 0.35)));
-  run(st, ui);
-}
-
-export function coinReset(st, ui) {
-  Object.assign(st, { ...coinState(), pal: st.pal, az: st.az });
-  seed = 7;
-  ui.render();
-}
-
-export function coinParams(st, q) {
-  const n = q.get('fill') === '1' ? COIN_FULL : Number(q.get('coins'));
-  if (Number.isFinite(n) && n > 0) st.count = st.fillShow = Math.min(COIN_FULL, Math.round(n));
-  st.fillShow = st.count / COIN_FULL;
-}
-
-// The blow: a starburst at the dent and three swipe lines coming in from the left.
-function impact(m, t) {
-  if (t == null || t > 0.3) return '';
-  const k = t / 0.3,
-    [X, Y] = P(...m.surf(PUNCH_AT, m.zi, 1.5));
-  let s = '';
-  if (t < 0.14) {
-    const pts = Array.from({ length: 16 }, (_, i) => {
-      const a = (i / 16) * 2 * Math.PI,
-        r = (i % 2 ? 3.5 : 8) * (0.7 + k);
-      return f(X + Math.cos(a) * r) + ' ' + f(Y + Math.sin(a) * r);
-    });
-    s += fill('M' + pts.join('L') + 'Z', cardCream) + ink('M' + pts.join('L') + 'Z', 1.2);
-  }
-  let rays = '';
-  for (let i = 0; i < 9; i++) {
-    const a = (i / 9) * 2 * Math.PI + 0.3,
-      r0 = 9 + 22 * k,
-      r1 = r0 + 7 * (1 - k);
-    rays += `M${f(X + Math.cos(a) * r0)} ${f(Y + Math.sin(a) * r0)}L${f(X + Math.cos(a) * r1)} ${f(Y + Math.sin(a) * r1)}`;
-  }
-  s += ink(rays, 1.4);
-  if (t < 0.16) {
-    let sw = '';
-    for (const dz of [-6, 0, 6]) {
-      const a = P(...m.surf(PUNCH_AT, m.zi + dz, 26 - 40 * k)),
-        b = P(...m.surf(PUNCH_AT, m.zi + dz, 12 - 40 * k + 18));
-      sw += `M${f(a[0])} ${f(a[1])}L${f(b[0])} ${f(b[1])}`;
-    }
-    s += ink(sw, 1);
-  }
-  return s;
-}
-
-// A few coins lying on top of the heap, fixed so the heap doesn't shuffle as it rises.
-const HEAP = [
-  [0, 0, 0.6, 0.15, 0.2],
-  [3.2, 1.5, 0, 0.35, 1.9],
-  [-2.8, 2.4, 0.2, 0.3, 3.6],
-  [-1.5, -3.3, -0.1, 0.4, 5.1],
-  [2.6, -2.6, 0.3, 0.25, 0.9],
-];
-
-export function coinScene(st, pal) {
-  const m = sackModel(st);
-  const inside = [],
-    loose = [],
-    shadows = [];
-  const [mx, my] = m.axis(m.top);
-  for (const c of st.coins) {
-    const g = coinShape([c.x, c.y, c.z], c.a, c.b, c.psi),
-      item = { box: g.box, svg: coinSvg(g) };
-    const inMouth =
-      c.z < m.rimZ + COIN_R * 0.6 && c.z > m.Hb - COIN_R && Math.hypot(c.x - mx, c.y - my) < m.rimR;
-    (inMouth ? inside : loose).push(item);
-    if (c.mode === 'rest' || c.mode === 'settle' || (c.mode === 'fly' && c.z < 12))
-      shadows.push(coinShadow(g));
-  }
-  let contents = '';
-  const zp = pileZ(m);
-  if (zp > m.Hb - 1) {
-    const [px, py] = m.axis(zp);
-    contents += pileFloor(m);
-    for (const [dx, dy, dz, a, b] of HEAP) {
-      const g = coinShape([px + dx, py + dy, zp + dz + COIN_T / 2], a, b);
-      inside.unshift({ box: g.box, svg: coinSvg(g) });
-    }
-  }
-  contents += byDepth(inside);
-  const R = m.Rb * 1.3;
-  const sack = {
-    box: [
-      [mx - R, my - R, 0],
-      [mx + R, my + R, m.top],
-    ],
-    svg: sackSvg(m, pal, contents),
-  };
-  return (
-    coinDefs() + sackShadow(m) + shadows.join('') + byDepth([sack, ...loose]) + impact(m, st.punchT)
   );
 }

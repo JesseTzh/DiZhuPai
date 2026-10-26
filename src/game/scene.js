@@ -17,8 +17,8 @@ export function makeVisual() {
   };
 }
 
-export function createGameRenderer(art, svg) {
-  return createCanvasRenderer(art, svg, () => import('./cpu-renderer.js'));
+export function createGameRenderer(art, svg, host) {
+  return createCanvasRenderer(art, svg, () => import('./cpu-renderer.js'), host);
 }
 export function stepVisual(st, dt) {
   const v = st.visual;

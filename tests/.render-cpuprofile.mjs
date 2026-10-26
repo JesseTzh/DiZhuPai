@@ -11,6 +11,10 @@ url.searchParams.set('dpr', process.env.DPR || '2');
 await page.goto(url.href);
 await page.evaluate(() => performanceApp.ready());
 await page.locator('#density').selectOption('4');
+// LOAD=deal|play|… profiles one animation type; default is every type at once.
+if (process.env.LOAD)
+  for (const input of await page.locator('[data-animation]').all())
+    if ((await input.getAttribute('data-animation')) !== process.env.LOAD) await input.uncheck();
 await page.waitForTimeout(2000);
 
 const client = await page.context().newCDPSession(page);

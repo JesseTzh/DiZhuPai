@@ -32,15 +32,24 @@ const step3 = (d, hi, lo, m) => {
 };
 const tone = (n, m) => step3(camDot(n, lightDots[0]), -0.15, -0.45, m); // exterior, follows the sun
 const toneI = (n, m) => step3(camDot(n, lightDots[1]), 0.6, 0.05, m); // interior / props
-const mix = (a, b, t) =>
-  '#' +
-  [1, 3, 5]
-    .map((i) =>
-      Math.round(parseInt(a.substr(i, 2), 16) * (1 - t) + parseInt(b.substr(i, 2), 16) * t)
-        .toString(16)
-        .padStart(2, '0'),
-    )
-    .join('');
+// Tones are blended per face per frame: parse each palette colour once.
+const rgbCache = new Map();
+const rgb = (hex) => {
+  let c = rgbCache.get(hex);
+  if (!c) rgbCache.set(hex, (c = [1, 3, 5].map((i) => parseInt(hex.substr(i, 2), 16))));
+  return c;
+};
+const hex2 = (v) => (v < 16 ? '0' : '') + v.toString(16);
+const mix = (a, b, t) => {
+  const p = rgb(a),
+    q = rgb(b);
+  return (
+    '#' +
+    hex2(Math.round(p[0] * (1 - t) + q[0] * t)) +
+    hex2(Math.round(p[1] * (1 - t) + q[1] * t)) +
+    hex2(Math.round(p[2] * (1 - t) + q[2] * t))
+  );
+};
 const matOf = (hex) => ({ l: hex, m: mix(hex, '#000000', 0.16), d: mix(hex, '#000000', 0.42) });
 const ease = (t) => (t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2);
 
