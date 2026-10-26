@@ -74,7 +74,7 @@
     RC = xy;
     RCZ = z;
   }
-  var C, S, OX, OY, RC, RCZ, CAM_K, camBasis, CAM_B0, CAM_R, CAM_U, CAM_V, CAM_D, cameraDistance, cameraPitch, hasPerspective, camDot, foldVec, foldedLights, visDot, lightDots, P, Dv, depthOf, boxMid, sepOrder, paintOrder, f, pd, sp;
+  var C, S, OX, OY, RC, RCZ, CAM_K, camBasis, CAM_B0, CAM_R, CAM_U, CAM_V, CAM_D, cameraDistance, cameraPitch, hasPerspective, viewKey, camDot, foldVec, foldedLights, visDot, lightDots, P, Dv, depthOf, boxMid, sepOrder, paintOrder, f, pd, sp;
   var init_camera = __esm({
     "src/engine/camera.js"() {
       init_define_GAME_SOUNDS();
@@ -97,6 +97,7 @@
       cameraDistance = 0;
       cameraPitch = 90;
       hasPerspective = () => cameraDistance > 0;
+      viewKey = () => [cameraPitch, cameraDistance, OX, OY, RC[0], RC[1], RCZ, ...lightDots?.flat() ?? []].join();
       camDot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
       foldVec = (w) => [0, 1, 2].map((j) => CAM_R[j] * w[0] + CAM_U[j] * w[1] + CAM_V[j] * w[2]);
       foldedLights = null;
@@ -199,7 +200,7 @@
     L = norm([-SH[0], -SH[1], 1]);
     foldLights([L, LIN]);
   }
-  var vis, facing, SHADOW_K, SHADOW_LEN, L, SH, LIN, SOFT, step3, tone, toneI, mix;
+  var vis, facing, SHADOW_K, SHADOW_LEN, L, SH, LIN, SOFT, step3, tone, toneI, rgbCache, rgb, hex2, mix;
   var init_shading = __esm({
     "src/engine/shading.js"() {
       init_define_GAME_SOUNDS();
@@ -224,30 +225,17 @@
       };
       tone = (n, m) => step3(camDot(n, lightDots[0]), -0.15, -0.45, m);
       toneI = (n, m) => step3(camDot(n, lightDots[1]), 0.6, 0.05, m);
-      mix = (a, b, t) => "#" + [1, 3, 5].map(
-        (i) => Math.round(parseInt(a.substr(i, 2), 16) * (1 - t) + parseInt(b.substr(i, 2), 16) * t).toString(16).padStart(2, "0")
-      ).join("");
-    }
-  });
-
-  // src/engine/primitives.js
-  function setInkScale(scale) {
-    INK_K = scale;
-  }
-  var INK_REF_VB, INK_K, inkScale;
-  var init_primitives = __esm({
-    "src/engine/primitives.js"() {
-      init_define_GAME_SOUNDS();
-      init_camera();
-      init_palette();
-      init_math();
-      init_shading();
-      INK_REF_VB = 585;
-      INK_K = 1;
-      inkScale = (svg) => INK_K === 1 ? svg : svg.replace(
-        /stroke-width="([\d.]+)"/g,
-        (_, w) => `stroke-width="${(+w * INK_K).toFixed(2)}"`
-      );
+      rgbCache = /* @__PURE__ */ new Map();
+      rgb = (hex) => {
+        let c = rgbCache.get(hex);
+        if (!c) rgbCache.set(hex, c = [1, 3, 5].map((i) => parseInt(hex.substr(i, 2), 16)));
+        return c;
+      };
+      hex2 = (v) => (v < 16 ? "0" : "") + v.toString(16);
+      mix = (a, b, t) => {
+        const p = rgb(a), q = rgb(b);
+        return "#" + hex2(Math.round(p[0] * (1 - t) + q[0] * t)) + hex2(Math.round(p[1] * (1 - t) + q[1] * t)) + hex2(Math.round(p[2] * (1 - t) + q[2] * t));
+      };
     }
   });
 
@@ -321,7 +309,7 @@
 
   // src/assets/cards/primitives.js
   var cardPath, cardCircle;
-  var init_primitives2 = __esm({
+  var init_primitives = __esm({
     "src/assets/cards/primitives.js"() {
       init_define_GAME_SOUNDS();
       init_palette2();
@@ -343,7 +331,7 @@
     "src/assets/cards/suits.js"() {
       init_define_GAME_SOUNDS();
       init_palette2();
-      init_primitives2();
+      init_primitives();
       suits = [
         { id: "heart", name: "红桃", english: "HEARTS", color: cardRed, accent: cardRed },
         { id: "spade", name: "黑桃", english: "SPADES", color: cardInk, accent: cardBlue },
@@ -508,47 +496,6 @@
     }
   });
 
-  // src/assets/cards/back.js
-  function cardBackPrint(material, id) {
-    let art = `<rect x="3.8" y="3.8" width="55.4" height="80.4" rx="2" fill="${material.l}" stroke="${cardInk}" stroke-width=".65"/><rect x="5.3" y="5.3" width="52.4" height="77.4" rx="1.2" fill="none" stroke="${cardCream}" stroke-width=".65"/><clipPath id="back-field-${id}"><rect x="7.1" y="7.1" width="48.8" height="73.8" rx=".5"/></clipPath><g clip-path="url(#back-field-${id})">`;
-    for (let x = -70; x < 140; x += 7) {
-      art += `<path d="M${x} 5 l76 78 M${x} 83 l76-78" fill="none" stroke="${cardCream}" stroke-width=".45"/>`;
-    }
-    art += `</g><rect x="7.1" y="7.1" width="48.8" height="73.8" rx=".5" fill="none" stroke="${cardInk}" stroke-width=".45"/>`;
-    art += `<g transform="translate(31.5 44) scale(.8)">${goldCoin()}</g>`;
-    for (const [x, y] of [
-      [11, 11],
-      [52, 11],
-      [11, 77],
-      [52, 77]
-    ])
-      art += cardPath(`M${x} ${y - 2.2} l1.8 2.2 -1.8 2.2 -1.8-2.2Z`, cardCream, 0.4);
-    return art;
-  }
-  var coinGold, goldCoin;
-  var init_back = __esm({
-    "src/assets/cards/back.js"() {
-      init_define_GAME_SOUNDS();
-      init_palette2();
-      init_primitives2();
-      coinGold = { l: "#f8d979", m: "#eebc48", d: "#c18c37" };
-      goldCoin = () => {
-        let art = cardCircle(0, 0, 12.5, coinGold.m, 1.6) + cardCircle(0, 0, 9.7, "none", 0.8);
-        for (const [d, fill2] of [
-          ["M-11.5-3.9 l2.3-.8 1.2 1.4-.7 2.2-1.5-.3-.7 1.2-1.1-1Z", coinGold.d],
-          ["M4.2-10.9 l2.7 1.1-.7 1.6-1.6-.3-1 .9-1.2-1 .8-1Z", coinGold.d],
-          ["M8.8 2.5 l2.9-.8-.6 2.5-1.4.7-.4 1.5-1.7.6-.7-1.3 1.8-1.1Z", coinGold.d],
-          ["M-5.7-5.8 l2.4-1.3 1.9.6-.6 1.2-1.6-.2-1.3 1Z", coinGold.l],
-          ["M-5.5 7.5 l2 .5.9 1.4 1.7.1-.4 1.7-2.3-.6-1.8-1.1Z", coinGold.d],
-          ["M3.7 5.5 l2.4-.7.9.9-1.1 1.4-1.5-.3-.8.6Z", coinGold.l]
-        ])
-          art += `<path d="${d}" fill="${fill2}"/>`;
-        art += cardPath("M0-5.4 L1.9-1.8 5.2 0 1.8 1.9 0 5.3-1.9 1.8-5.2 0-1.8-1.9Z", coinGold.d, 0.8) + cardPath("M-8.7 1.8 l1.5-.6 M4.4-5.5 l1.3-.8 M-4 6.3 l1.2-.2", "none", 0.7);
-        return art;
-      };
-    }
-  });
-
   // src/coins/coin.js
   function coinShape(c, a, b, psi = 0) {
     const n = [Math.sin(a) * Math.cos(b), Math.sin(a) * Math.sin(b), Math.cos(a)];
@@ -567,11 +514,7 @@
   var init_coin = __esm({
     "src/coins/coin.js"() {
       init_define_GAME_SOUNDS();
-      init_camera();
       init_math();
-      init_shading();
-      init_primitives();
-      init_back();
       COIN_R = 5.2;
       COIN_T = 1.5;
       RING = 18;
@@ -694,6 +637,15 @@
     const normal = (th, z) => norm(
       cross(sub(surf(th + 0.01, z), surf(th - 0.01, z)), sub(surf(th, z + 0.2), surf(th, z - 0.2)))
     );
+    const frame = (th, z, out = 0) => {
+      const r = radius(th, z), p = at(th, z, r), n = norm(
+        cross(
+          sub(at(th + 0.01, z, radius(th + 0.01, z)), p),
+          sub(at(th, z + 0.2, radius(th, z + 0.2)), p)
+        )
+      );
+      return [out ? at(th, z, r + out) : p, n];
+    };
     const ringAt = (z) => Array.from({ length: NT }, (_, j) => surf(j / NT * 2 * Math.PI, z));
     const shellZ = [Hb, Hb + NECK_H, Hb + NECK_H + FLARE_H * 0.35, Hb + NECK_H + FLARE_H * 0.7, top];
     let body, shell;
@@ -707,6 +659,7 @@
       at,
       surf,
       normal,
+      frame,
       radius,
       // Physics and transfer trajectories only need the axis and radius. Do not
       // tessellate a cloth mesh for those queries (several times per frame).
@@ -721,25 +674,17 @@
       rimR: NECK_R + 6.5
     };
   }
-  var SACK_X, SACK_Y, NECK_R, NECK_H, FLARE_H, PUNCH_AT, DECAL_AT, KNOT_AT, NT, BODY_G, BODY_T, clamp01, angDiff, pileZ;
+  var SACK_X, SACK_Y, NECK_R, NECK_H, FLARE_H, PUNCH_AT, NT, BODY_G, BODY_T, clamp01, angDiff, pileZ;
   var init_sack = __esm({
     "src/coins/sack.js"() {
       init_define_GAME_SOUNDS();
-      init_camera();
       init_math();
-      init_shading();
-      init_primitives();
-      init_palette2();
-      init_back();
-      init_coin();
       SACK_X = 48;
       SACK_Y = 48;
       NECK_R = 9;
       NECK_H = 3.5;
       FLARE_H = 6.5;
       PUNCH_AT = 155 * Math.PI / 180;
-      DECAL_AT = Math.PI / 4;
-      KNOT_AT = 75 * Math.PI / 180;
       NT = 32;
       BODY_G = [0.62, 0.9, 0.98, 1, 0.97, 0.88, 0.7, 0.42, 0];
       BODY_T = [
@@ -1269,10 +1214,14 @@
           );
           ctx.lineJoin = "round";
           ctx.lineCap = "round";
+          this.transform = `${w}x${h}|${scale}|${(w - view.width * scale) / 2 - view.x * scale}|${(h - view.height * scale) / 2 - view.y * scale}`;
           this.shadowRun = null;
           this.origin = P(0, 0, 0);
           this.axes = [Dv(1, 0, 0), Dv(0, 1, 0), Dv(0, 0, 1)];
           this.perspective = hasPerspective();
+        }
+        transformKey() {
+          return this.transform;
         }
         finish(grain = 2.4) {
           if (!grain) return;
@@ -1326,14 +1275,34 @@
         // Shadows are an opaque flat colour, so many small hulls may share one fill:
         // add each silhouette, then a single clipped flush paints them all.
         addShadow(points, z = 0) {
+          this.addShadowRing(this.shadowRing(points, z));
+        }
+        // The projected outline a part casts on the plane at height z (view coordinates).
+        shadowRing(points, z = 0) {
           const [sx, sy] = SH, k = SHADOW_LEN / SHADOW_K;
-          const flat = points.map(([x, y, h]) => [x + (h - z) * sx * k, y + (h - z) * sy * k, z]), ring = hull(flat), run = this.shadowRun ??= new Path2D();
+          return hull(points.map(([x, y, h]) => [x + (h - z) * sx * k, y + (h - z) * sy * k, z])).map(
+            (p) => this.project(p)
+          );
+        }
+        addShadowRing(ring) {
+          const run = this.shadowRun ??= new Path2D();
           for (let i = 0; i < ring.length; i++) {
-            const p = this.project(ring[i]);
-            if (i) run.lineTo(p[0], p[1]);
-            else run.moveTo(p[0], p[1]);
+            if (i) run.lineTo(ring[i][0], ring[i][1]);
+            else run.moveTo(ring[i][0], ring[i][1]);
           }
           run.closePath();
+        }
+        // View-space bounding box [x0, y0, x1, y1] of projected points, grown by `pad` units.
+        extent(points, pad = 0) {
+          let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+          for (const point of points) {
+            const [x, y] = this.project(point);
+            if (x < x0) x0 = x;
+            if (x > x1) x1 = x;
+            if (y < y0) y0 = y;
+            if (y > y1) y1 = y;
+          }
+          return [x0 - pad, y0 - pad, x1 + pad, y1 + pad];
         }
         flushShadows(clip = null) {
           if (!this.shadowRun) return;
@@ -1368,87 +1337,73 @@
           ctx.restore();
         }
         perspectiveImage(image, o, u, v, width, height) {
-          const steps = width > 50 ? 3 : 2, ctx = this.ctx, grid = Array.from(
-            { length: steps + 1 },
-            (_, y) => Array.from(
-              { length: steps + 1 },
-              (_2, x) => this.project(
-                o.map((q, k) => q + u[k] * width * x / steps + v[k] * height * y / steps)
-              )
-            )
-          );
-          const triangle = (a, b, c, sa, sb, sc) => {
-            const det = (sb[0] - sa[0]) * (sc[1] - sa[1]) - (sc[0] - sa[0]) * (sb[1] - sa[1]);
-            const axis = (k) => [
-              ((b[k] - a[k]) * (sc[1] - sa[1]) - (c[k] - a[k]) * (sb[1] - sa[1])) / det,
-              ((c[k] - a[k]) * (sb[0] - sa[0]) - (b[k] - a[k]) * (sc[0] - sa[0])) / det
-            ];
-            const X = axis(0), Y = axis(1);
-            ctx.save();
-            ctx.beginPath();
-            const center2 = [0, 1].map((k) => (a[k] + b[k] + c[k]) / 3);
-            for (const [i, p] of [a, b, c].entries()) {
-              const q = p.map((n, k) => n + (n - center2[k]) * 6e-3);
-              if (i) ctx.lineTo(...q);
-              else ctx.moveTo(...q);
-            }
-            ctx.closePath();
-            ctx.clip();
-            ctx.transform(
-              X[0],
-              Y[0],
-              X[1],
-              Y[1],
-              a[0] - X[0] * sa[0] - X[1] * sa[1],
-              a[1] - Y[0] * sa[0] - Y[1] * sa[1]
-            );
-            const padX = width / image.width, padY = height / image.height, left = Math.max(0, Math.min(sa[0], sb[0], sc[0]) - padX), top = Math.max(0, Math.min(sa[1], sb[1], sc[1]) - padY), right = Math.min(width, Math.max(sa[0], sb[0], sc[0]) + padX), bottom = Math.min(height, Math.max(sa[1], sb[1], sc[1]) + padY);
-            ctx.drawImage(
-              image,
-              left / padX,
-              top / padY,
-              (right - left) / padX,
-              (bottom - top) / padY,
-              left,
-              top,
-              right - left,
-              bottom - top
-            );
-            ctx.restore();
-          };
+          const steps = width > 50 ? 3 : 2, ctx = this.ctx, cw = width / steps, ch = height / steps, padX = width / image.width, padY = height / image.height, grid = [];
+          for (let y = 0; y <= steps; y++)
+            for (let x = 0; x <= steps; x++)
+              grid.push(this.project(o.map((q, k) => q + u[k] * cw * x + v[k] * ch * y)));
+          const row = steps + 1;
           for (let y = 0; y < steps; y++)
             for (let x = 0; x < steps; x++) {
-              const a = grid[y][x], b = grid[y][x + 1], c = grid[y + 1][x + 1], d = grid[y + 1][x];
-              const sa = [width * x / steps, height * y / steps], sb = [width * (x + 1) / steps, sa[1]], sc = [sb[0], height * (y + 1) / steps], sd = [sa[0], sc[1]];
-              triangle(a, b, c, sa, sb, sc);
-              triangle(a, c, d, sa, sc, sd);
+              const a = grid[y * row + x], b = grid[y * row + x + 1], c = grid[(y + 1) * row + x + 1], d = grid[(y + 1) * row + x];
+              const ux = (b[0] - a[0] + c[0] - d[0]) / (2 * cw), uy = (b[1] - a[1] + c[1] - d[1]) / (2 * cw), vx = (d[0] - a[0] + c[0] - b[0]) / (2 * ch), vy = (d[1] - a[1] + c[1] - b[1]) / (2 * ch), left = x ? padX : 0, top = y ? padY : 0, right = x < steps - 1 ? padX : 0, bottom = y < steps - 1 ? padY : 0;
+              ctx.save();
+              ctx.transform(
+                ux,
+                uy,
+                vx,
+                vy,
+                (a[0] + b[0] + c[0] + d[0]) / 4 - (ux * cw + vx * ch) / 2,
+                (a[1] + b[1] + c[1] + d[1]) / 4 - (uy * cw + vy * ch) / 2
+              );
+              ctx.drawImage(
+                image,
+                (x * cw - left) / padX,
+                (y * ch - top) / padY,
+                (cw + left + right) / padX,
+                (ch + top + bottom) / padY,
+                -left,
+                -top,
+                cw + left + right,
+                ch + top + bottom
+              );
+              ctx.restore();
             }
         }
+        /* A lofted mesh: faces between consecutive rings, face (i, j) spanning ring i and i + 1
+         * from vertex j to j + 1, with mesh.normals[i][j] its normal. Each vertex is projected once;
+         * visible faces are filled per tone in one path each, then the silhouette edges are inked. */
         skin(mesh, palette, map, inside = false) {
-          const groups = /* @__PURE__ */ new Map(), ctx = this.ctx, visible = mesh.normals.map((row) => row.map(facing));
-          for (const { q, n } of mesh.faces)
-            if (facing(n)) {
-              const color = (inside ? toneI : tone)(n, palette);
+          const ctx = this.ctx, shade = inside ? toneI : tone, rings = mesh.rings.map((ring) => ring.map((p) => this.project(map(p)))), visible = mesh.normals.map((row) => row.map(facing)), groups = /* @__PURE__ */ new Map();
+          for (let i = 0; i < visible.length; i++) {
+            const A = rings[i], B = rings[i + 1], n = A.length;
+            for (let j = 0; j < n; j++) {
+              if (!visible[i][j]) continue;
+              const color = shade(mesh.normals[i][j], palette), k = (j + 1) % n;
               let path2 = groups.get(color);
               if (!path2) groups.set(color, path2 = new Path2D());
-              path2.addPath(this.path(q.map(map)));
+              path2.moveTo(A[j][0], A[j][1]);
+              path2.lineTo(A[k][0], A[k][1]);
+              path2.lineTo(B[k][0], B[k][1]);
+              path2.lineTo(B[j][0], B[j][1]);
+              path2.closePath();
             }
+          }
+          ctx.lineWidth = 0.35;
           for (const [color, path2] of groups) {
             ctx.fillStyle = ctx.strokeStyle = color;
-            ctx.lineWidth = 0.35;
             ctx.fill(path2);
             ctx.stroke(path2);
           }
           const edges = new Path2D(), segment = (a, b) => {
-            edges.moveTo(...this.project(map(a)));
-            edges.lineTo(...this.project(map(b)));
+            edges.moveTo(a[0], a[1]);
+            edges.lineTo(b[0], b[1]);
           };
           for (let i = 0; i < visible.length; i++)
             for (let j = 0; j < visible[i].length; j++) {
               const k = (j + 1) % visible[i].length;
-              if (visible[i][j] !== visible[i][k]) segment(mesh.rings[i][k], mesh.rings[i + 1][k]);
+              if (visible[i][j] !== visible[i][k]) segment(rings[i][k], rings[i + 1][k]);
               if (!inside && i + 1 < visible.length && visible[i][j] !== visible[i + 1][j])
-                segment(mesh.rings[i + 1][j], mesh.rings[i + 1][k]);
+                segment(rings[i + 1][j], rings[i + 1][k]);
             }
           ctx.strokeStyle = INK;
           ctx.lineWidth = inside ? 1.4 : 1.8;
@@ -1463,8 +1418,49 @@
     }
   });
 
+  // src/assets/cards/back.js
+  function cardBackPrint(material, id) {
+    let art = `<rect x="3.8" y="3.8" width="55.4" height="80.4" rx="2" fill="${material.l}" stroke="${cardInk}" stroke-width=".65"/><rect x="5.3" y="5.3" width="52.4" height="77.4" rx="1.2" fill="none" stroke="${cardCream}" stroke-width=".65"/><clipPath id="back-field-${id}"><rect x="7.1" y="7.1" width="48.8" height="73.8" rx=".5"/></clipPath><g clip-path="url(#back-field-${id})">`;
+    for (let x = -70; x < 140; x += 7) {
+      art += `<path d="M${x} 5 l76 78 M${x} 83 l76-78" fill="none" stroke="${cardCream}" stroke-width=".45"/>`;
+    }
+    art += `</g><rect x="7.1" y="7.1" width="48.8" height="73.8" rx=".5" fill="none" stroke="${cardInk}" stroke-width=".45"/>`;
+    art += `<g transform="translate(31.5 44) scale(.8)">${goldCoin()}</g>`;
+    for (const [x, y] of [
+      [11, 11],
+      [52, 11],
+      [11, 77],
+      [52, 77]
+    ])
+      art += cardPath(`M${x} ${y - 2.2} l1.8 2.2 -1.8 2.2 -1.8-2.2Z`, cardCream, 0.4);
+    return art;
+  }
+  var coinGold, goldCoin;
+  var init_back = __esm({
+    "src/assets/cards/back.js"() {
+      init_define_GAME_SOUNDS();
+      init_palette2();
+      init_primitives();
+      coinGold = { l: "#f8d979", m: "#eebc48", d: "#c18c37" };
+      goldCoin = () => {
+        let art = cardCircle(0, 0, 12.5, coinGold.m, 1.6) + cardCircle(0, 0, 9.7, "none", 0.8);
+        for (const [d, fill] of [
+          ["M-11.5-3.9 l2.3-.8 1.2 1.4-.7 2.2-1.5-.3-.7 1.2-1.1-1Z", coinGold.d],
+          ["M4.2-10.9 l2.7 1.1-.7 1.6-1.6-.3-1 .9-1.2-1 .8-1Z", coinGold.d],
+          ["M8.8 2.5 l2.9-.8-.6 2.5-1.4.7-.4 1.5-1.7.6-.7-1.3 1.8-1.1Z", coinGold.d],
+          ["M-5.7-5.8 l2.4-1.3 1.9.6-.6 1.2-1.6-.2-1.3 1Z", coinGold.l],
+          ["M-5.5 7.5 l2 .5.9 1.4 1.7.1-.4 1.7-2.3-.6-1.8-1.1Z", coinGold.d],
+          ["M3.7 5.5 l2.4-.7.9.9-1.1 1.4-1.5-.3-.8.6Z", coinGold.l]
+        ])
+          art += `<path d="${d}" fill="${fill}"/>`;
+        art += cardPath("M0-5.4 L1.9-1.8 5.2 0 1.8 1.9 0 5.3-1.9 1.8-5.2 0-1.8-1.9Z", coinGold.d, 0.8) + cardPath("M-8.7 1.8 l1.5-.6 M4.4-5.5 l1.3-.8 M-4 6.3 l1.2-.2", "none", 0.7);
+        return art;
+      };
+    }
+  });
+
   // src/game/model-canvas.js
-  var ModelCanvas;
+  var HEAP, ModelCanvas;
   var init_model_canvas = __esm({
     "src/game/model-canvas.js"() {
       init_define_GAME_SOUNDS();
@@ -1478,6 +1474,13 @@
       init_coin();
       init_palette2();
       init_back();
+      HEAP = [
+        [0, 0, 0.6, 0.15, 0.2],
+        [3.2, 1.5, 0, 0.35, 1.9],
+        [-2.8, 2.4, 0.2, 0.3, 3.6],
+        [-1.5, -3.3, -0.1, 0.4, 5.1],
+        [2.6, -2.6, 0.3, 0.25, 0.9]
+      ];
       ModelCanvas = class _ModelCanvas extends CPUCanvas {
         static forContext(ctx) {
           return this.initializeModels(super.forContext(ctx));
@@ -1485,6 +1488,7 @@
         static initializeModels(painter) {
           painter.models = /* @__PURE__ */ new Map();
           painter.restCoins = /* @__PURE__ */ new WeakMap();
+          painter.mouths = /* @__PURE__ */ new WeakMap();
           return painter;
         }
         constructor(svg) {
@@ -1510,16 +1514,15 @@
           ctx.strokeStyle = INK;
           ctx.lineWidth = 1.5;
           ctx.stroke(path2);
-          if (options.deckCount) {
+          if (options.deckCount > 1) {
+            const edges = new Path2D();
             for (let i = 1; i < options.deckCount; i++) {
               const h = thickness * (i / options.deckCount - 0.5);
-              this.line(
-                cardOutline.map(([a, b]) => point(a, b, h)),
-                "#887e6b",
-                0.3,
-                true
-              );
+              edges.addPath(this.path(cardOutline.map(([a, b]) => point(a, b, h))));
             }
+            ctx.strokeStyle = "#887e6b";
+            ctx.lineWidth = 0.3;
+            ctx.stroke(edges);
           }
           ctx.save();
           ctx.clip(this.path(ring));
@@ -1543,10 +1546,27 @@
           return g;
         }
         coin(g, image, map = (p) => p) {
-          const front = facing(g.n), cap = front ? g.B : g.A;
-          for (let i = 0; i < g.A.length; i++) {
-            const j = (i + 1) % g.A.length, n = norm(sub(avg([g.A[i], g.A[j], g.B[j], g.B[i]]), g.c));
-            if (facing(n)) this.polygon([g.A[i], g.A[j], g.B[j], g.B[i]].map(map), tone(n, coinGold));
+          const front = facing(g.n), cap = front ? g.B : g.A, ctx = this.ctx, A = g.A.map((p) => this.project(map(p))), B = g.B.map((p) => this.project(map(p)));
+          let color = null, path2 = null;
+          for (let i = 0; i < A.length; i++) {
+            const j = (i + 1) % A.length, n = norm(sub(avg([g.A[i], g.A[j], g.B[j], g.B[i]]), g.c)), shade = facing(n) && tone(n, coinGold);
+            if (shade !== color && path2) {
+              ctx.fillStyle = color;
+              ctx.fill(path2);
+              path2 = null;
+            }
+            color = shade;
+            if (!shade) continue;
+            path2 ??= new Path2D();
+            path2.moveTo(A[i][0], A[i][1]);
+            path2.lineTo(A[j][0], A[j][1]);
+            path2.lineTo(B[j][0], B[j][1]);
+            path2.lineTo(B[i][0], B[i][1]);
+            path2.closePath();
+          }
+          if (path2) {
+            ctx.fillStyle = color;
+            ctx.fill(path2);
           }
           this.polygon(cap.map(map), coinGold.m, INK, 0.65);
           const center2 = avg(cap), r = COIN_R, sign = front ? 1 : -1;
@@ -1578,12 +1598,15 @@
           };
           const body = mesh(m.body), outer = mesh(m.shell), inner = mesh(m.shell, true);
           const weave = [];
-          const surface = (samples, color, width) => weave.push({
-            points: samples.map(([th, z]) => m.surf(th, z, 0.18)),
-            normals: samples.map(([th, z]) => m.normal(th, z)),
-            color,
-            width
-          });
+          const surface = (samples, color, width) => {
+            const frames = samples.map(([th, z]) => m.frame(th, z, 0.18));
+            weave.push({
+              points: frames.map((f2) => f2[0]),
+              normals: frames.map((f2) => f2[1]),
+              color,
+              width
+            });
+          };
           for (let j = 0; j < 15; j++)
             for (const sign of [-1, 1])
               surface(
@@ -1611,7 +1634,23 @@
           return model2;
         }
         sack(model2, st, palette, pos, scale, coinImage) {
-          const { m, body, outer, inner, weave } = model2, map = (p) => p.map((q, i) => pos[i] + scale * (q - (i === 2 ? 0 : 48)));
+          const { m, body, outer, inner, weave } = model2, [px, py, pz] = pos, map = (p) => [px + scale * (p[0] - 48), py + scale * (p[1] - 48), pz + scale * p[2]];
+          let mouthParts = this.mouths.get(m);
+          if (!mouthParts) {
+            const zp = pileZ(m), [x, y] = m.axis(zp);
+            this.mouths.set(
+              m,
+              mouthParts = {
+                floor: Array.from(
+                  { length: 32 },
+                  (_, j) => m.at(j / 32 * 2 * Math.PI, m.Hb, NECK_R * 0.97)
+                ),
+                heap: zp > m.Hb - 1 ? HEAP.map(
+                  ([dx, dy, dz, a, b]) => coinShape([x + dx, y + dy, zp + dz + COIN_T / 2], a, b)
+                ) : []
+              }
+            );
+          }
           this.skin(body, palette, map);
           const ctx = this.ctx;
           for (const { points, normals, color, width } of weave) {
@@ -1648,26 +1687,13 @@
           const mouth = m.shell.at(-1);
           ctx.save();
           ctx.clip(this.path(mouth.map(map)));
-          this.polygon(
-            Array.from({ length: 32 }, (_, j) => map(m.at(j / 32 * 2 * Math.PI, m.Hb, NECK_R * 0.97))),
-            palette.d
-          );
-          if (pileZ(m) > m.Hb - 1) {
-            const zp = pileZ(m), [x, y] = m.axis(zp);
-            for (const [dx, dy, dz, a, b] of [
-              [0, 0, 0.6, 0.15, 0.2],
-              [3.2, 1.5, 0, 0.35, 1.9],
-              [-2.8, 2.4, 0.2, 0.3, 3.6],
-              [-1.5, -3.3, -0.1, 0.4, 5.1],
-              [2.6, -2.6, 0.3, 0.25, 0.9]
-            ])
-              this.coin(coinShape([x + dx, y + dy, zp + dz + COIN_T / 2], a, b), coinImage, map);
-          }
-          const loose = [];
+          this.polygon(mouthParts.floor.map(map), palette.d);
+          for (const g of mouthParts.heap) this.coin(g, coinImage, map);
+          const loose = [], [mx, my] = m.axis(m.top);
           for (const c of st.coins) {
             if (c.mode === "rain" && c.z < m.Hb) continue;
             const g = this.coinGeometry(c);
-            const inMouth = c.z < m.rimZ + COIN_R * 0.6 && c.z > m.Hb - COIN_R && Math.hypot(c.x - m.axis(m.top)[0], c.y - m.axis(m.top)[1]) < m.rimR;
+            const inMouth = c.z < m.rimZ + COIN_R * 0.6 && c.z > m.Hb - COIN_R && Math.hypot(c.x - mx, c.y - my) < m.rimR;
             if (inMouth) this.coin(g, coinImage, map);
             else loose.push(g);
           }
@@ -1698,6 +1724,126 @@
         dispose() {
           this.models.clear();
           super.dispose();
+        }
+      };
+    }
+  });
+
+  // src/engine/sprite-cache.js
+  var MARGIN, SpriteCache;
+  var init_sprite_cache = __esm({
+    "src/engine/sprite-cache.js"() {
+      init_define_GAME_SOUNDS();
+      MARGIN = 2;
+      SpriteCache = class {
+        constructor() {
+          this.view = null;
+          this.live = /* @__PURE__ */ new Map();
+          this.seen = /* @__PURE__ */ new Set();
+          this.used = /* @__PURE__ */ new Set();
+          this.pool = [];
+        }
+        // Start a frame; `view` must change whenever any cached pixel could change.
+        begin(view) {
+          if (view !== this.view) {
+            this.view = view;
+            for (const key of [...this.live.keys()]) this.evict(key);
+            this.seen.clear();
+          }
+          this.used = /* @__PURE__ */ new Set();
+        }
+        // Values derived from a part key (projected shadows, hit paths) live as long as its sprite.
+        memo(key, name, compute) {
+          if (key == null) return compute();
+          let entry = this.live.get(key);
+          if (!entry) this.live.set(key, entry = { canvas: null, memo: /* @__PURE__ */ new Map() });
+          this.used.add(key);
+          if (!entry.memo.has(name)) entry.memo.set(name, compute());
+          return entry.memo.get(name);
+        }
+        /* Paint one part. `extent` is [x0, y0, x1, y1] in view units, a function returning it
+         * (evaluated only when a sprite is built), or null for the whole canvas. `paint(ctx)`
+         * draws the part through the given context. */
+        draw(painter, key, extent, paint) {
+          const ctx = painter.ctx;
+          if (key == null) return paint(ctx);
+          this.used.add(key);
+          let entry = this.live.get(key);
+          if (!entry?.canvas && !this.seen.has(key)) {
+            paint(ctx);
+            this.seen.add(key);
+            return;
+          }
+          if (!entry) this.live.set(key, entry = { canvas: null, memo: /* @__PURE__ */ new Map() });
+          if (!entry.canvas && !this.render(entry, ctx, extent, paint, painter)) return;
+          ctx.save();
+          ctx.setTransform(1, 0, 0, 1, 0, 0);
+          ctx.drawImage(entry.canvas, 0, 0, entry.w, entry.h, entry.x, entry.y, entry.w, entry.h);
+          ctx.restore();
+        }
+        render(entry, ctx, extent, paint, painter) {
+          const m = ctx.getTransform(), { width, height } = ctx.canvas;
+          let x0 = 0, y0 = 0, x1 = width, y1 = height;
+          if (extent) {
+            if (typeof extent === "function") extent = extent();
+            const xs = [], ys = [];
+            for (const [x, y] of [
+              [extent[0], extent[1]],
+              [extent[2], extent[1]],
+              [extent[0], extent[3]],
+              [extent[2], extent[3]]
+            ]) {
+              xs.push(m.a * x + m.c * y + m.e);
+              ys.push(m.b * x + m.d * y + m.f);
+            }
+            x0 = Math.max(0, Math.floor(Math.min(...xs)) - MARGIN);
+            y0 = Math.max(0, Math.floor(Math.min(...ys)) - MARGIN);
+            x1 = Math.min(width, Math.ceil(Math.max(...xs)) + MARGIN);
+            y1 = Math.min(height, Math.ceil(Math.max(...ys)) + MARGIN);
+          }
+          const w = x1 - x0, h = y1 - y0;
+          if (!(w > 0 && h > 0)) return false;
+          const canvas = this.take(w, h), sprite = canvas.getContext("2d");
+          sprite.setTransform(1, 0, 0, 1, 0, 0);
+          sprite.clearRect(0, 0, w, h);
+          sprite.setTransform(m.a, m.b, m.c, m.d, m.e - x0, m.f - y0);
+          sprite.lineJoin = ctx.lineJoin;
+          sprite.lineCap = ctx.lineCap;
+          painter.ctx = sprite;
+          try {
+            paint(sprite);
+          } finally {
+            painter.ctx = ctx;
+          }
+          Object.assign(entry, { canvas, x: x0, y: y0, w, h });
+          return true;
+        }
+        // Reuse a released canvas that is large enough without wasting much of it.
+        take(w, h) {
+          const i = this.pool.findIndex(
+            (c) => c.width >= w && c.height >= h && c.width * c.height <= 2 * w * h
+          );
+          if (i >= 0) return this.pool.splice(i, 1)[0];
+          const canvas = document.createElement("canvas");
+          canvas.width = w;
+          canvas.height = h;
+          return canvas;
+        }
+        evict(key) {
+          const entry = this.live.get(key);
+          if (entry?.canvas && this.pool.length < 48) this.pool.push(entry.canvas);
+          this.live.delete(key);
+        }
+        // Release parts that were not drawn this frame; remember direct paints for the next one.
+        end() {
+          for (const key of [...this.live.keys()]) if (!this.used.has(key)) this.evict(key);
+          for (const key of [...this.seen]) if (!this.used.has(key)) this.seen.delete(key);
+        }
+        clear() {
+          for (const key of [...this.live.keys()]) this.evict(key);
+          this.seen.clear();
+          this.pool.length = 0;
+          this.view = null;
         }
       };
     }
@@ -1743,7 +1889,7 @@
       init_define_GAME_SOUNDS();
       init_suits();
       init_palette2();
-      init_primitives2();
+      init_primitives();
       pair = (ys) => ys.flatMap((y) => [
         [21.5, y, y > 44],
         [41.5, y, y > 44]
@@ -1852,7 +1998,7 @@
     "src/assets/cards/king.js"() {
       init_define_GAME_SOUNDS();
       init_palette2();
-      init_primitives2();
+      init_primitives();
       init_suits();
     }
   });
@@ -1946,7 +2092,7 @@
     "src/assets/cards/courts.js"() {
       init_define_GAME_SOUNDS();
       init_palette2();
-      init_primitives2();
+      init_primitives();
       init_suits();
       init_king();
     }
@@ -2008,7 +2154,7 @@
     "src/assets/cards/jokers.js"() {
       init_define_GAME_SOUNDS();
       init_palette2();
-      init_primitives2();
+      init_primitives();
     }
   });
 
@@ -2293,7 +2439,7 @@
     });
     return meshFromRings(rings, palette, { part: opts.part });
   }
-  function rod2(a, b, r0, r1, palette, opts = {}) {
+  function rod(a, b, r0, r1, palette, opts = {}) {
     const d = norm(sub(b, a)), u = norm(cross(d, Math.abs(d[2]) < 0.9 ? [0, 0, 1] : [1, 0, 0])), v = cross(d, u), n = opts.seg || 14;
     const ring = (p, r) => Array.from({ length: n }, (_, i) => {
       const t = i / n * 2 * Math.PI;
@@ -2342,7 +2488,7 @@
     if (u[0] * v[1] - u[1] * v[0] <= 0) return "";
     return `<text transform="matrix(${u[0].toFixed(4)} ${u[1].toFixed(4)} ${v[0].toFixed(4)} ${v[1].toFixed(4)} ${f1(o[0])} ${f1(o[1])})" font-size="${size}" fill="${color}" text-anchor="middle" ${extra}>${str}</text>`;
   }
-  var LIGHT, f1, path, ink2, lerp, clamp012, smooth, spring, boxOf, centre;
+  var LIGHT, f1, path, ink, lerp, clamp012, smooth, spring, boxOf, centre;
   var init_stage3d = __esm({
     "src/engine/stage3d.js"() {
       init_define_GAME_SOUNDS();
@@ -2351,7 +2497,7 @@
       LIGHT = norm([-0.35, -0.3, 1]);
       f1 = (v) => v.toFixed(1);
       path = (pts, close = true) => "M" + pts.map((p) => f1(p[0]) + " " + f1(p[1])).join("L") + (close ? "Z" : "");
-      ink2 = (d, w = 1, color = INK) => `<path d="${d}" fill="none" stroke="${color}" stroke-width="${w}" stroke-linejoin="round" stroke-linecap="round"/>`;
+      ink = (d, w = 1, color = INK) => `<path d="${d}" fill="none" stroke="${color}" stroke-width="${w}" stroke-linejoin="round" stroke-linecap="round"/>`;
       lerp = (a, b, t) => a + (b - a) * t;
       clamp012 = (t) => Math.max(0, Math.min(1, t));
       smooth = (t) => {
@@ -2463,14 +2609,14 @@
           m.add(slab(outline, [0, 2.4, 0], palettes.card), {
             ink: 1.6,
             after: (cam) => {
-              const face2 = (q) => cam.project(m.P(q)), border = [
+              const face = (q) => cam.project(m.P(q)), border = [
                 at(w - 4 * s, h - 4 * s),
                 at(-w + 4 * s, h - 4 * s),
                 at(-w + 4 * s, -h + 4 * s),
                 at(w - 4 * s, -h + 4 * s)
-              ].map((p) => face2([p[0], p[1] + 2.5, p[2]]));
+              ].map((p) => face([p[0], p[1] + 2.5, p[2]]));
               const front = (du, dv) => m.P([...at(du, dv)].map((q, k) => k === 1 ? q + 2.5 : q));
-              return ink2(path(border), 0.9, "#d0483a") + planeText(
+              return ink(path(border), 0.9, "#d0483a") + planeText(
                 cam,
                 front(0, -11 * s),
                 m.D(u),
@@ -2538,7 +2684,7 @@
     part.at = part.at.map((v, k) => v + toward[k]);
     part.after = (cam) => part.faces.filter((f2) => cam.sees(f2.normal, f2.points[0])).map((f2) => {
       const [p0, p1, p2, p3] = f2.points.map(cam.project);
-      return ink2(path([p0, p1], false), 0.8) + ink2(path([p3, p2], false), 0.8);
+      return ink(path([p0, p1], false), 0.8) + ink(path([p3, p2], false), 0.8);
     }).join("");
     if (pose.knot > 0.02) {
       const k = pose.knot, top = ring(Math.min(1, pose.wrap), band / 2);
@@ -2671,7 +2817,7 @@
           s += `<ellipse cx="${cheek[0].toFixed(1)}" cy="${cheek[1].toFixed(1)}" rx="${(r2 * 0.22).toFixed(1)}" ry="${(r2 * 0.13).toFixed(1)}" fill="#f58d73" opacity="${(0.4 + pose.effort * 0.5).toFixed(2)}"/>`;
           for (let i = 0; i < count; i++) {
             const a = 0.55 + i * 0.38, r0 = r2 * 1.2, r1 = r0 + r2 * (0.45 + pose.effort * 0.55);
-            s += ink2(
+            s += ink(
               path(
                 [
                   [c[0] + side * r0 * Math.cos(a), c[1] - r0 * Math.sin(a)],
@@ -2831,14 +2977,14 @@
           m.add(slab(outline, [0, 2.2, 0], palettes.card), {
             ink: 1.5,
             after: (cam) => {
-              const face2 = (q) => cam.project(m.P(q)), border = [
+              const face = (q) => cam.project(m.P(q)), border = [
                 at(w - 3 * s, h - 3 * s),
                 at(-w + 3 * s, h - 3 * s),
                 at(-w + 3 * s, -h + 3 * s),
                 at(w - 3 * s, -h + 3 * s)
-              ].map((p) => face2([p[0], p[1] + 2.3, p[2]]));
+              ].map((p) => face([p[0], p[1] + 2.3, p[2]]));
               const front = (du, dv) => m.P([...at(du, dv)].map((q, k) => k === 1 ? q + 2.3 : q));
-              return ink2(path(border), 0.9, "#d0483a") + planeText(
+              return ink(path(border), 0.9, "#d0483a") + planeText(
                 cam,
                 front(0, -3 * s),
                 m.D(u),
@@ -2959,7 +3105,7 @@
               const front = (dx, dz) => cam.project(m.P(at(dx, dz).map((q, k) => k === 1 ? q + d + 0.6 : q)));
               let s = "";
               for (const dz of [-14, 2, 18])
-                s += ink2(path([front(-w + 10, dz), front(w - 10, dz)], false), 1.1);
+                s += ink(path([front(-w + 10, dz), front(w - 10, dz)], false), 1.1);
               return s;
             }
           });
@@ -3071,9 +3217,9 @@
       }
       const points = part.points.map(P2);
       const lookup = new Map(part.points.map((p, i) => [p, points[i]]));
-      part.faces = part.faces.map((face2) => ({
-        points: face2.points.map((p) => lookup.get(p) || P2(p)),
-        normal: map.n(face2.normal)
+      part.faces = part.faces.map((face) => ({
+        points: face.points.map((p) => lookup.get(p) || P2(p)),
+        normal: map.n(face.normal)
       }));
       part.points = points;
       part.box = [0, 1].map(
@@ -3101,7 +3247,7 @@
       D,
       orb: (x, y, z, rx, ry, rz, m, label = "", res = {}) => add(orb([x, y, z], [rx, ry, rz], palettes[m], res), label ? { label } : {}),
       rod: (a, b, r, m, end = r, label = "", joint = true) => {
-        add(rod2(a, b, r, end, palettes[m]), label ? { label } : {});
+        add(rod(a, b, r, end, palettes[m]), label ? { label } : {});
         if (joint) add(orb(b, end, palettes[m], { rings: 6, seg: 12 }));
       },
       add
@@ -3149,9 +3295,9 @@
         box: box2,
         at: map(part.box[0].map((q, k) => (q + part.box[1][k]) / 2)),
         palette: { l: part.palette[0], m: part.palette[1], d: part.palette[2] },
-        faces: part.faces.map((face2) => ({
-          points: face2.points.map(map),
-          normal: norm(world(...face2.normal))
+        faces: part.faces.map((face) => ({
+          points: face.points.map(map),
+          normal: norm(world(...face.normal))
         }))
       };
     });
@@ -3165,10 +3311,10 @@
   function drawTableItem(canvas, model2) {
     const order = (a, b) => sepOrder(a, b) || depthOf(a.at) - depthOf(b.at);
     for (const part of [...model2.parts].sort(order)) {
-      const faces = part.faces.filter((face2) => facing(face2.normal));
-      for (const face2 of faces) {
-        const color = tone(face2.normal, part.palette);
-        canvas.polygon(face2.points, color, color, 0.35);
+      const faces = part.faces.filter((face) => facing(face.normal));
+      for (const face of faces) {
+        const color = tone(face.normal, part.palette);
+        canvas.polygon(face.points, color, color, 0.35);
       }
       const outline = hull(part.points.map((p) => canvas.project(p))), ctx = canvas.ctx;
       ctx.strokeStyle = INK;
@@ -3219,48 +3365,232 @@
     }
   });
 
+  // src/game/table-layer.js
+  function paintTable(canvas, table, items) {
+    const { A, B, outline, material } = table;
+    canvas.shadow([...A, ...B], -22);
+    for (let i = 0; i < A.length; i++) {
+      const j = (i + 1) % A.length, n = norm(world(outline[j][1] - outline[i][1], outline[i][0] - outline[j][0]));
+      if (facing(n)) canvas.polygon([A[i], A[j], B[j], B[i]], tone(n, material), INK, 0.5);
+    }
+    canvas.polygon(B, material.l, INK, 1.7);
+    for (const { points, color } of table.polygons) canvas.polygon(points, color);
+    for (const { points, color, width, closed } of table.lines)
+      canvas.line(points, color, width, closed);
+    for (const model2 of items) drawTableItemShadow(canvas, model2, B);
+  }
+  var init_table_layer = __esm({
+    "src/game/table-layer.js"() {
+      init_define_GAME_SOUNDS();
+      init_shading();
+      init_math();
+      init_palette();
+      init_table();
+      init_table_items();
+    }
+  });
+
+  // src/game/scene-overlay.js
+  var deckMarkup, wildMarkup, handCardMarkup, bagMarkup, itemMarkup, labelMarkup;
+  var init_scene_overlay = __esm({
+    "src/game/scene-overlay.js"() {
+      init_define_GAME_SOUNDS();
+      init_palette();
+      deckMarkup = ({ player, deckCount }, thickness, ring) => `<g class="card-deck" data-player="${player}" data-count="${deckCount}" data-thickness="${thickness}" role="img" aria-label="余牌 ${deckCount} 张"><path d="${ring}" fill="none" pointer-events="none"/></g>`;
+      wildMarkup = (id, { wild, revealing }, ring) => `<g class="${wild ? "wild-card-model" : "wild-card-reveal"}" id="wild-card-${id}" data-card-model="frog-wild" data-wild-card="${id}" data-revealing="${!!revealing}" role="img" aria-label="青蛙赖子牌" pointer-events="none"><path d="${ring}" fill="none" pointer-events="none"/></g>`;
+      handCardMarkup = (id, { act, selected, name }, hover, ring) => `<g data-act="${act}" data-card="${id}" data-hover="${hover.toFixed(3)}" class="hand-card${selected ? " selected" : ""}" role="button" tabindex="0" aria-label="${name}" aria-pressed="${!!selected}"><path d="${ring}" fill="transparent" pointer-events="all"/></g>`;
+      bagMarkup = (player, palette, fill, hit) => `<g class="money-bag" data-player="${player}" data-palette="${palette}" data-fill="${fill.toFixed(4)}"${player === 0 ? ' data-act="poke-bag" role="button" tabindex="0" aria-label="点击钱袋吐金币"' : ""}>${player === 0 ? `<path d="${hit}" fill="transparent" pointer-events="all"/>` : ""}</g>`;
+      itemMarkup = (item, hit) => `<g class="table-item" id="table-item-${item.id}" data-item="${item.id}" role="img" tabindex="0" aria-label="${item.name}：${item.effect}" aria-describedby="item-tooltip"><path d="${hit}" fill="transparent" pointer-events="all"/></g>`;
+      labelMarkup = ({ text, cls }, [x, y]) => `<text class="${cls}" x="${x}" y="${y}" text-anchor="middle" fill="${INK}" font-size="12" font-weight="600">${text}</text>`;
+    }
+  });
+
+  // src/game/scene-parts.js
+  function cardParts(scene, frame, st, images, hover) {
+    const { canvas, sprites, layout, parts, overlay, hits } = scene;
+    for (const { id, pose, options } of frame.cards) {
+      const lifted = options.act ? hover.get(id) || 0 : 0;
+      const lift = options.selected ? layout.selectedLift : 12 * lifted;
+      const resting = canvas.cardGeometry(pose);
+      const shown = lift ? { ...pose, v: pose.v - lift } : pose;
+      const g = lift ? canvas.cardGeometry(shown) : resting;
+      const front = facing(g.N) && !options.back;
+      const art = front ? options.wild ? "wild" : `f${options.stampFace || id}` : `b${options.palette || st.pal}`;
+      const image = front ? options.wild ? images.wild : images.fronts[options.stampFace || id] : images.backs[options.palette || st.pal];
+      const key = `card|${art}|${poseKey(shown)}|${options.selected ? 1 : 0}|${options.deckCount || 0}`;
+      if (options.shadow !== false)
+        canvas.addShadowRing(sprites.memo(key, "shadow", () => canvas.shadowRing([...g.A, ...g.B])));
+      parts.push({
+        at: resting.c,
+        key,
+        extent: () => canvas.extent(cardCorners(g), 2),
+        draw: () => canvas.card(g, image, options)
+      });
+      const hit = options.selected ? g : resting, hitKey = options.selected ? key : `card|${art}|${poseKey(pose)}|0|${options.deckCount || 0}`, ring = () => sprites.memo(hitKey, "ring", () => pd(facing(hit.N) ? hit.B : hit.A));
+      if (options.deckCount) overlay.push(deckMarkup(options, pose.thickness, ring()));
+      if (options.wild || options.revealing) overlay.push(wildMarkup(id, options, ring()));
+      if (options.act)
+        hits.push({ at: resting.c, markup: handCardMarkup(id, options, lifted, ring()) });
+    }
+  }
+  function bagParts(scene, frame, images) {
+    const { canvas, sprites, parts, overlay } = scene;
+    for (const { pos, state: state2, palette, player } of frame.bags) {
+      const model2 = canvas.sackGeometry(state2, player), m = model2.m, map = sackMap(pos);
+      const grounded = state2.coins.filter((c) => c.mode !== "rain"), drawn = state2.coins.filter((c) => c.mode !== "rain" || c.z >= m.Hb);
+      const burst = state2.punchT != null && state2.punchT < 0.3, key = burst ? null : `bag|${player}|${palette}|${model2.key}|${pos}|${state2.coins.map(coinKey).join(";")}`;
+      canvas.addShadowRing(
+        sprites.memo(
+          key,
+          "shadow",
+          () => canvas.shadowRing([...m.body[2], ...m.body[8], ...m.shell.at(-1)].map(map))
+        )
+      );
+      for (const c of grounded) {
+        const g = canvas.coinGeometry(c);
+        canvas.addShadowRing(
+          sprites.memo(
+            c.mode === "rest" ? `coin|${pos}|${coinKey(c)}` : null,
+            "shadow",
+            () => canvas.shadowRing([...g.A, ...g.B].map(map))
+          )
+        );
+      }
+      parts.push({
+        at: pos.map((q, i) => q + (i === 2 ? 30 : 0)),
+        key,
+        extent: () => canvas.extent(
+          [
+            ...m.body.flat(),
+            ...m.shell.flat(),
+            ...drawn.flatMap((c) => {
+              const g = canvas.coinGeometry(c);
+              return [...g.A, ...g.B];
+            })
+          ].map(map),
+          4
+        ),
+        draw: () => canvas.sack(model2, state2, PALS[palette], pos, SACK_SCALE, images.coin)
+      });
+      const hit = player === 0 ? sprites.memo(key, "hit", () => pd(m.body[5].map(map))) : "";
+      overlay.push(bagMarkup(player, palette, state2.fillShow, hit));
+    }
+  }
+  function coinParts(scene, frame, images) {
+    const { canvas, parts } = scene;
+    for (const { c, tilt, heading, psi } of frame.coins) {
+      const g = coinShape(c, tilt, heading, psi);
+      canvas.addShadow([...g.A, ...g.B], 0);
+      parts.push({ at: c, key: null, draw: () => canvas.coin(g, images.coin) });
+    }
+  }
+  function itemParts(scene, models) {
+    const { canvas, sprites, parts, overlay } = scene;
+    for (const { id, model: model2, key } of models) {
+      parts.push({
+        at: model2.at,
+        key,
+        extent: () => canvas.extent(model2.points, 2),
+        draw: () => drawTableItem(canvas, model2)
+      });
+      const item = ITEMS.find((item2) => item2.id === id);
+      overlay.push(
+        itemMarkup(
+          item,
+          sprites.memo(key, "hit", () => tableItemHit(canvas, model2))
+        )
+      );
+    }
+  }
+  var SACK_SCALE, poseKey, coinKey, sackMap, cardCorners;
+  var init_scene_parts = __esm({
+    "src/game/scene-parts.js"() {
+      init_define_GAME_SOUNDS();
+      init_camera();
+      init_shading();
+      init_palette();
+      init_coin();
+      init_constants();
+      init_items();
+      init_table_items();
+      init_scene_overlay();
+      SACK_SCALE = 1.08;
+      poseKey = ({ u, v, z = 2, scale = 0.86, flip = 0, thickness = 0.76 }) => `${u}|${v}|${z}|${scale}|${flip}|${thickness}`;
+      coinKey = (c) => `${c.mode},${c.x},${c.y},${c.z},${c.a},${c.b},${c.psi}`;
+      sackMap = (pos) => (p) => p.map((q, i) => pos[i] + SACK_SCALE * (q - (i === 2 ? 0 : 48)));
+      cardCorners = (g) => {
+        const corners = [];
+        for (const a of [-cardW / 2, cardW / 2])
+          for (const b of [-cardH / 2, cardH / 2])
+            for (const h of [-g.thickness / 2, g.thickness / 2]) corners.push(g.point(a, b, h));
+        return corners;
+      };
+    }
+  });
+
+  // src/game/hover.js
+  function createHover() {
+    const tracks = /* @__PURE__ */ new Map();
+    let current = null;
+    const value = ({ from, at, target }, now) => target ? Math.min(1, from + (now - at) / ENTER_MS) : Math.max(0, from - (now - at) / LEAVE_MS);
+    const aim = (id, target, now) => {
+      const track = tracks.get(id);
+      tracks.set(id, { from: track ? value(track, now) : 0, at: now, target });
+    };
+    return {
+      // Point at a card (or null); returns whether anything has to move.
+      set(id, now) {
+        if (id === current) return false;
+        if (current != null) aim(current, 0, now);
+        if (id != null) aim(id, 1, now);
+        current = id;
+        return true;
+      },
+      // Progress per card at `now`, and whether any card is still travelling.
+      sample(now) {
+        const values = /* @__PURE__ */ new Map();
+        let moving = false;
+        for (const [id, track] of tracks) {
+          const v = value(track, now);
+          if (v === 0 && !track.target) tracks.delete(id);
+          else values.set(id, v);
+          moving ||= v !== track.target;
+        }
+        return { values, moving };
+      }
+    };
+  }
+  var ENTER_MS, LEAVE_MS;
+  var init_hover = __esm({
+    "src/game/hover.js"() {
+      init_define_GAME_SOUNDS();
+      ENTER_MS = 80;
+      LEAVE_MS = 50;
+    }
+  });
+
   // src/game/cpu-renderer.js
   var cpu_renderer_exports = {};
   __export(cpu_renderer_exports, {
     createRenderer: () => createRenderer
   });
-  async function createRenderer(art, svg) {
-    const images = await cpuArt(), canvas = new ModelCanvas(svg);
+  async function createRenderer(art, svg, host) {
+    const images = await cpuArt(), canvas = new ModelCanvas(svg), sprites = new SpriteCache(), hover = createHover();
     const layer = document.createElementNS(svg.namespaceURI, "g");
     art.append(layer);
-    let current, disposed = false, redraw = 0, hover = null, animation = 0, lastTime = 0;
-    const hoverProgress = /* @__PURE__ */ new Map();
+    let current, disposed = false, fallback = 0, anchors = null;
     svg.classList.add("cpu-active");
     let stageEl, topbarEl, wbEl;
-    function refresh() {
-      if (!redraw && !disposed)
-        redraw = requestAnimationFrame(() => {
-          redraw = 0;
-          if (current) draw(...current);
-        });
-    }
-    const animate = (time) => {
-      const dt = Math.min(32, time - (lastTime || time - 16));
-      lastTime = time;
-      let moving = false;
-      for (const [id, value] of hoverProgress) {
-        const target = id === hover ? 1 : 0;
-        const delta = dt / (target ? 80 : 50);
-        const next = target ? Math.min(1, value + delta) : Math.max(0, value - delta);
-        if (next === 0) hoverProgress.delete(id);
-        else hoverProgress.set(id, next);
-        moving ||= next !== target;
-      }
-      if (current) draw(...current);
-      animation = moving ? requestAnimationFrame(animate) : 0;
-      if (!moving) lastTime = 0;
+    const invalidate = () => {
+      if (disposed) return;
+      if (host?.invalidate) return host.invalidate();
+      fallback ||= requestAnimationFrame(() => {
+        fallback = 0;
+        if (current) draw(...current);
+      });
     };
     const updateHover = (id) => {
-      const key = id == null ? null : Number(id);
-      if (key === hover) return;
-      hover = key;
-      if (key != null && !hoverProgress.has(key)) hoverProgress.set(key, 0);
-      if (!animation) animation = requestAnimationFrame(animate);
+      if (hover.set(id == null ? null : Number(id), performance.now())) invalidate();
     };
     const setHover = (event) => {
       updateHover(event.target.closest?.("[data-card]")?.dataset.card ?? null);
@@ -3269,27 +3599,21 @@
     const focusOut = (event) => {
       updateHover(event.relatedTarget?.closest?.("[data-card]")?.dataset.card ?? null);
     };
-    function draw(st, material) {
-      if (disposed) return;
-      current = [st, material];
+    function aim(st, layout, mobile) {
       const entry = st.visual.entry;
       const progress = entry ? Math.min(1, Math.max(0, (entry.time - 0.16) / 0.56)) : 1;
       const home = st.visual.home && !entry;
-      const mobile = isMobileLandscape();
-      const layout = layoutFor(mobile);
       setCameraPitch(
         mobile ? 90 : entry?.pitch ?? (home ? 90 : 68),
         mobile || home || progress === 0 ? 0 : 1800 / progress
       );
-      const frame = sceneFrame(st, layout);
-      const table = tableGeometry(st.tableStyle), { A, B, outline } = table;
       canvas.size = { width: svg.clientWidth, height: svg.clientHeight };
       stageEl ||= svg.closest(".stage");
       topbarEl ||= stageEl?.querySelector(".game-topbar");
-      let layout3d = {};
+      let framing = {};
       if (!home && mobile) {
         const t = entry ? progress : 1, wide = { u0: -372, u1: 372, v0: -273, v1: 273 }, tight = layout.bounds, mix2 = (a, b) => a + (b - a) * t;
-        layout3d = {
+        framing = {
           zoom: 1,
           bounds: {
             u0: mix2(wide.u0, tight.u0),
@@ -3302,138 +3626,106 @@
           tall: 82 * (1 - t)
         };
       } else if (!home && topbarEl) {
-        layout3d = {
+        const { A, B } = tableGeometry(st.tableStyle);
+        framing = {
           zoom: 1.02,
           surface: [...A, ...B],
           centerY: (topbarEl.offsetTop + topbarEl.offsetHeight + stageEl.clientHeight) / 2 - svg.parentElement.offsetTop
         };
       }
-      fitScene(svg, canvas.size, layout3d);
-      canvas.begin();
-      const handCount = st.game.hands[0].length || 18;
-      const hand2 = canvas.cardGeometry(handPose(0, handCount - 1, handCount, layout)), played = canvas.cardGeometry({ u: 0, v: 0, z: 6, scale: layout.playScale });
-      const handTop = Math.min(...[...hand2.A, ...hand2.B].map((point) => P(...point)[1])), playedBottom = Math.max(...[...played.A, ...played.B].map((point) => P(...point)[1]));
-      const actionCenter = String((handTop + playedBottom) / 2), actionGap = String(handTop - playedBottom);
-      if (svg.dataset.actionCenter !== actionCenter || svg.dataset.actionGap !== actionGap) {
-        svg.dataset.actionCenter = actionCenter;
-        svg.dataset.actionGap = actionGap;
+      fitScene(svg, canvas.size, framing);
+    }
+    function anchorControls(st, layout, view) {
+      const handCount = st.game.hands[0].length || 18, key = `${view}|${handCount}|${layout.handScale}|${layout.playScale}`;
+      if (anchors?.key !== key) {
+        const hand2 = canvas.cardGeometry(handPose(0, handCount - 1, handCount, layout)), played = canvas.cardGeometry({ u: 0, v: 0, z: 6, scale: layout.playScale });
+        const handTop = Math.min(...[...hand2.A, ...hand2.B].map((point) => P(...point)[1])), playedBottom = Math.max(...[...played.A, ...played.B].map((point) => P(...point)[1]));
+        anchors = {
+          key,
+          center: String((handTop + playedBottom) / 2),
+          // The HTML pills need the hand's top edge as well as the middle of the gap:
+          // on very short screens the gap cannot hold them at full size.
+          gap: String(handTop - playedBottom)
+        };
+      }
+      if (svg.dataset.actionCenter !== anchors.center || svg.dataset.actionGap !== anchors.gap) {
+        svg.dataset.actionCenter = anchors.center;
+        svg.dataset.actionGap = anchors.gap;
         svg.dispatchEvent(new Event("scene-layout"));
       }
-      canvas.shadow([...A, ...B], -22);
-      for (let i = 0; i < A.length; i++) {
-        const j = (i + 1) % A.length, n = norm(world(outline[j][1] - outline[i][1], outline[i][0] - outline[j][0]));
-        if (facing(n)) canvas.polygon([A[i], A[j], B[j], B[i]], tone(n, table.material), INK, 0.5);
-      }
-      canvas.polygon(B, table.material.l, INK, 1.7);
-      for (const { points, color } of table.polygons) canvas.polygon(points, color);
-      for (const { points, color, width, closed } of table.lines)
-        canvas.line(points, color, width, closed);
-      const parts = [], overlay = [], hitTargets = [];
-      const bounds = (points) => [0, 1].map(
-        (end) => [0, 1, 2].map((axis) => (end ? Math.max : Math.min)(...points.map((p) => p[axis])))
-      );
-      const order = paintOrder;
-      for (const { id, pose, options } of frame.cards) {
-        const hover2 = options.act ? hoverProgress.get(id) || 0 : 0;
-        const lift = options.selected ? layout.selectedLift : 12 * hover2;
-        const resting = canvas.cardGeometry(pose);
-        const g = lift ? canvas.cardGeometry({ ...pose, v: pose.v - lift }) : resting;
-        const hit = options.selected ? g : resting;
-        const ring = facing(hit.N) ? hit.B : hit.A;
-        if (options.shadow !== false) canvas.addShadow([...g.A, ...g.B], 0);
-        const image = facing(g.N) && !options.back ? options.wild ? images.wild : options.stampFace ? images.fronts[options.stampFace] : images.fronts[id] : images.backs[options.palette || st.pal];
-        const box = bounds([...resting.A, ...resting.B]);
-        parts.push({ at: resting.c, box, draw: () => canvas.card(g, image, options) });
-        if (options.deckCount)
-          overlay.push(
-            '<g class="card-deck" data-player="' + options.player + '" data-count="' + options.deckCount + '" data-thickness="' + pose.thickness + '" role="img" aria-label="余牌 ' + options.deckCount + ' 张"><path d="' + pd(ring) + '" fill="none" pointer-events="none"/></g>'
-          );
-        if (options.wild || options.revealing)
-          overlay.push(
-            `<g class="${options.wild ? "wild-card-model" : "wild-card-reveal"}" id="wild-card-${id}" data-card-model="frog-wild" data-wild-card="${id}" data-revealing="${!!options.revealing}" role="img" aria-label="青蛙赖子牌" pointer-events="none"><path d="${pd(ring)}" fill="none" pointer-events="none"/></g>`
-          );
-        if (options.act)
-          hitTargets.push({
-            at: resting.c,
-            box,
-            markup: `<g data-act="${options.act}" data-card="${id}" data-hover="${hover2.toFixed(3)}" class="hand-card${options.selected ? " selected" : ""}" role="button" tabindex="0" aria-label="${options.name}" aria-pressed="${!!options.selected}"><path d="${pd(ring)}" fill="transparent" pointer-events="all"/></g>`
-          });
-      }
-      for (const { pos, state: state2, palette, player } of frame.bags) {
-        const model2 = canvas.sackGeometry(state2, player), m = model2.m;
-        const map = (p) => p.map((q, i) => pos[i] + 1.08 * (q - (i === 2 ? 0 : 48)));
-        canvas.addShadow([...m.body[2], ...m.body[8], ...m.shell.at(-1)].map(map), 0);
-        for (const c of state2.coins)
-          if (c.mode !== "rain") {
-            const g = canvas.coinGeometry(c);
-            canvas.addShadow([...g.A, ...g.B].map(map), 0);
-          }
-        parts.push({
-          at: pos.map((q, i) => q + (i === 2 ? 30 : 0)),
-          box: bounds([...m.body.flat(), ...m.shell.flat()].map(map)),
-          draw: () => canvas.sack(model2, state2, PALS[palette], pos, 1.08, images.coin)
-        });
-        const hit = pd(m.body[5].map(map));
-        overlay.push(
-          `<g class="money-bag" data-player="${player}" data-palette="${palette}" data-fill="${state2.fillShow.toFixed(4)}"${player === 0 ? ' data-act="poke-bag" role="button" tabindex="0" aria-label="点击钱袋吐金币"' : ""}>${player === 0 ? `<path d="${hit}" fill="transparent" pointer-events="all"/>` : ""}</g>`
-        );
-      }
-      for (const { c, tilt, heading, psi } of frame.coins) {
-        const g = coinShape(c, tilt, heading, psi);
-        canvas.addShadow([...g.A, ...g.B], 0);
-        parts.push({ at: c, box: bounds([...g.A, ...g.B]), draw: () => canvas.coin(g, images.coin) });
-      }
-      for (const [index, id] of (home ? [] : st.game.items).entries()) {
-        const item = ITEMS.find((item2) => item2.id === id), place = layout.itemLayout ? {
+    }
+    function draw(st, material) {
+      if (disposed) return;
+      current = [st, material];
+      const home = st.visual.home && !st.visual.entry, mobile = isMobileLandscape(), layout = layoutFor(mobile);
+      aim(st, layout, mobile);
+      const frame = sceneFrame(st, layout), table = tableGeometry(st.tableStyle);
+      canvas.begin();
+      const view = `${viewKey()}|${canvas.transformKey()}`;
+      sprites.begin(view);
+      anchorControls(st, layout, view);
+      const items = (home ? [] : st.game.items).map((id, index) => {
+        const place = layout.itemLayout ? {
           u: layout.itemLayout.u,
           v: layout.itemLayout.v + index * layout.itemLayout.step,
           scale: layout.itemLayout.scale || 0.25
-        } : null, model2 = tableItemModel(id, place);
-        drawTableItemShadow(canvas, model2, B);
-        parts.push({ ...model2, draw: () => drawTableItem(canvas, model2) });
-        overlay.push(
-          `<g class="table-item" id="table-item-${id}" data-item="${id}" role="img" tabindex="0" aria-label="${item.name}：${item.effect}" aria-describedby="item-tooltip"><path d="${tableItemHit(canvas, model2)}" fill="transparent" pointer-events="all"/></g>`
-        );
-      }
-      canvas.flushShadows(B);
-      parts.sort(order);
-      hitTargets.sort(order);
-      overlay.push(...hitTargets.map((target) => target.markup));
-      for (const part of parts) part.draw();
+        } : null;
+        return { id, model: tableItemModel(id, place), key: `item|${id}|${JSON.stringify(place)}` };
+      });
+      sprites.draw(
+        canvas,
+        `table|${st.tableStyle}|${items.map((i) => i.key).join()}`,
+        null,
+        () => paintTable(
+          canvas,
+          table,
+          items.map((i) => i.model)
+        )
+      );
+      const now = performance.now(), lift = hover.sample(now);
+      const scene = { canvas, sprites, layout, parts: [], overlay: [], hits: [] };
+      cardParts(scene, frame, st, images, lift.values);
+      bagParts(scene, frame, images);
+      coinParts(scene, frame, images);
+      itemParts(scene, items);
+      canvas.flushShadows(table.B);
+      scene.parts.sort(paintOrder);
+      scene.hits.sort(paintOrder);
+      for (const part of scene.parts) sprites.draw(canvas, part.key, part.extent, part.draw);
+      sprites.end();
       canvas.finish(+((wbEl ||= document.getElementById("wb"))?.value ?? 2.4));
-      for (const { text, u, v, z, cls } of frame.labels) {
-        const [x, y] = P(...world(u, v, z));
-        overlay.push(
-          `<text class="${cls}" x="${x}" y="${y}" text-anchor="middle" fill="${INK}" font-size="12" font-weight="600">${text}</text>`
-        );
-      }
+      const overlay = scene.overlay;
+      for (const target of scene.hits) overlay.push(target.markup);
+      for (const label of frame.labels)
+        overlay.push(labelMarkup(label, P(...world(label.u, label.v, label.z))));
       const markup = overlay.join("");
       if (markup !== layer._markup) {
         patchSvg(layer, markup);
         layer._markup = markup;
       }
+      if (lift.moving) invalidate();
     }
     svg.addEventListener("pointerover", setHover);
     svg.addEventListener("focusin", setHover);
     svg.addEventListener("pointerleave", leave);
     svg.addEventListener("focusout", focusOut);
-    addEventListener("render-settings-change", refresh);
-    svg.addEventListener("cpu-resize", refresh);
-    document.getElementById("wb").addEventListener("input", refresh);
+    addEventListener("render-settings-change", invalidate);
+    svg.addEventListener("cpu-resize", invalidate);
+    document.getElementById("wb").addEventListener("input", invalidate);
     return {
       draw,
       dispose() {
         disposed = true;
-        cancelAnimationFrame(redraw);
-        cancelAnimationFrame(animation);
+        cancelAnimationFrame(fallback);
         svg.removeEventListener("pointerover", setHover);
         svg.removeEventListener("focusin", setHover);
         svg.removeEventListener("pointerleave", leave);
         svg.removeEventListener("focusout", focusOut);
-        removeEventListener("render-settings-change", refresh);
-        svg.removeEventListener("cpu-resize", refresh);
-        document.getElementById("wb").removeEventListener("input", refresh);
+        removeEventListener("render-settings-change", invalidate);
+        svg.removeEventListener("cpu-resize", invalidate);
+        document.getElementById("wb").removeEventListener("input", invalidate);
         svg.classList.remove("cpu-active");
+        sprites.clear();
         canvas.dispose();
         layer.remove();
       }
@@ -3445,18 +3737,18 @@
       init_device_mode();
       init_model_canvas();
       init_camera();
-      init_shading();
-      init_math();
-      init_palette();
-      init_coin();
+      init_sprite_cache();
       init_svg_dom();
       init_cpu_art();
       init_scene_frame();
       init_scene_layout();
       init_table_geometry();
-      init_table();
-      init_items();
       init_table_items();
+      init_table();
+      init_table_layer();
+      init_scene_parts();
+      init_scene_overlay();
+      init_hover();
     }
   });
 
@@ -3472,7 +3764,22 @@
   init_camera();
   init_math();
   init_shading();
-  init_primitives();
+
+  // src/engine/primitives.js
+  init_define_GAME_SOUNDS();
+  init_camera();
+  init_palette();
+  init_math();
+  init_shading();
+  var INK_REF_VB = 585;
+  var INK_K = 1;
+  var inkScale = (svg) => INK_K === 1 ? svg : svg.replace(
+    /stroke-width="([\d.]+)"/g,
+    (_, w) => `stroke-width="${(+w * INK_K).toFixed(2)}"`
+  );
+  function setInkScale(scale) {
+    INK_K = scale;
+  }
 
   // src/engine/figure.js
   init_svg_dom();
@@ -3654,7 +3961,7 @@
     const filter = createHandFilter(svg, document.getElementById("fdefs"), INK_K);
     const art = document.getElementById("art"), readout = document.getElementById("readout");
     const ui2 = { st };
-    const renderScene = cfg.renderer ? cfg.renderer(art, svg) : (state2, material) => patchSvg(art, inkScale(cfg.scene(state2, material)));
+    const renderScene = cfg.renderer ? cfg.renderer(art, svg, ui2) : (state2, material) => patchSvg(art, inkScale(cfg.scene(state2, material)));
     let lastPalette;
     ui2.render = () => {
       if (lastPalette !== st.pal) {
@@ -3953,9 +4260,6 @@
 
   // src/coins/scene.js
   init_define_GAME_SOUNDS();
-  init_camera();
-  init_primitives();
-  init_palette2();
   init_coin();
   init_sack();
   var COIN_FULL = 40;
@@ -4115,7 +4419,7 @@
 
   // src/engine/canvas-renderer.js
   init_define_GAME_SOUNDS();
-  function createCanvasRenderer(art, svg, load) {
+  function createCanvasRenderer(art, svg, load, host) {
     let backend, current, disposed = false;
     svg.dataset.renderer = "pending";
     const draw = (state2, material) => {
@@ -4125,7 +4429,7 @@
     draw.ready = (async () => {
       const module = await load();
       if (disposed) return;
-      const next = await module.createRenderer(art, svg);
+      const next = await module.createRenderer(art, svg, host);
       if (disposed) {
         next.dispose?.();
         return;
@@ -4160,8 +4464,8 @@
       bags: [coinState(), coinState()]
     };
   }
-  function createGameRenderer(art, svg) {
-    return createCanvasRenderer(art, svg, () => Promise.resolve().then(() => (init_cpu_renderer(), cpu_renderer_exports)));
+  function createGameRenderer(art, svg, host) {
+    return createCanvasRenderer(art, svg, () => Promise.resolve().then(() => (init_cpu_renderer(), cpu_renderer_exports)), host);
   }
 
   // src/ui/controls.js
