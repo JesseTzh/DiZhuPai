@@ -8,6 +8,7 @@ import { coinShape } from '../coins/coin.js';
 import { patchSvg } from '../engine/svg-dom.js';
 import { cpuArt } from './cpu-art.js';
 import { sceneFrame, fitScene, handPose } from './scene-frame.js';
+import { layoutFor } from './scene-layout.js';
 import { tableGeometry } from './table-geometry.js';
 import { world } from './table.js';
 import { ITEMS } from './items.js';
@@ -72,36 +73,65 @@ export async function createRenderer(art, svg) {
     const entry = st.visual.entry;
     const progress = entry ? Math.min(1, Math.max(0, (entry.time - 0.16) / 0.56)) : 1;
     const home = st.visual.home && !entry;
-    setCameraPitch(entry?.pitch ?? (home ? 90 : 68), home || progress === 0 ? 0 : 1800 / progress);
-    const frame = sceneFrame(st);
+    const mobile = isMobileLandscape();
+    const layout = layoutFor(mobile);
+    // Phones look straight down: no tilt, a compact frame and larger cards.
+    setCameraPitch(
+      mobile ? 90 : (entry?.pitch ?? (home ? 90 : 68)),
+      mobile || home || progress === 0 ? 0 : 1800 / progress,
+    );
+    const frame = sceneFrame(st, layout);
     const table = tableGeometry(st.tableStyle),
       { A, B, outline } = table;
     // CSS transforms must not change the viewport or raster resolution.
     canvas.size = { width: svg.clientWidth, height: svg.clientHeight };
     stageEl ||= svg.closest('.stage');
     topbarEl ||= stageEl?.querySelector('.game-topbar');
-    const layout =
-      topbarEl && !home
-        ? {
-            zoom: isMobileLandscape() ? 1.1 : 1.02,
-            surface: [...A, ...B],
-            centerY: isMobileLandscape()
-              ? canvas.size.height / 2
-              : (topbarEl.offsetTop + topbarEl.offsetHeight + stageEl.clientHeight) / 2 -
-                svg.parentElement.offsetTop,
-          }
-        : {};
-    fitScene(svg, canvas.size, layout);
+    let layout3d = {};
+    if (!home && mobile) {
+      /* Phone gameplay frames a tighter window than the home board. Interpolate
+       * between the two while the entry animation runs, so switching modes never
+       * jumps the table. `tall` headroom is folded into the bounds at the end. */
+      const t = entry ? progress : 1,
+        wide = { u0: -372, u1: 372, v0: -273, v1: 273 },
+        tight = layout.bounds,
+        mix = (a, b) => a + (b - a) * t;
+      layout3d = {
+        zoom: 1,
+        bounds: {
+          u0: mix(wide.u0, tight.u0),
+          u1: mix(wide.u1, tight.u1),
+          v0: mix(wide.v0, tight.v0),
+          v1: mix(wide.v1, tight.v1),
+        },
+        padX: 45 * (1 - t),
+        padY: 55 * (1 - t),
+        tall: 82 * (1 - t),
+      };
+    } else if (!home && topbarEl) {
+      layout3d = {
+        zoom: 1.02,
+        surface: [...A, ...B],
+        centerY:
+          (topbarEl.offsetTop + topbarEl.offsetHeight + stageEl.clientHeight) / 2 -
+          svg.parentElement.offsetTop,
+      };
+    }
+    fitScene(svg, canvas.size, layout3d);
     canvas.begin();
     // Anchor controls to the gap between resting cards, so selection and dealing never move them.
     const handCount = st.game.hands[0].length || 18;
-    const hand = canvas.cardGeometry(handPose(0, handCount - 1, handCount)),
-      played = canvas.cardGeometry({ u: 0, v: 0, z: 6, scale: 0.86 });
+    const hand = canvas.cardGeometry(handPose(0, handCount - 1, handCount, layout)),
+      played = canvas.cardGeometry({ u: 0, v: 0, z: 6, scale: layout.playScale });
     const handTop = Math.min(...[...hand.A, ...hand.B].map((point) => P(...point)[1])),
       playedBottom = Math.max(...[...played.A, ...played.B].map((point) => P(...point)[1]));
-    const actionCenter = String((handTop + playedBottom) / 2);
-    if (svg.dataset.actionCenter !== actionCenter) {
+    const actionCenter = String((handTop + playedBottom) / 2),
+      // The HTML pills need the hand's top edge as well as the middle of the gap:
+      // on very short screens the gap cannot hold them at full size.
+      actionGap = String(handTop - playedBottom);
+    if (svg.dataset.actionCenter !== actionCenter || svg.dataset.actionGap !== actionGap) {
       svg.dataset.actionCenter = actionCenter;
+      svg.dataset.actionGap = actionGap;
       svg.dispatchEvent(new Event('scene-layout'));
     }
     canvas.shadow([...A, ...B], -22);
@@ -125,7 +155,7 @@ export async function createRenderer(art, svg) {
     for (const { id, pose, options } of frame.cards) {
       const hover = options.act ? hoverProgress.get(id) || 0 : 0;
       // Slide on the tabletop; retain the resting pose for stacking and hit order.
-      const lift = options.selected ? 22 : 12 * hover;
+      const lift = options.selected ? layout.selectedLift : 12 * hover;
       const resting = canvas.cardGeometry(pose);
       const g = lift ? canvas.cardGeometry({ ...pose, v: pose.v - lift }) : resting;
       // Hover never moves its own hit area: a stationary pointer cannot retrigger it.
@@ -192,9 +222,16 @@ export async function createRenderer(art, svg) {
       canvas.addShadow([...g.A, ...g.B], 0);
       parts.push({ at: c, box: bounds([...g.A, ...g.B]), draw: () => canvas.coin(g, images.coin) });
     }
-    for (const id of home ? [] : st.game.items) {
+    for (const [index, id] of (home ? [] : st.game.items).entries()) {
       const item = ITEMS.find((item) => item.id === id),
-        model = tableItemModel(id);
+        place = layout.itemLayout
+          ? {
+              u: layout.itemLayout.u,
+              v: layout.itemLayout.v + index * layout.itemLayout.step,
+              scale: layout.itemLayout.scale || 0.25,
+            }
+          : null,
+        model = tableItemModel(id, place);
       drawTableItemShadow(canvas, model, B);
       parts.push({ ...model, draw: () => drawTableItem(canvas, model) });
       overlay.push(

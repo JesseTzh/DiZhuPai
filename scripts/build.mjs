@@ -8,13 +8,19 @@ const source = path.join(root, 'src');
 const output = path.join(root, 'dist');
 const outputAssets = path.join(output, 'assets');
 const gameSounds = await Promise.all(
-  ['发牌', '敲桌子', '洗牌', 'menu'].map(
+  ['deal', 'knock', 'shuffle', 'hover', 'win'].map(
     async (name) =>
       'data:audio/mpeg;base64,' +
       (await readFile(path.join(source, 'assets/sound', name + '.mp3'))).toString('base64'),
   ),
 );
 await mkdir(outputAssets, { recursive: true });
+await mkdir(path.join(outputAssets, 'sound'), { recursive: true });
+// The BGM stays an external file: inlining several minutes of audio would bloat the bundle.
+await copyFile(
+  path.join(source, 'assets/sound/theme.m4a'),
+  path.join(outputAssets, 'sound/theme.m4a'),
+);
 for (const name of ['favicon.svg', 'favicon.png', 'apple-touch-icon.png']) {
   await copyFile(path.join(source, 'assets', name), path.join(outputAssets, name));
 }

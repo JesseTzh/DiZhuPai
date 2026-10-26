@@ -69,7 +69,7 @@ try {
     await page
       .locator('#settings-screen [role="switch"], #settings-screen [role="radiogroup"]')
       .count(),
-    2,
+    3,
   );
   await page.locator('#close-settings').click();
   await page.locator('#home-catalogue').click();

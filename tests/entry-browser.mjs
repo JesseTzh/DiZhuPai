@@ -31,6 +31,8 @@ try {
     await page.locator('#enter-game').click();
     await page.waitForFunction(() => gameApp.state.visual.entry?.time > 0.2);
     const tilt = await page.evaluate(() => ({ ...gameApp.state.visual.entry }));
+    // 此处的 858×396 只是窄窗口视口(未启用触屏),仍走桌面相机;触屏手机横屏在
+    // mobile-game-browser 里验证:保持垂直俯视。
     assert.ok(tilt.pitch < 90 && tilt.pitch > 68);
     assert.equal(await page.evaluate(() => gameApp.state.game.round), 0);
     assert.equal(await page.locator('.money-bag').count(), 0);

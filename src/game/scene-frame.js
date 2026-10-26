@@ -12,31 +12,46 @@ import {
   DEAL_DURATION,
 } from './wild-reveal.js';
 import { transferCoinPose, TRANSFER_DURATION, STEAL_DURATION } from './transfer.js';
+import { DESKTOP_LAYOUT } from './scene-layout.js';
 
 // Layout and animation state only; no rendering calls.
 export const playerPalette = (key) => (key === 'tomato' ? 'cobalt' : key);
-const rowV = (p) => (p === 0 ? 180 : -165);
-export const bagPosition = (p) => world(-315, rowV(p));
-export const deckPosition = (p) => ({ u: 315, v: rowV(p) });
-export function handPose(p, index, count) {
+const rowV = (layout, p) => layout.rowV[p];
+export const bagPosition = (p, layout = DESKTOP_LAYOUT) => world(layout.bagU, rowV(layout, p));
+export const deckPosition = (p, layout = DESKTOP_LAYOUT) => ({
+  u: layout.deckU,
+  v: rowV(layout, p),
+});
+export function handPose(p, index, count, layout = DESKTOP_LAYOUT) {
+  const spacing = layout.handSpan
+    ? Math.min(layout.handSpacing, layout.handSpan / Math.max(1, count - 1))
+    : layout.handSpacing;
   return {
-    u: (index - (count - 1) / 2) * 24,
-    v: rowV(p),
+    u: (index - (count - 1) / 2) * spacing,
+    v: rowV(layout, p),
     z: 3 + index * 0.08,
-    scale: 0.86,
+    scale: layout.handScale,
     flip: p === 0 ? 0 : Math.PI,
   };
 }
-export function fitScene(svg, viewport, { zoom = 1, surface, centerY } = {}) {
+export function fitScene(
+  svg,
+  viewport,
+  { zoom = 1, surface, centerY, bounds, padX = 45, padY = 55, tall = 82 } = {},
+) {
   setCenter([0, 0], 0);
   setOrigin(0, 0);
+  const u0 = bounds ? bounds.u0 : -372,
+    u1 = bounds ? bounds.u1 : 372,
+    v0 = bounds ? bounds.v0 : -273,
+    v1 = bounds ? bounds.v1 : 273;
   let minX = Infinity,
     minY = Infinity,
     maxX = -Infinity,
     maxY = -Infinity;
-  for (const u of [-372, 372])
-    for (const v of [-273, 273])
-      for (const z of [0, 82]) {
+  for (const u of [u0, u1])
+    for (const v of [v0, v1])
+      for (const z of [0, tall]) {
         const [x, y] = P(...world(u, v, z));
         minX = Math.min(minX, x);
         maxX = Math.max(maxX, x);
@@ -45,7 +60,7 @@ export function fitScene(svg, viewport, { zoom = 1, surface, centerY } = {}) {
       }
   const rect = viewport || svg.getBoundingClientRect(),
     ratio = rect.width && rect.height ? rect.height / rect.width : 0.77;
-  const width = Math.max(maxX - minX + 45, (maxY - minY + 55) / ratio) / zoom,
+  const width = Math.max(maxX - minX + padX, (maxY - minY + padY) / ratio) / zoom,
     height = width * ratio;
   let originY = (height - minY - maxY) / 2;
   if (surface && centerY != null && rect.height) {
@@ -56,7 +71,7 @@ export function fitScene(svg, viewport, { zoom = 1, surface, centerY } = {}) {
   const view = `0 0 ${width} ${height}`;
   if (svg.getAttribute('viewBox') !== view) svg.setAttribute('viewBox', view);
 }
-export function sceneFrame(st) {
+export function sceneFrame(st, layout = DESKTOP_LAYOUT) {
   const { game, visual } = st;
   if (visual.home && !visual.entry) return { cards: [], bags: [], coins: [], labels: [] };
   const cards = [],
@@ -70,7 +85,7 @@ export function sceneFrame(st) {
   for (const tr of [visual.transfer, visual.spill].filter(Boolean)) {
     const mouths = [0, 1].map((p) => {
       const m = sackModel(visual.bags[p]),
-        pos = bagPosition(p),
+        pos = bagPosition(p, layout),
         axis = m.axis(m.top);
       return { m, pos, at: pos.map((q, k) => q + 1.08 * (axis[k] - (k === 2 ? 0 : 48))) };
     });
@@ -104,7 +119,7 @@ export function sceneFrame(st) {
     }
   }
   for (let p = 0; p < 2; p++) {
-    const pos = bagPosition(p),
+    const pos = bagPosition(p, layout),
       bag = visual.bags[p],
       palette = p === 0 ? ownPalette : 'tomato';
     bags.push({ pos, state: { ...bag, coins: [...bag.coins, ...pockets[p]] }, palette, player: p });
@@ -115,20 +130,26 @@ export function sceneFrame(st) {
         const delta = p === tr.from ? -tr.amount : tr.amount;
         label(
           `${delta > 0 ? '+' : ''}${delta}`,
-          -315,
-          rowV(p),
+          layout.bagU,
+          rowV(layout, p),
           100 + elapsed * 8,
           'coin-delta ' + (delta > 0 ? 'gain' : 'loss'),
         );
       }
     }
-    const deck = deckPosition(p),
+    const deck = deckPosition(p, layout),
       count = game.phase === 'ready' ? 54 : game.decks[p].length;
     if (count > 0) {
       const thickness = count * cardThickness;
       card(
         0,
-        { ...deck, z: 1 + (thickness * 0.82) / 2, thickness, scale: 0.82, flip: Math.PI },
+        {
+          ...deck,
+          z: 1 + (thickness * 0.82) / 2,
+          thickness,
+          scale: layout.deckScale,
+          flip: Math.PI,
+        },
         { back: true, palette, deckCount: count, player: p },
       );
     }
@@ -158,7 +179,7 @@ export function sceneFrame(st) {
         const from = naturalIndex.get(hand[i]);
         index = stampT <= 0 ? from : from + (i - from) * stampSlide(stampT);
       }
-      let pose = handPose(p, index, hand.length);
+      let pose = handPose(p, index, hand.length, layout);
       if (game.phase === 'dealing') {
         const t = Math.max(0, Math.min(1, (visual.dealTime - (i * 2 + p) * 0.043) / 0.48));
         if (t === 0) continue;
@@ -209,14 +230,14 @@ export function sceneFrame(st) {
     for (const [i, id] of visual.steal.cards.entries()) {
       const index = game.hands[0].indexOf(id);
       if (index < 0) continue;
-      const to = handPose(0, index, game.hands[0].length);
+      const to = handPose(0, index, game.hands[0].length, layout);
       card(
         id,
         {
           u: visual.steal.from[i] + (to.u - visual.steal.from[i]) * e,
           v: to.v * e,
           z: 6 + (to.z - 6) * e + Math.sin(t * Math.PI) * 30,
-          scale: 0.86,
+          scale: layout.handScale,
           flip: 0,
         },
         {
@@ -231,12 +252,12 @@ export function sceneFrame(st) {
   if (lastPlay) {
     const played = sortHand(lastPlay.cards, lastPlay.player === 0 ? { stamp: game.stamp } : null),
       n = played.length,
-      gap = Math.min(42, 445 / Math.max(1, n - 1));
+      gap = Math.min(layout.playGap, 445 / Math.max(1, n - 1));
     for (let i = 0; i < n; i++) {
       const t = Math.min(1, visual.playTime / 0.36),
         e = t * t * (3 - 2 * t),
         from = visual.playFrom?.[i];
-      let pose = { u: (i - (n - 1) / 2) * gap, v: 0, z: 6 + i * 0.1, scale: 0.86 };
+      let pose = { u: (i - (n - 1) / 2) * gap, v: 0, z: 6 + i * 0.1, scale: layout.playScale };
       if (from && t < 1)
         pose = {
           ...pose,

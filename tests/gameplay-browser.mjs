@@ -17,6 +17,21 @@ try {
   await page.goto(url({ page: 'game' }));
   await page.evaluate(() => gameApp.ready());
   await newGame(page);
+  // 电脑过牌时金币进入玩家钱袋：这单转账应播放赢钱音效，而不是通用敲桌声。
+  await page.evaluate(() => {
+    window.soundLog = [];
+    const play = gameApp.audio.play;
+    gameApp.audio.play = (index) => {
+      window.soundLog.push(index);
+      return play(index);
+    };
+    gameApp.state.game.hands[1] = [0];
+  });
+  await setHand(page, [53, 2]);
+  await page.evaluate(() => gameApp.select(53));
+  await page.locator('#play-cards').click();
+  await page.waitForFunction(() => gameApp.state.game.coins[0] === 105 && !gameApp.state.locked);
+  assert.ok(await page.evaluate(() => window.soundLog.includes(4)), '电脑过牌播放赢钱音效');
   // 自由出牌回合:没选牌时出牌/过牌都不可用。
   assert.equal(await page.evaluate(() => gameApp.state.game.target), null);
   assert.equal(await page.locator('#play-cards').isEnabled(), false);

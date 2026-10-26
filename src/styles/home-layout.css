@@ -82,7 +82,8 @@
   color: #857d6e;
 }
 
-@media (max-height: 620px) and (min-width: 601px) {
+/* 以下紧凑排版只服务桌面小窗口;触屏横屏的版式在 styles/mobile.css,两边互不影响。 */
+@media (max-height: 620px) and (min-width: 601px) and (hover: hover) and (pointer: fine) {
   #home-screen h1 {
     font-size: 48px;
     margin: 12px 0;
@@ -121,7 +122,7 @@
 #home-screen .home-secondary .home-settings {
   margin: 0;
 }
-@media (max-height: 460px) and (min-width: 601px) {
+@media (max-height: 460px) and (min-width: 601px) and (hover: hover) and (pointer: fine) {
   .home-page #home-screen {
     padding-top: 12px;
     padding-bottom: 12px;

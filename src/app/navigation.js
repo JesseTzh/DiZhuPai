@@ -80,6 +80,8 @@ export function mountNavigation({
     saves.element.hidden = next !== 'saves';
     if (next === 'saves') document.getElementById('close-saves').focus({ preventScroll: true });
     if (next === 'game' && state.game.phase === 'dealing') audio.startDeal();
+    if (next === 'game') audio.startMusic();
+    else audio.stopMusic();
     controller.queueComputer();
     if (updateHistory) {
       const url = new URL(location.href);

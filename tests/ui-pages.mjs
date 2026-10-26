@@ -33,19 +33,26 @@ try {
   await page.locator('[data-scale="4"]').click();
   await page.locator('#sound-enabled').click();
   assert.equal(await page.evaluate(() => gameApp.audio.muted), true);
+  await page.locator('#music-enabled').click();
+  assert.equal(await page.evaluate(() => gameApp.audio.musicMuted), true);
   await page.screenshot({ path: 'test-results/settings-desktop.png' });
   await page.reload();
   await page.evaluate(() => gameApp.ready());
   assert.equal(await page.locator('[data-scale="4"]').getAttribute('aria-checked'), 'true');
   assert.equal(await page.evaluate(() => gameApp.audio.muted), true);
+  assert.equal(await page.evaluate(() => gameApp.audio.musicMuted), true);
   await page.locator('#home-settings').click();
   await page.locator('[data-scale="2"]').click();
   await page.locator('#sound-enabled').click();
   assert.equal(await page.evaluate(() => gameApp.audio.muted), false);
+  await page.locator('#music-enabled').click();
+  assert.equal(await page.evaluate(() => gameApp.audio.musicMuted), false);
   await page.locator('#close-settings').click();
   await page.locator('#enter-game').click();
   await page.waitForFunction(() => gameApp.state.visual.dealTime > 0.5);
   assert.equal(await page.evaluate(() => gameApp.audio.tracks[0].loop), true);
+  await page.waitForFunction(() => !gameApp.audio.music.paused);
+  assert.equal(await page.evaluate(() => gameApp.audio.music.loop), true);
   await page.waitForFunction(() => gameApp.state.game.phase === 'playing');
   assert.deepEqual(
     await page.evaluate(() => ({
@@ -145,14 +152,19 @@ try {
   await page.locator('[data-slot="0"] [data-slot-action="new"]').click();
   await page.waitForFunction(() => gameApp.state.visual.dealTime > 0.4);
   await page.locator('#open-settings').click();
-  // 发牌音乐只循环约 2.1s 动画时间；慢速 CI 上 Playwright 点击的动作稳定性等待
+  // 发牌音效只循环约 2.1s 动画时间；慢速 CI 上 Playwright 点击的动作稳定性等待
   // 可能耗尽余量使发牌提前结束（loop 复位），因此开关用页面内同步点击完成。
   await page.evaluate(() => document.getElementById('sound-enabled').click());
   assert.equal(await page.evaluate(() => gameApp.audio.tracks[0].paused), true);
   await page.evaluate(() => document.getElementById('sound-enabled').click());
   assert.equal(await page.evaluate(() => gameApp.audio.tracks[0].loop), true);
+  await page.evaluate(() => document.getElementById('music-enabled').click());
+  assert.equal(await page.evaluate(() => gameApp.audio.music.paused), true);
+  await page.evaluate(() => document.getElementById('music-enabled').click());
+  await page.waitForFunction(() => !gameApp.audio.music.paused);
   await page.locator('#return-home').click();
   assert.equal(await page.evaluate(() => gameApp.audio.tracks[0].loop), false);
+  assert.equal(await page.evaluate(() => gameApp.audio.music.paused), true);
   await page.goto(new URL('performance.html', base).href);
   await page.evaluate(() => performanceApp.ready());
   await page.waitForFunction(() => performanceApp.metrics.samples > 4);

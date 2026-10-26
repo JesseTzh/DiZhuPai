@@ -7,12 +7,14 @@ import { INK, SHADOW } from '../engine/palette.js';
 
 const cache = new Map();
 // Keep the little collection in the money bag's corner, clear of the hand and coin landing area.
-export function tableItemModel(id) {
-  const key = id;
+// A layout may move the whole collection (the phone mode stacks it along the free edge)
+// and resize it; the model is cached per placement.
+export function tableItemModel(id, place = null) {
+  const { u, v } = place || TOYS[id].table,
+    scale = place?.scale || 0.25,
+    key = `${id}:${u}:${v}:${scale}`;
   if (cache.has(key)) return cache.get(key);
-  const { u, v } = TOYS[id].table,
-    scale = 0.25,
-    map = ([x, y, z]) => world(u + x * scale, v + y * scale, 1 + z * scale);
+  const map = ([x, y, z]) => world(u + x * scale, v + y * scale, 1 + z * scale);
   const parts = toyGeometry(id).map((part) => {
     const points = part.points.map(map),
       box = [0, 1].map((end) =>

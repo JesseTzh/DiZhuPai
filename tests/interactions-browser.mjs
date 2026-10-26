@@ -42,7 +42,7 @@ try {
     await page
       .locator('#settings-screen [role="switch"], #settings-screen [role="radiogroup"]')
       .count(),
-    2,
+    3,
   );
   await page.locator('#sound-enabled').click();
   assert.equal(await page.evaluate(() => gameApp.audio.muted), true);

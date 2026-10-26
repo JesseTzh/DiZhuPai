@@ -250,7 +250,9 @@ button:focus-visible,
   margin-right: 12px;
 }
 
-@media (max-height: 520px) and (min-width: 651px) {
+/* 小窗口(桌面浏览器)的横向排版。触屏横屏有自己的手机版式(styles/mobile.css),
+   两者用指针能力分开,互不覆盖。 */
+@media (max-height: 520px) and (min-width: 651px) and (hover: hover) and (pointer: fine) {
   .home-composition {
     display: flex;
     align-items: center;
@@ -310,7 +312,7 @@ button:focus-visible,
     transform: translateY(-12px) scale(0.98);
   }
 }
-@media (max-height: 620px) and (min-width: 601px) {
+@media (max-height: 620px) and (min-width: 601px) and (hover: hover) and (pointer: fine) {
   .home-page .zwrap {
     inset: 6px 0 85px;
   }

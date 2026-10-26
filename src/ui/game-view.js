@@ -5,6 +5,7 @@ import { mountShop } from '../shop/view.js';
 import { mountTableControls } from './table-controls.js';
 import { mountGameTopbar } from './game-topbar.js';
 import { isMobileLandscape } from './device-mode.js';
+import { layoutFor } from '../game/scene-layout.js';
 
 export function mountGameView({ state, ui, actions: controller, isGamePage }) {
   const { game } = state;
@@ -37,15 +38,28 @@ export function mountGameView({ state, ui, actions: controller, isGamePage }) {
     actionCtx.setTransform(ratio, 0, 0, ratio, 0, 0);
     actionCtx.clearRect(0, 0, w, h);
     if (!['playing', 'dealing'].includes(game.phase)) return;
-    const scale = isMobileLandscape() ? 0.75 : 1;
+    const mobile = isMobileLandscape();
+    const layout = layoutFor(mobile);
+    const scale = layout.actionScale;
     const viewport = figure.parentElement;
-    const left = isMobileLandscape() ? viewport.offsetLeft : 0;
-    const availableWidth = isMobileLandscape() ? viewport.clientWidth : w;
+    const left = mobile ? viewport.offsetLeft : 0;
+    const availableWidth = mobile ? viewport.clientWidth : w;
+    // The SVG letterboxes its viewBox inside the element; map the renderer's
+    // viewBox-space anchor through that same fit so the pills sit between the
+    // played cards and the hand at every aspect ratio.
+    const box = figure.viewBox.baseVal;
+    const viewScale = Math.min(
+      viewport.clientWidth / box.width,
+      viewport.clientHeight / box.height,
+    );
+    const contentTop = viewport.offsetTop + (viewport.clientHeight - box.height * viewScale) / 2;
     const center = Number(figure.dataset.actionCenter);
+    const rowGap = Number(figure.dataset.actionGap) * viewScale;
+    const handTop = contentTop + (center + rowGap / 2) * viewScale;
     const actionY = figure.dataset.actionCenter
-      ? figure.parentElement.offsetTop +
-        (center * figure.clientHeight) / figure.viewBox.baseVal.height -
-        21 * scale
+      ? // Never sit on the hand: where the gap between the played row and the hand
+        // is tiny, overlap the played cards instead, which are not interactive.
+        Math.min(contentTop + center * viewScale - 21 * scale, handTop - 47 * scale - 2)
       : h * 0.6;
     const draw = (position, width, fill, text, icon, disabled, hovered) => {
       const lift = hovered && !disabled ? -3 : 0;

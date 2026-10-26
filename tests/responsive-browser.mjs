@@ -116,6 +116,43 @@ try {
   // matchMedia 的 change 事件在下一帧才派发,等监听器真正把提示隐藏再断言。
   await touchPage.waitForFunction(() => document.getElementById('rotate-hint')?.hidden);
   assert.equal(await touchPage.locator('#rotate-hint').isVisible(), false, '转回横屏:提示消失');
+  // 首次进入(先竖屏后转横屏)木桌也应居中:在提示消失后再等取景稳定,按首页
+  // 木桌锚点的左右留白比较,偏差超过 8px 说明首帧用了旋转前/过渡中的布局。
+  await touchPage.waitForTimeout(400);
+  const homeFrame = await touchPage.evaluate(async () => {
+    const { P } = await import('/engine/camera.js');
+    const { world } = await import('/game/table.js');
+    const fig = document.getElementById('fig');
+    const ctm = fig.getScreenCTM();
+    const anchor = document.querySelector('.home-table').getBoundingClientRect();
+    const corners = [
+      [-365, -265],
+      [365, -265],
+      [365, 265],
+      [-365, 265],
+    ].map(([u, v]) => {
+      const [x, y] = P(...world(u, v, -1));
+      const point = new DOMPoint(x, y).matrixTransform(ctm);
+      return [point.x, point.y];
+    });
+    const xs = corners.map(([x]) => x),
+      ys = corners.map(([, y]) => y);
+    return {
+      anchor: [anchor.left, anchor.top, anchor.width, anchor.height],
+      painted: [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)],
+      viewport: [innerWidth, innerHeight],
+    };
+  });
+  const [ax, ay, aw, ah] = homeFrame.anchor,
+    [px, py, pr, pb] = homeFrame.painted,
+    [vw, vh] = homeFrame.viewport;
+  assert.ok(
+    Math.abs(px - ax - (ax + aw - pr)) < 8,
+    `旋转后木桌左右留白对称(左 ${(px - ax).toFixed(1)}px,右 ${(ax + aw - pr).toFixed(1)}px)`,
+  );
+  assert.ok(Math.abs(py - ay - (ah * 12) / 585) < 3, '旋转后木桌按设计贴住锚点顶部');
+  assert.ok(px >= 0 && py >= 0 && pr <= vw && pb <= vh, '旋转后木桌完整落在屏幕内');
+  await touchPage.screenshot({ path: 'test-results/responsive-rotate-landscape.png' });
   await touchPage.close();
   await writeFile(
     'test-results/responsive-report.json',

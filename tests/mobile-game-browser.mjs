@@ -84,6 +84,27 @@ try {
   assert.ok(await page.locator('.game-topbar').isVisible());
   assert.equal(await page.locator('.hand-card').count(), 18);
   await checkMobileLayout();
+  // 手机端相机垂直俯视牌桌,手牌比桌面端大一档,整行仍在牌桌内、不压到屏幕底边。
+  const camera = await page.evaluate(async () => (await import('/engine/camera.js')).cameraView());
+  assert.deepEqual(camera, { pitch: 90, distance: 0 }, '手机端相机正对桌面');
+  const handRow = await page.evaluate(() => {
+    const cards = [...document.querySelectorAll('.hand-card')].map((el) =>
+      el.getBoundingClientRect(),
+    );
+    return {
+      left: Math.min(...cards.map((rect) => rect.left)),
+      right: Math.max(...cards.map((rect) => rect.right)),
+      bottom: Math.max(...cards.map((rect) => rect.bottom)),
+      width: cards[0].width,
+      height: cards[0].height,
+    };
+  });
+  const table = await page.locator('.zwrap').boundingBox();
+  const rowWidth = handRow.right - handRow.left;
+  assert.ok(handRow.width > 60 && handRow.height > 85, '手机端手牌放大');
+  assert.ok(handRow.left >= table.x && handRow.right <= table.x + table.width, '手牌整行在牌桌内');
+  assert.ok(rowWidth >= table.width * 0.6, '手牌铺开利用牌桌宽度');
+  assert.ok(handRow.bottom <= page.viewportSize().height - 12, '手牌不压屏幕底边');
   await page.screenshot({ path: 'test-results/mobile-dealt.png' });
   // 触控选牌:点选最右侧一张(扇形手牌中它压在最上层),再点一次取消,最后保持单选。
   const card = page.locator('.hand-card').last();

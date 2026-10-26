@@ -37,7 +37,9 @@
   top: 98px;
   bottom: 16px;
 }
-@media (max-width: 811px) {
+/* 窄桌面窗口:状态栏改成横向两行。触屏横屏是竖排侧栏(styles/mobile.css),
+   由指针能力区分,避免窄屏手机同时命中两套规则。 */
+@media (max-width: 811px) and (hover: hover) and (pointer: fine) {
   .game-topbar {
     left: 8px;
     right: 8px;

@@ -2,7 +2,7 @@ import { mountFigure } from './engine/figure.js';
 import { cardDeck, cardIds } from './cards/constants.js';
 import { createGame, PASS_COST } from './game/state.js';
 import { createGameRenderer, makeVisual, DEAL_DURATION } from './game/scene.js';
-import { createSounds } from './game/sound.js';
+import { createSounds, SOUND } from './game/sound.js';
 import { mountShell } from './ui/controls.js';
 import { mountZoom } from './ui/zoom.js';
 import { mountSettings } from './ui/settings-screen.js';
@@ -125,7 +125,7 @@ document.querySelector('.stage').addEventListener('click', (event) => {
 });
 document.addEventListener('pointerover', (event) => {
   const target = event.target.closest?.('#home-screen button, #home-screen a, [data-card]');
-  if (target && !target.contains(event.relatedTarget)) audio.hover(3);
+  if (target && !target.contains(event.relatedTarget)) audio.hover(SOUND.hover);
 });
 
 const draw = ui.render;

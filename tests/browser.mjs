@@ -145,7 +145,7 @@ try {
     await page
       .locator('#settings-screen [role="switch"], #settings-screen [role="radiogroup"]')
       .count(),
-    2,
+    3,
   );
   await page.locator('[data-scale="1"]').click();
   await page.locator('#close-settings').click();

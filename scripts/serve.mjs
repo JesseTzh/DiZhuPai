@@ -11,6 +11,7 @@ const types = {
   '.svg': 'image/svg+xml',
   '.png': 'image/png',
   '.mp3': 'audio/mpeg',
+  '.m4a': 'audio/mp4',
 };
 const port = Number(process.env.PORT || 5173);
 const server = createServer(async (request, response) => {

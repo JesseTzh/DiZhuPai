@@ -13,6 +13,9 @@ import { makeVisual, handPose, stepVisual, DEAL_DURATION } from '../game/scene.j
 import { TRANSFER_DURATION, STEAL_DURATION, coinScatterSeed } from '../game/transfer.js';
 import { dealDuration } from '../game/wild-reveal.js';
 import { TABLES } from '../game/table.js';
+import { SOUND } from '../game/sound.js';
+import { layoutFor } from '../game/scene-layout.js';
+import { isMobileLandscape } from '../ui/device-mode.js';
 
 export function createGameController({
   state,
@@ -141,7 +144,7 @@ export function createGameController({
     visual.transfer = null;
     visual.spill = null;
     visual.steal = null;
-    if (game.substage === 1) sound(2);
+    if (game.substage === 1) sound(SOUND.shuffle);
     setTimeout(() => {
       if (token === epoch && game.phase === 'dealing' && isGamePage()) audio.startDeal();
     }, 220);
@@ -169,8 +172,10 @@ export function createGameController({
     }
     hintIndex = 0;
     visual.playTime = 0;
-    visual.playFrom = ordered.map((id) => handPose(p, before.indexOf(id), before.length));
-    sound(1);
+    visual.playFrom = ordered.map((id) =>
+      handPose(p, before.indexOf(id), before.length, layoutFor(isMobileLandscape())),
+    );
+    sound(SOUND.knock);
     animate();
     ui.render();
     queueComputer();
@@ -205,7 +210,8 @@ export function createGameController({
     };
     visual.bags[p].punchT = 0;
     visual.bags[1 - p].squash = 0.04;
-    sound(1);
+    // 电脑过牌时金币进入玩家钱袋，用专属的赢钱音效替换通用敲桌声。
+    sound(p === 1 ? SOUND.win : SOUND.knock);
     animate();
     ui.render();
     // Unlock only after the coins finish their physical path; reset/new-game cannot race a pending turn.
@@ -228,7 +234,7 @@ export function createGameController({
       scatterSeed: coinScatterSeed(),
     };
     visual.bags[0].punchT = 0;
-    sound(1);
+    sound(SOUND.knock);
     animate();
     ui.render();
   }
@@ -246,14 +252,14 @@ export function createGameController({
     // The taken cards slide back along the layout they sat in on the table.
     const ordered = sortHand(response.cards, { stamp: game.stamp }),
       n = ordered.length,
-      gap = Math.min(42, 445 / Math.max(1, n - 1));
+      gap = Math.min(layoutFor(isMobileLandscape()).playGap, 445 / Math.max(1, n - 1));
     state.locked = true;
     visual.steal = {
       cards: [...response.cards],
       from: ordered.map((_, i) => (i - (n - 1) / 2) * gap),
       start: visual.time,
     };
-    sound(1);
+    sound(SOUND.knock);
     animate();
     ui.render();
     const token = epoch,

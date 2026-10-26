@@ -86,6 +86,7 @@
   margin-bottom: 24px;
 }
 #sound-label,
+#music-label,
 #scale-label,
 #seed-title {
   font-size: 15px;
@@ -100,31 +101,32 @@
   letter-spacing: 0.08em;
   color: #41538f;
 }
-#sound-enabled {
+.settings-toggle {
   width: 136px;
 }
-.sound-paper {
+.toggle-paper {
   fill: #93d3b0;
 }
-.sound-value {
+.toggle-value {
   fill: #292a28;
   font:
     600 14px 'PingFang SC',
     sans-serif;
 }
-.sound-cross {
+.toggle-cross {
   display: none;
 }
-#sound-enabled[aria-checked='false'] .sound-paper {
+.settings-toggle[aria-checked='false'] .toggle-paper {
   fill: #e2d6b7;
 }
-#sound-enabled[aria-checked='false'] .sound-waves {
+.settings-toggle[aria-checked='false'] .sound-waves,
+.settings-toggle[aria-checked='false'] .music-note {
   display: none;
 }
-#sound-enabled[aria-checked='false'] .sound-cross {
+.settings-toggle[aria-checked='false'] .toggle-cross {
   display: block;
 }
-#sound-enabled[aria-checked='false'] .sound-indicator {
+.settings-toggle[aria-checked='false'] .toggle-indicator {
   fill: #b4a381;
 }
 #scale-label {

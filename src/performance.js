@@ -7,7 +7,7 @@ import { mountShell } from './ui/controls.js';
 import { mountZoom } from './ui/zoom.js';
 import { mountPerformance } from './ui/performance.js';
 import { tableChoices, bindTableChoices } from './ui/table-picker.js';
-import { createSounds } from './game/sound.js';
+import { createSounds, SOUND } from './game/sound.js';
 import {
   renderDprSetting,
   setRenderDprSetting,
@@ -122,7 +122,7 @@ ui.animate((dt) => {
       const cards = game.hands[player].slice(0, 3);
       game.target = { player, cards, move: { name: '出牌测试' } };
       visual.playFrom = cards.map((id, i) => handPose(player, i, 18));
-      if (soundOn) audio.play(1);
+      if (soundOn) audio.play(SOUND.knock);
     }
     visual.playTime = clocks.play % 1.6;
   }
