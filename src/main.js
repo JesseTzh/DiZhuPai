@@ -91,6 +91,7 @@ controller = createGameController({
 });
 const view = mountGameView({ state, ui, actions: controller, isGamePage });
 const settings = mountSettings({ state, ui, audio });
+audio.startMusic();
 const catalogue = mountItemCatalogue({ state });
 const saves = mountSaveScreen({
   session,

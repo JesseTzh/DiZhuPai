@@ -28,6 +28,7 @@ try {
   await page.screenshot({ path: 'test-results/home-desktop.png' });
   await fit();
   await page.locator('#home-settings').click();
+  await page.waitForFunction(() => !gameApp.audio.music.paused);
   assert.ok(await page.locator('#settings-screen').isVisible());
   assert.equal(await page.locator('[data-scale="2"]').getAttribute('aria-checked'), 'true');
   await page.locator('[data-scale="4"]').click();
@@ -41,12 +42,14 @@ try {
   assert.equal(await page.locator('[data-scale="4"]').getAttribute('aria-checked'), 'true');
   assert.equal(await page.evaluate(() => gameApp.audio.muted), true);
   assert.equal(await page.evaluate(() => gameApp.audio.musicMuted), true);
+  assert.equal(await page.evaluate(() => gameApp.audio.music.paused), true);
   await page.locator('#home-settings').click();
   await page.locator('[data-scale="2"]').click();
   await page.locator('#sound-enabled').click();
   assert.equal(await page.evaluate(() => gameApp.audio.muted), false);
   await page.locator('#music-enabled').click();
   assert.equal(await page.evaluate(() => gameApp.audio.musicMuted), false);
+  await page.waitForFunction(() => !gameApp.audio.music.paused);
   await page.locator('#close-settings').click();
   await page.locator('#enter-game').click();
   await page.waitForFunction(() => gameApp.state.visual.dealTime > 0.5);
@@ -164,7 +167,7 @@ try {
   await page.waitForFunction(() => !gameApp.audio.music.paused);
   await page.locator('#return-home').click();
   assert.equal(await page.evaluate(() => gameApp.audio.tracks[0].loop), false);
-  assert.equal(await page.evaluate(() => gameApp.audio.music.paused), true);
+  assert.equal(await page.evaluate(() => gameApp.audio.music.paused), false);
   await page.goto(new URL('performance.html', base).href);
   await page.evaluate(() => performanceApp.ready());
   await page.waitForFunction(() => performanceApp.metrics.samples > 4);

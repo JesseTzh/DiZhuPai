@@ -69,7 +69,7 @@ export function createSounds() {
     music.preload = 'auto';
     attemptMusic();
   };
-  // 页面切走只暂停，回到对局时从原位置继续。
+  // 暂停时保留播放位置，下次启动时继续。
   const stopMusic = () => {
     musicWanted = false;
     music.pause();
