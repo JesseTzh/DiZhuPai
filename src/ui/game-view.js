@@ -4,6 +4,7 @@ import { hasItemRule } from '../game/items.js';
 import { mountShop } from '../shop/view.js';
 import { mountTableControls } from './table-controls.js';
 import { mountGameTopbar } from './game-topbar.js';
+import { isMobileLandscape } from './device-mode.js';
 
 export function mountGameView({ state, ui, actions: controller, isGamePage }) {
   const { game } = state;
@@ -36,15 +37,23 @@ export function mountGameView({ state, ui, actions: controller, isGamePage }) {
     actionCtx.setTransform(ratio, 0, 0, ratio, 0, 0);
     actionCtx.clearRect(0, 0, w, h);
     if (!['playing', 'dealing'].includes(game.phase)) return;
+    const scale = isMobileLandscape() ? 0.75 : 1;
+    const viewport = figure.parentElement;
+    const left = isMobileLandscape() ? viewport.offsetLeft : 0;
+    const availableWidth = isMobileLandscape() ? viewport.clientWidth : w;
     const center = Number(figure.dataset.actionCenter);
-    const y = figure.dataset.actionCenter
+    const actionY = figure.dataset.actionCenter
       ? figure.parentElement.offsetTop +
         (center * figure.clientHeight) / figure.viewBox.baseVal.height -
-        21
+        21 * scale
       : h * 0.6;
-    const draw = (x, width, fill, text, icon, disabled, hovered) => {
+    const draw = (position, width, fill, text, icon, disabled, hovered) => {
       const lift = hovered && !disabled ? -3 : 0;
+      const x = 0,
+        y = 0;
       actionCtx.save();
+      actionCtx.translate(left + position * scale, actionY);
+      actionCtx.scale(scale, scale);
       actionCtx.translate(0, lift);
       const cut = 8;
       const path = () => {
@@ -113,8 +122,8 @@ export function mountGameView({ state, ui, actions: controller, isGamePage }) {
     // The mouse button only takes space while the opponent's play sits on the table.
     const stealShown = buttons[3] && buttons[3].style.display !== 'none';
     const total = passW + playW + gap + (stealShown ? stealW + gap : 0);
-    const x = (w - total) / 2;
-    const hitY = y - 5;
+    const x = (availableWidth / scale - total) / 2;
+    const hitY = actionY - 5 * scale;
     let cursor = x;
     if (stealShown) {
       draw(
@@ -127,27 +136,27 @@ export function mountGameView({ state, ui, actions: controller, isGamePage }) {
         hoveredAction === 'steal',
       );
       Object.assign(buttons[3].style, {
-        left: `${cursor}px`,
+        left: `${left + cursor * scale}px`,
         top: `${hitY}px`,
-        width: `${stealW}px`,
-        height: '52px',
+        width: `${stealW * scale}px`,
+        height: `${52 * scale}px`,
       });
       cursor += stealW + gap;
     }
     draw(cursor, passW, '#fff4d6', '过牌', 'pass', buttons[2]?.disabled, hoveredAction === 'pass');
     Object.assign(buttons[2].style, {
-      left: `${cursor}px`,
+      left: `${left + cursor * scale}px`,
       top: `${hitY}px`,
-      width: `${passW}px`,
-      height: '52px',
+      width: `${passW * scale}px`,
+      height: `${52 * scale}px`,
     });
     cursor += passW + gap;
     draw(cursor, playW, '#93d3b0', '出牌', 'play', buttons[1]?.disabled, hoveredAction === 'play');
     Object.assign(buttons[1].style, {
-      left: `${cursor}px`,
+      left: `${left + cursor * scale}px`,
       top: `${hitY}px`,
-      width: `${playW}px`,
-      height: '52px',
+      width: `${playW * scale}px`,
+      height: `${52 * scale}px`,
     });
   };
   new ResizeObserver(paintActions).observe(stage);

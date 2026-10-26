@@ -16,9 +16,75 @@
 
 /* 手机横屏(本项目的手机端模式):刘海在左右两侧,贴边 UI 让开安全区。 */
 @media (hover: none) and (pointer: coarse) and (orientation: landscape) {
+  .game-page {
+    height: 100dvh;
+    --mobile-sidebar-left: max(6px, env(safe-area-inset-left));
+    --mobile-table-left: calc(var(--mobile-sidebar-left) + 100px);
+  }
   .game-topbar {
-    left: max(8px, env(safe-area-inset-left));
-    right: max(8px, env(safe-area-inset-right));
+    top: max(6px, env(safe-area-inset-top));
+    bottom: max(6px, env(safe-area-inset-bottom));
+    left: var(--mobile-sidebar-left);
+    right: auto;
+    width: 94px;
+    height: auto;
+  }
+  .game-page .stage .zwrap {
+    top: max(4px, env(safe-area-inset-top));
+    bottom: max(4px, env(safe-area-inset-bottom));
+    left: var(--mobile-table-left);
+    right: max(4px, env(safe-area-inset-right));
+    width: auto;
+  }
+  .game-page .turn-bar {
+    left: var(--mobile-table-left);
+    bottom: max(6px, env(safe-area-inset-bottom));
+    font-size: 10px;
+  }
+  .game-actions .stepwrap:first-child {
+    left: calc((100% + var(--mobile-table-left)) / 2);
+    bottom: max(8px, env(safe-area-inset-bottom));
+  }
+  .game-actions button {
+    min-height: 30px;
+    padding: 5px 14px;
+    font-size: 10px;
+  }
+  .game-actions button.primary {
+    min-width: 0;
+  }
+  .home-composition {
+    display: flex;
+    align-items: center;
+    width: min(680px, calc(100vw - 48px), calc(100dvh * 1.9));
+    margin-top: 0;
+  }
+  #home-screen .home-title {
+    width: 66%;
+  }
+  .home-buttons {
+    width: 34%;
+    margin-top: 12px;
+    gap: 14px;
+  }
+  #home-screen .figure-button {
+    width: 146px;
+    min-height: 40px;
+    padding: 8px 14px;
+    gap: 10px;
+    border-width: 2px;
+    border-radius: 9px;
+    font-size: 13px;
+  }
+  #home-screen .figure-button svg {
+    width: 20px;
+    height: 20px;
+  }
+  .home-rocket {
+    top: max(12px, env(safe-area-inset-top));
+    left: max(12px, env(safe-area-inset-left));
+    width: 36px;
+    height: 36px;
   }
   /* 商店的宽度公式按竖屏顶栏预留 250px 竖向空间,横屏下高度稀缺,货架会被压到
      商品互相重叠:改为贴底摆放,预留缩到"顶栏 + 留白",道具栏也挪到顶栏之下。 */

@@ -18,6 +18,33 @@ const noHorizontalScroll = async () =>
     await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
     '手机端不应出现横向滚动',
   );
+// 状态栏应让出整块牌桌高度，操作按钮跟随剩余牌桌区域居中。
+const checkMobileLayout = async () => {
+  const bar = await page.locator('.game-topbar').boundingBox();
+  const table = await page.locator('.zwrap').boundingBox();
+  const play = await page.locator('#play-cards').boundingBox();
+  const pass = await page.locator('#pass-turn').boundingBox();
+  const viewport = page.viewportSize();
+  assert.ok(bar.height > bar.width * 2, '手机状态栏竖排');
+  assert.ok(bar.x + bar.width <= table.x, '侧栏不遮挡牌桌');
+  assert.ok(table.height >= viewport.height * 0.94, '牌桌充分利用屏幕高度');
+  assert.ok(play.width < 112 && play.height < 52, '手机出牌按钮缩小');
+  assert.ok(pass.width < 112 && pass.height < 52, '手机过牌按钮缩小');
+  assert.ok(
+    Math.abs((pass.x + play.x + play.width) / 2 - (table.x + table.width / 2)) < 2,
+    '行动按钮在牌桌内居中',
+  );
+  for (const rect of [bar, table, play, pass]) {
+    assert.ok(
+      rect.x >= 0 &&
+        rect.y >= 0 &&
+        rect.x + rect.width <= viewport.width &&
+        rect.y + rect.height <= viewport.height,
+      '手机界面元素在屏幕内',
+    );
+  }
+  await noHorizontalScroll();
+};
 const waitMyTurn = () =>
   page.waitForFunction(
     () =>
@@ -26,6 +53,12 @@ const waitMyTurn = () =>
       (!gameApp.state.locked && gameApp.state.game.turn === 0),
   );
 try {
+  await page.goto(url());
+  await page.evaluate(() => gameApp.ready());
+  const homeButton = await page.locator('#enter-game').boundingBox();
+  assert.ok(homeButton.width < 190 && homeButton.height < 54, '手机主界面按钮缩小');
+  await page.screenshot({ path: 'test-results/mobile-home.png' });
+  await page.evaluate(() => localStorage.clear());
   await page.goto(url({ page: 'game' }));
   await page.evaluate(() => gameApp.ready());
   // 手机端判定走查:触屏与横屏两个能力媒体查询都命中,竖屏提示保持隐藏。
@@ -44,6 +77,7 @@ try {
   await page.waitForFunction(() => gameApp.state.game.phase === 'playing');
   assert.ok(await page.locator('.game-topbar').isVisible());
   assert.equal(await page.locator('.hand-card').count(), 18);
+  await checkMobileLayout();
   await page.screenshot({ path: 'test-results/mobile-dealt.png' });
   // 触控选牌:点选最右侧一张(扇形手牌中它压在最上层),再点一次取消,最后保持单选。
   const card = page.locator('.hand-card').last();
@@ -109,6 +143,28 @@ try {
   await page.waitForFunction(() => gameApp.state.game.phase === 'playing');
   assert.equal(await page.evaluate(() => gameApp.state.game.round), 2);
   assert.equal(await page.locator('.wild-card-model').count(), 1);
+  // 用全部道具检查窄屏侧栏，并在同一对局里改变尺寸验证重绘及点击区域。
+  await page.evaluate(async () => {
+    const { ITEMS } = await import('/game/items.js');
+    gameApp.state.game.items = ITEMS.map((item) => item.id);
+    gameApp.render();
+  });
+  for (const [width, height] of [
+    [667, 375],
+    [568, 320],
+    [932, 430],
+  ]) {
+    await page.setViewportSize({ width, height });
+    await page.waitForFunction(
+      () =>
+        document.querySelector('.game-actions-canvas').clientWidth === innerWidth &&
+        document.querySelector('.game-actions-canvas').width ===
+          Math.round(innerWidth * devicePixelRatio),
+    );
+    await checkMobileLayout();
+    await page.locator('.topbar-item').last().focus();
+    await page.screenshot({ path: `test-results/mobile-sidebar-${width}x${height}.png` });
+  }
   assert.equal(errors.length, 0, errors.join('\n'));
   console.log(
     'Mobile gameplay passed: touch select/deselect, play, pass transfer, shop purchase and next round on an 858x396 landscape (19.5:9) viewport.',

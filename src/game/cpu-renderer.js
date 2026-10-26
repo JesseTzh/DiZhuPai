@@ -1,3 +1,4 @@
+import { isMobileLandscape } from '../ui/device-mode.js';
 import { ModelCanvas } from './model-canvas.js';
 import { P, pd, paintOrder, setCameraPitch } from '../engine/camera.js';
 import { tone, facing } from '../engine/shading.js';
@@ -82,11 +83,12 @@ export async function createRenderer(art, svg) {
     const layout =
       topbarEl && !home
         ? {
-            zoom: 1.02,
+            zoom: isMobileLandscape() ? 1.1 : 1.02,
             surface: [...A, ...B],
-            centerY:
-              (topbarEl.offsetTop + topbarEl.offsetHeight + stageEl.clientHeight) / 2 -
-              svg.parentElement.offsetTop,
+            centerY: isMobileLandscape()
+              ? canvas.size.height / 2
+              : (topbarEl.offsetTop + topbarEl.offsetHeight + stageEl.clientHeight) / 2 -
+                svg.parentElement.offsetTop,
           }
         : {};
     fitScene(svg, canvas.size, layout);

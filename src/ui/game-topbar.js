@@ -1,5 +1,6 @@
 import { ITEMS } from '../game/items.js';
 import { STAGE_COUNT, ROUNDS_PER_STAGE } from '../game/state.js';
+import { isMobileLandscape } from './device-mode.js';
 import { renderPixelRatio } from '../engine/render-pixel-ratio.js';
 import {
   drawBoard,
@@ -55,11 +56,15 @@ export function mountGameTopbar(stage, menu, state) {
   function paint() {
     const width = bar.clientWidth;
     if (!width) return;
-    const mobile = matchMedia('(max-width: 811px)').matches;
-    const height = mobile ? 116 : 82;
+    const sidebar = isMobileLandscape();
+    const mobile = !sidebar && matchMedia('(max-width: 811px)').matches;
+    const height = bar.clientHeight;
+    const canvasWidth = sidebar ? width + 280 : width;
     const ratio = renderPixelRatio();
     const key = [
       width,
+      height,
+      sidebar,
       ratio,
       state.tableStyle,
       state.game.stage,
@@ -71,18 +76,50 @@ export function mountGameTopbar(stage, menu, state) {
     ].join('|');
     if (key === previousKey) return;
     previousKey = key;
-    const pixels = Math.round(width * ratio),
-      rows = Math.round((height + 130) * ratio);
+    const pixels = Math.round(canvasWidth * ratio),
+      rows = Math.round((height + (sidebar ? 0 : 130)) * ratio);
     if (canvas.width !== pixels || canvas.height !== rows) {
       canvas.width = pixels;
       canvas.height = rows;
     }
-    canvas.style.height = `${height + 130}px`;
+    canvas.style.width = `${canvasWidth}px`;
+    canvas.style.height = `${height + (sidebar ? 0 : 130)}px`;
     ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
-    ctx.clearRect(0, 0, width, height + 130);
+    ctx.clearRect(0, 0, canvasWidth, height + 130);
     ctx.lineJoin = 'round';
     ctx.lineCap = 'round';
     drawBoard(ctx, width, height, state.tableStyle, state.game.stage);
+    const owned = ITEMS.filter((item) => state.game.items.includes(item.id));
+    if (sidebar) {
+      drawIcon(ctx, stageAppearance(state.game.stage).icon, 12, 12, 28);
+      label(ctx, '关数', 44, 31, 10);
+      label(ctx, `${state.game.stage}-${state.game.substage}`, 18, 62, 22, 800);
+      drawIcon(ctx, 'coins', 12, 76, 28);
+      label(ctx, '金币', 44, 95, 10);
+      label(ctx, state.game.coins[0].toLocaleString('zh-CN'), 16, 124, 18, 800);
+      const itemY = 142;
+      const step = Math.min(36, (height - itemY - 56) / Math.max(1, Math.ceil(owned.length / 2)));
+      for (const [i, item] of ITEMS.entries()) {
+        const index = owned.indexOf(item),
+          hit = items[i];
+        hit.hidden = index < 0;
+        if (index < 0) continue;
+        const x = 10 + (index % 2) * 36,
+          y = itemY + Math.floor(index / 2) * step;
+        drawIcon(ctx, item.id, x, y, 28);
+        place(hit, x - 2, y - 2, 34, step);
+        if (focused === item.id) {
+          ctx.strokeStyle = '#41538f';
+          ctx.lineWidth = 1.3;
+          ctx.strokeRect(x - 2, y - 2, 32, step);
+        }
+      }
+      drawGear(ctx, (width - 28) / 2 - 3, height - 48, 28, focused === 'settings');
+      place(menu, (width - 44) / 2 - 3, height - 56, 44, 44);
+      const hint = owned.find((item) => item.id === active);
+      if (hint) drawItemHint(ctx, hint, width + 4, 4, 260);
+      return;
+    }
     const statY = mobile ? 10 : 16;
     const coinX = mobile ? 113 : 168;
     const stageIcon = stageAppearance(state.game.stage);
@@ -96,7 +133,6 @@ export function mountGameTopbar(stage, menu, state) {
     place(menu, width - 59, mobile ? 9 : 16, 44, 44);
     const itemY = mobile ? 65 : 26;
     const itemX = mobile ? 20 : 330;
-    const owned = ITEMS.filter((item) => state.game.items.includes(item.id));
     const step = Math.min(mobile ? 56 : 68, (width - itemX - 20) / Math.max(1, owned.length));
     for (const [i, item] of ITEMS.entries()) {
       const index = owned.indexOf(item),
@@ -132,7 +168,9 @@ export function mountGameTopbar(stage, menu, state) {
     bar.hidden = !!visual.home && !entering;
     bar.inert = !!entering;
     const progress = entering ? smooth((entering.time - 0.16) / 0.72) : 1;
-    bar.style.transform = `translateY(${(-150 * (1 - progress)).toFixed(3)}px)`;
+    bar.style.transform = isMobileLandscape()
+      ? `translateX(${(-130 * (1 - progress)).toFixed(3)}px)`
+      : `translateY(${(-150 * (1 - progress)).toFixed(3)}px)`;
     bar.dataset.entryProgress = progress.toFixed(4);
     bar.dataset.tableStyle = state.tableStyle;
     level.textContent = `第 ${game.stage} / ${STAGE_COUNT} 大关，第 ${game.substage} / ${ROUNDS_PER_STAGE} 小关`;
