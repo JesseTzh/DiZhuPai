@@ -16,9 +16,10 @@
 | `src/game/rules.js`、`state.js`、`items.js`、`random.js` | 纯规则、对局状态变化、道具定义、种子随机派生；不接触 DOM、计时器和存储 |
 | `src/game/save.js` | 存档格式、严格校验、序列化、恢复归一化及旧存档迁移 |
 | `src/game/scene.js`、`scene-frame.js`、`scene-layout.js`、`transfer.js` | 动画状态推进、场景布局描述、桌面/手机两套牌桌布局、金币转账轨迹 |
-| `src/game/cpu-renderer.js`、`model-canvas.js`、`table-geometry.js` | 场景排序/命中外壳、牌/金币/钱袋绘制、桌面几何 |
-| `src/engine/` | 通用相机、数学、光照、Canvas/SVG 图元、渲染生命周期和动画调度 |
-| `src/cards/`、`coins/`、`shop/` | 牌模型、金币/钱袋物理与几何、商店视图和玩具美术 |
+| `src/game/cpu-renderer.js`、`scene-parts.js`、`scene-overlay.js`、`table-layer.js`、`hover.js` | 一帧的编排、画家部件与缓存键、SVG 命中标注、桌面底层、手牌悬停进度 |
+| `src/game/model-canvas.js`、`table-geometry.js` | 牌/金币/钱袋绘制、桌面几何 |
+| `src/engine/` | 通用相机、数学、光照、Canvas/SVG 图元、保留精灵（`sprite-cache.js`）、渲染生命周期和动画调度 |
+| `src/cards/`、`coins/`、`shop/` | 牌模型、金币/钱袋物理与几何（不含绘制）、商店视图和玩具美术 |
 | `src/assets/` | 原始牌面美术、栅格化工具、音效（`sound/deal`、`knock`、`shuffle`、`hover`、`win`）与背景音乐 `sound/theme.m4a`；牌面导出规则见 `cards/README.md` |
 | `src/performance.js`、`ui/performance.js` | 独立性能页及采样面板，复用真实场景和模型 |
 | `src/styles/` | `game.css` 对局/菜单，`settings.css` 设置，`home-layout.css` 首页基础布局，`home.css` 首页美术/存档，其他按功能命名 |
@@ -32,7 +33,8 @@
 - `save-session` 管理三个栏位与当前栏位，`save.js` 负责数据可信性；导入须先校验，覆盖已有栏位须确认，删除须二次点击。写入失败保留现有对局并提示导出。
 - `scene-frame` 描述布局，不绘制、不加载资源；`ModelCanvas` 复用 `CPUCanvas` 投影与图元。游戏、首页模型和性能页共用模型实现，避免复制绘制算法。
 - 手机横屏与桌面是两套独立的牌桌布局：`scene-layout.js` 的 `DESKTOP_LAYOUT`/`MOBILE_LAYOUT` 各自持有行距、手牌缩放、钱袋/牌堆位置、取景范围和按钮缩放，渲染器与控制器通过 `layoutFor(isMobileLandscape())` 取其中一套，调手机数值不会改变桌面。手机模式相机固定 90° 俯视并收窄取景框，让牌面占满屏幕；入场动画在宽/窄取景之间插值，避免切换瞬间跳帧。手机样式全部在 `styles/mobile.css` 的触屏+横屏媒体查询内，桌面规则不要写进该文件。
-- 动画任务交给 `mountFigure().animate()`，重绘交给 `ui.render()`；不要为业务动画另建帧循环。首页动画、手牌悬浮和性能采样有独立生命周期，离开页面或暂停后停止相应绘制。
+- 动画任务交给 `mountFigure().animate()`，重绘交给 `ui.render()`；不要为业务动画另建帧循环。Canvas 渲染器经 `createCanvasRenderer(art, svg, load, host)` 拿到 `ui` 作为宿主，悬停、缩放与设置变化只调用 `host.invalidate()`。首页动画和性能采样有独立生命周期，离开页面或暂停后停止相应绘制。
+- 新增场景部件时给出完整的缓存键（见 [rendering.md](rendering.md) 的「精灵缓存」）：键漏掉任何影响像素的输入，静止画面就会显示旧图。
 
 ## 文件与验证约束
 

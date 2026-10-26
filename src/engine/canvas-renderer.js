@@ -1,5 +1,6 @@
-/** Load one Canvas renderer and replay the latest state after its artwork is ready. */
-export function createCanvasRenderer(art, svg, load) {
+/** Load one Canvas renderer and replay the latest state after its artwork is ready.
+ * `host` (the figure) lends its frame driver, so the backend never runs its own loop. */
+export function createCanvasRenderer(art, svg, load, host) {
   let backend,
     current,
     disposed = false;
@@ -11,7 +12,7 @@ export function createCanvasRenderer(art, svg, load) {
   draw.ready = (async () => {
     const module = await load();
     if (disposed) return;
-    const next = await module.createRenderer(art, svg);
+    const next = await module.createRenderer(art, svg, host);
     if (disposed) {
       next.dispose?.();
       return;
