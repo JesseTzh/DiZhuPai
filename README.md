@@ -16,6 +16,7 @@
 - [代码结构与开发约定](docs/architecture.md)
 - [渲染管线](docs/rendering.md)
 - [杂货铺道具](docs/items.md)
+- [分支发布与版本号](docs/releases.md)
 
 ## 游戏截图
 

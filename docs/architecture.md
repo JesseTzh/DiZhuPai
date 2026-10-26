@@ -11,6 +11,8 @@
 | `src/app/navigation.js` | 首页/存档/设置/牌桌切换、浏览器历史、页面焦点、音效与背景音乐启停、随机种子入口 |
 | `src/app/save-session.js` | 单槽存档、本地存储、自动保存去重、导入提交与导出 |
 | `src/ui/*-screen.js` | 设置页、存档页的 DOM 与事件；存档解析委托给 `game/save.js` |
+| `src/ui/build-version.js` | 设置弹窗底部的 Canvas 版本号；由构建注入版本文本 |
+| `scripts/build-version.mjs`、`pages-site.mjs` | 构建时间、源码 SHA 和环境标识；合并正式版与测试版的 Pages 产物 |
 | `src/ui/game-view.js`、`game-keyboard.js` | 对局 HUD、按钮、结算、商店反馈及键盘绑定 |
 | `src/ui/home-art.js`、`home-title.js`、`home-models.js` | 首页动画/碰撞、标题笔画数据、真实模型预绘制 |
 | `src/game/rules.js`、`state.js`、`items.js`、`random.js` | 纯规则、对局状态变化、道具定义、种子随机派生；不接触 DOM、计时器和存储 |
@@ -29,7 +31,7 @@
 - `game/rules.js`、`state.js`、`save.js`、`items.js`、`random.js` 不依赖 `app`、`ui`、`shop` 或 `engine`；所有模块禁止循环导入。跨模块协作用显式参数、返回值或回调，不新增全局服务对象。
 - 随机种子经 `?seed=` 链接指定后随存档保存；`deal`/`enterShop` 按（种子, 用途, 局数）派生独立随机流，同一种子加相同决策可整场复现，未指定时保持真随机。浏览器测试统一用固定种子 `dizhupai-347` 访问。
 - `game` 保存可持久化规则状态，`visual` 保存动画状态；定时器、操作锁、动画进度和音频不写入存档。恢复时保留状态对象引用，重置动画并取消过期电脑任务。
-- `save-session` 管理三个栏位与当前栏位，`save.js` 负责数据可信性；导入须先校验，覆盖已有栏位须确认，删除须二次点击。写入失败保留现有对局并提示导出。
+- `save-session` 管理单个存档，`save.js` 负责数据可信性，并从旧版栏位迁移进度；导入须先校验，覆盖已有存档须确认，删除须二次点击。写入失败保留现有对局并提示导出。
 - `scene-frame` 描述布局，不绘制、不加载资源；`ModelCanvas` 复用 `CPUCanvas` 投影与图元。游戏、首页模型和性能页共用模型实现，避免复制绘制算法。
 - 手机横屏与桌面是两套独立的牌桌布局：`scene-layout.js` 的 `DESKTOP_LAYOUT`/`MOBILE_LAYOUT` 各自持有行距、手牌缩放、钱袋/牌堆位置、取景范围和按钮缩放，渲染器与控制器通过 `layoutFor(isMobileLandscape())` 取其中一套，调手机数值不会改变桌面。手机模式相机固定 90° 俯视并收窄取景框，让牌面占满屏幕；入场动画在宽/窄取景之间插值，避免切换瞬间跳帧。手机样式全部在 `styles/mobile.css` 的触屏+横屏媒体查询内，桌面规则不要写进该文件。
 - 动画任务交给 `mountFigure().animate()`，重绘交给 `ui.render()`；不要为业务动画另建帧循环。首页动画、手牌悬浮和性能采样有独立生命周期，离开页面或暂停后停止相应绘制。

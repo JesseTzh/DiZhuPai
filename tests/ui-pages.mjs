@@ -30,6 +30,19 @@ try {
   await page.locator('#home-settings').click();
   await page.waitForFunction(() => !gameApp.audio.music.paused);
   assert.ok(await page.locator('#settings-screen').isVisible());
+  const version = page.locator('#settings-screen canvas.settings-version');
+  assert.ok(await version.isVisible());
+  assert.match(
+    await version.getAttribute('aria-label'),
+    /^Version:(dev-test|\d{6}-\d{4}-[a-f0-9]{7}-(prod|test))$/,
+  );
+  assert.ok(
+    await version.evaluate((canvas) =>
+      [...canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data].some(
+        (value, index) => index % 4 === 3 && value > 0,
+      ),
+    ),
+  );
   assert.equal(await page.locator('[data-scale="2"]').getAttribute('aria-checked'), 'true');
   await page.locator('[data-scale="4"]').click();
   await page.locator('#sound-enabled').click();

@@ -2,11 +2,13 @@ import { build } from 'esbuild';
 import { copyFile, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
+import { currentBuildInfo } from './build-version.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const source = path.join(root, 'src');
 const output = path.join(root, 'dist');
 const outputAssets = path.join(output, 'assets');
+const buildInfo = currentBuildInfo(root);
 const gameSounds = await Promise.all(
   ['deal', 'knock', 'shuffle', 'hover', 'win'].map(
     async (name) =>
@@ -39,7 +41,10 @@ for (const [page, entry, cssName] of pages) {
     target: 'es2022',
     charset: 'utf8',
     legalComments: 'inline',
-    define: { __GAME_SOUNDS__: JSON.stringify(gameSounds) },
+    define: {
+      __GAME_SOUNDS__: JSON.stringify(gameSounds),
+      __BUILD_VERSION__: JSON.stringify(buildInfo.version),
+    },
   });
   let html = await readFile(path.join(source, page), 'utf8');
   const css = [];
@@ -61,3 +66,5 @@ for (const [page, entry, cssName] of pages) {
   await writeFile(path.join(output, page), html);
   console.log(`Built ${page} with assets/${jsName} and assets/${cssName}`);
 }
+await writeFile(path.join(output, 'version.json'), JSON.stringify(buildInfo, null, 2) + '\n');
+console.log(buildInfo.version);
