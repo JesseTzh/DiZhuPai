@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import { chromium } from 'playwright';
 import { PHONE_LANDSCAPE, openRecording } from './video.mjs';
-import { url } from './harness.mjs';
+import { setTarget, url } from './harness.mjs';
 
 const browser = await chromium.launch({ channel: 'chrome' });
 const recording = await openRecording(browser, 'mobile-game-browser', {
@@ -24,6 +24,12 @@ const checkMobileLayout = async () => {
   const table = await page.locator('.zwrap').boundingBox();
   const play = await page.locator('#play-cards').boundingBox();
   const pass = await page.locator('#pass-turn').boundingBox();
+  const actionRects = [pass, play];
+  if (await page.locator('#steal-cards').isVisible()) {
+    actionRects.push(await page.locator('#steal-cards').boundingBox());
+  }
+  const actionLeft = Math.min(...actionRects.map((rect) => rect.x));
+  const actionRight = Math.max(...actionRects.map((rect) => rect.x + rect.width));
   const viewport = page.viewportSize();
   assert.ok(bar.height > bar.width * 2, '手机状态栏竖排');
   assert.ok(bar.x + bar.width <= table.x, '侧栏不遮挡牌桌');
@@ -31,10 +37,10 @@ const checkMobileLayout = async () => {
   assert.ok(play.width < 112 && play.height < 52, '手机出牌按钮缩小');
   assert.ok(pass.width < 112 && pass.height < 52, '手机过牌按钮缩小');
   assert.ok(
-    Math.abs((pass.x + play.x + play.width) / 2 - (table.x + table.width / 2)) < 2,
+    Math.abs((actionLeft + actionRight) / 2 - (table.x + table.width / 2)) < 2,
     '行动按钮在牌桌内居中',
   );
-  for (const rect of [bar, table, play, pass]) {
+  for (const rect of [bar, table, ...actionRects]) {
     assert.ok(
       rect.x >= 0 &&
         rect.y >= 0 &&
@@ -150,6 +156,7 @@ try {
     gameApp.render();
   });
   for (const [width, height] of [
+    [858, 396],
     [667, 375],
     [568, 320],
     [932, 430],
@@ -161,7 +168,13 @@ try {
         document.querySelector('.game-actions-canvas').width ===
           Math.round(innerWidth * devicePixelRatio),
     );
-    await checkMobileLayout();
+    // 小老鼠的收牌按钮只在电脑有桌面目标时出现。固定两种状态，避免电脑出牌时机
+    // 决定测到哪种布局；居中与屏幕边界检查都应包含当前完整的行动按钮组。
+    for (const target of [null, { type: 'single', main: 10, length: 1, name: '单张' }]) {
+      await setTarget(page, target, [9]);
+      assert.equal(await page.locator('#steal-cards').isVisible(), target !== null);
+      await checkMobileLayout();
+    }
     await page.locator('.topbar-item').last().focus();
     await page.screenshot({ path: `test-results/mobile-sidebar-${width}x${height}.png` });
   }
