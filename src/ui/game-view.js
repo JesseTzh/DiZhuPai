@@ -242,10 +242,10 @@ export function mountGameView({ state, ui, actions: controller, isGamePage }) {
         ? ''
         : 'none';
     syncTopbar(game);
-    paintActions();
     buttons[1].disabled = !active || !valid;
     buttons[2].disabled = !active || !game.target;
     buttons[3].disabled = !active;
+    paintActions();
     document.getElementById('game-message').textContent = state.shopTransition
       ? '收起牌桌，杂货铺营业中…'
       : state.locked && game.phase !== 'dealing'

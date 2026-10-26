@@ -8,7 +8,7 @@ import {
   ruleOptions,
   enterShop,
 } from '../game/state.js';
-import { chooseMove, legalMoves, sortHand } from '../game/rules.js';
+import { beats, classify, chooseMove, legalMoves, sortHand } from '../game/rules.js';
 import { makeVisual, handPose, stepVisual, DEAL_DURATION } from '../game/scene.js';
 import { TRANSFER_DURATION, STEAL_DURATION, coinScatterSeed } from '../game/transfer.js';
 import { dealDuration } from '../game/wild-reveal.js';
@@ -90,13 +90,18 @@ export function createGameController({
     });
   }
   function select(id) {
+    selectCards([id], !game.selected.includes(id));
+  }
+  function selectCards(ids, selected) {
     if (!canAct()) return;
-    game.selected = game.selected.includes(id)
-      ? game.selected.filter((c) => c !== id)
-      : [...game.selected, id];
+    const cards = ids.filter((id) => game.hands[0].includes(id));
+    game.selected = selected
+      ? [...new Set([...game.selected, ...cards])]
+      : game.selected.filter((id) => !cards.includes(id));
     ui.render();
   }
   function clearSelection() {
+    if (!canAct()) return;
     game.selected = [];
     ui.render();
   }
@@ -182,7 +187,10 @@ export function createGameController({
     return true;
   }
   function playerPlay() {
-    if (canAct()) afterPlay(0, [...game.selected]);
+    if (!canAct()) return;
+    const options = ruleOptions(game);
+    if (beats(classify(game.selected, options, game.target?.move), game.target?.move, options))
+      afterPlay(0, [...game.selected]);
   }
   function afterPass(p) {
     const before = [...game.coins];
@@ -309,6 +317,7 @@ export function createGameController({
     canAct,
     start,
     select,
+    selectCards,
     clearSelection,
     hint,
     playerPlay,

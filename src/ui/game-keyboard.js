@@ -1,7 +1,10 @@
+import { bindCardSelection } from './card-selection.js';
+
 export function bindGameKeyboard(
   game,
-  { canAct, select, playerPlay, playerPass, playerSteal, hint, clearSelection },
+  { canAct, select, selectCards, playerPlay, playerPass, playerSteal, hint, clearSelection },
 ) {
+  bindCardSelection(game, { canAct, selectCards });
   document.getElementById('fig').addEventListener('keydown', (e) => {
     if (e.target.closest('[data-act="poke-bag"]') && [' ', 'Enter'].includes(e.key)) {
       e.preventDefault();

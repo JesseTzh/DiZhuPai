@@ -15,6 +15,7 @@
     "test:longplay": "node tests/longplay-browser.mjs",
     "test:entry": "node tests/entry-browser.mjs",
     "test:interactions": "node tests/interactions-browser.mjs",
+    "test:selection": "node tests/card-selection-browser.mjs",
     "test:home": "node tests/home-browser.mjs",
     "test:save": "node tests/save-browser.mjs",
     "test:shop": "node tests/shop-browser.mjs",
