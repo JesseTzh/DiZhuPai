@@ -20,7 +20,7 @@
 | 相机 | `src/engine/camera.js` | 朝向固定的斜二测投影（可选透视）、深度排序键 |
 | 光照 | `src/engine/shading.js` | 三色阶平面着色、可见性判定、阴影方向 |
 | 交互外壳 | `src/engine/svg-dom.js` | `patchSvg` 对 overlay 做最小 DOM 补丁 |
-| 倍率 | `src/engine/render-pixel-ratio.js` | 渲染像素比设置（`?dpr=` / 本地存储） |
+| 倍率 | `src/engine/render-pixel-ratio.js` | 渲染像素比设置（`?dpr=` / 本地存储，默认 1×，最高 2×） |
 
 SVG 字符串图元（`engine/stage3d.js`、`engine/primitives.js`）仍服务商店、道具美术与牌面资产；对局页只走 Canvas 后端（`#fig[data-renderer="cpu"]`）。金币与钱袋旧的 SVG 整帧场景（`coinScene`、`sackSvg`、`coinSvg` 等）和未被引用的 `coins/renderer.js`、`coins/cpu-renderer.js` 已删除，金币模块只保留物理与几何。
 
@@ -92,7 +92,7 @@ SVG 字符串图元（`engine/stage3d.js`、`engine/primitives.js`）仍服务�
 | 全负载叠加 | 11.8 ms | 8.9 ms |
 | 对局中划过手牌（悬停） | 9.6 ms | 5.3 ms |
 
-DPR 4× 下全负载 13.3 → 9.6 ms、悬停 10.8 → 7.1 ms。只计 JS 的 `renderMs`（`.render-profile.mjs`）：发牌 4.8 → 2.4、出牌 4.6 → 1.7、转账 5.2 → 2.4、全负载 7.0 → 4.7 ms。
+历史测试曾使用 DPR 4×（当前设置已移除该倍率）。当时全负载 13.3 → 9.6 ms、悬停 10.8 → 7.1 ms。只计 JS 的 `renderMs`（`.render-profile.mjs`）：发牌 4.8 → 2.4、出牌 4.6 → 1.7、转账 5.2 → 2.4、全负载 7.0 → 4.7 ms。
 
 手段：
 

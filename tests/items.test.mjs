@@ -123,7 +123,7 @@ test('one physical wild card fills shapes, responds to target and never becomes 
   assert.equal(classify(pair, options, target).main, 11);
   assert.ok(legalMoves(pair, target, options).some((m) => m.type === 'pair'));
   assert.equal(classify(cards(3, 17), options), null);
-  assert.equal(classify([hand[0], hand[0]], options), null);
+  assert.equal(classify([hand[0], hand[0]], options)?.type, 'pair');
   assert.equal(classify(cards(3, 4, 5, 6, 15), options), null);
   const g = createGame();
   g.items = ['frog', 'dragon'];

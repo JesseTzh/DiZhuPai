@@ -1,6 +1,6 @@
 const AUTO_MAX = 2;
 const STORAGE_KEY = 'render-scale';
-export const RENDER_DPR_OPTIONS = ['auto', '0.75', '1', '1.5', '2', '3', '4'];
+export const RENDER_DPR_OPTIONS = ['auto', '0.75', '1', '1.5', '2'];
 
 /* The renderer asks for its pixel ratio every frame, so the URL and storage are
  * re-read only when the search string, the storage object or a settings event changed. */
@@ -19,7 +19,7 @@ function readSetting() {
       ? query
       : RENDER_DPR_OPTIONS.includes(saved)
         ? saved
-        : '2',
+        : '1',
   };
   return cache;
 }

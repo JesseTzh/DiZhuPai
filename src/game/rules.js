@@ -1,4 +1,5 @@
 import { cardDeck } from '../assets/cards/deck.js';
+import { subtractCards } from './selection.js';
 
 export const rankOf = (id) => {
   const c = cardDeck[id];
@@ -44,12 +45,7 @@ const names = {
   rocket: '王炸',
 };
 function classifyAs(cards, options = {}, wildRank = null) {
-  if (
-    !cards.length ||
-    new Set(cards).size !== cards.length ||
-    cards.some((id) => !Number.isInteger(id) || !cardDeck[id])
-  )
-    return null;
+  if (!cards.length || cards.some((id) => !Number.isInteger(id) || !cardDeck[id])) return null;
   const g = groups(cards, options, wildRank),
     n = cards.length,
     rs = g.map(([r]) => r);
@@ -172,9 +168,9 @@ export function legalMoves(hand, target = null, options = {}) {
         wings(a.slice(0, 3), 1, true);
         if (options.looseTriple) wings(a.slice(0, 3), 2);
       }
-      if (a.length === 4) {
-        wings(a, 2);
-        wings(a, 2, true);
+      if (a.length >= 4) {
+        wings(a.slice(0, 4), 2);
+        wings(a.slice(0, 4), 2, true);
       }
     }
     if (hand.includes(52) && hand.includes(53)) add([52, 53]);
@@ -203,7 +199,7 @@ export function chooseMove(hand, target, opponentCount = 18, options = {}) {
   const moves = legalMoves(hand, target, options);
   const score = (m) => {
     if (m.cards.length === hand.length) return -10000;
-    const remaining = groups(hand.filter((id) => !m.cards.includes(id)));
+    const remaining = groups(subtractCards(hand, m.cards));
     return (
       remaining.length * 9 -
       m.cards.length * 3 +

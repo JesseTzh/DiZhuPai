@@ -2,7 +2,7 @@ import { bindCardSelection } from './card-selection.js';
 
 export function bindGameKeyboard(
   game,
-  { canAct, select, selectCards, playerPlay, playerPass, playerSteal, hint, clearSelection },
+  { canAct, selectHand, selectCards, playerPlay, playerPass, playerSteal, hint, clearSelection },
 ) {
   bindCardSelection(game, { canAct, selectCards });
   document.getElementById('fig').addEventListener('keydown', (e) => {
@@ -15,7 +15,7 @@ export function bindGameKeyboard(
     if (card && [' ', 'Enter'].includes(e.key)) {
       e.preventDefault();
       e.stopPropagation();
-      select(+card.dataset.card);
+      selectHand(+card.dataset.handIndex);
     }
   });
   addEventListener('keydown', (e) => {
@@ -40,7 +40,7 @@ export function bindGameKeyboard(
     if (['ArrowLeft', 'ArrowRight'].includes(e.key)) {
       e.preventDefault();
       const cards = [...document.querySelectorAll('.hand-card')].sort(
-        (a, b) => game.hands[0].indexOf(+a.dataset.card) - game.hands[0].indexOf(+b.dataset.card),
+        (a, b) => +a.dataset.handIndex - +b.dataset.handIndex,
       );
       const index = cards.indexOf(document.activeElement),
         next =

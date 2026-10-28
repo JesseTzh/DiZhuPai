@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { cardDeck } from '../src/assets/cards/deck.js';
+import { ITEMS } from '../src/game/items.js';
 import {
   createGame,
   deal,
@@ -327,4 +328,29 @@ test('failed migration keeps the original save and reports storage errors', () =
       },
     }).every((slot) => slot.error),
   );
+});
+
+test('小老鼠道具获得的重复牌可选取、出牌并恢复存档', () => {
+  const game = createGame();
+  game.items = ['mouse'];
+  game.coins = [100 - ITEMS.find((item) => item.id === 'mouse').price, 100];
+  deal(game, () => 0.5);
+  finishDeal(game);
+  const id = game.hands[0].at(-1);
+  assert.ok(play(game, 0, [id]).move);
+  const reply = game.hands[1].find(
+    (card) => rankOf(card) > rankOf(id) && game.hands[0].includes(card),
+  );
+  assert.notEqual(reply, undefined);
+  assert.ok(play(game, 1, [reply]).move);
+  assert.ok(steal(game).cards);
+  game.selected = [reply, reply];
+  assert.deepEqual(parseSave(save(game)).game.selected, [reply, reply]);
+  const invalid = JSON.parse(save(game));
+  invalid.game.selected.push(reply);
+  assert.throws(() => parseSave(JSON.stringify(invalid)));
+  assert.ok(play(game, 0, game.selected).move);
+  const restored = parseSave(save(game)).game;
+  assert.deepEqual(restored.hands, game.hands);
+  assert.deepEqual(restored.target.cards, [reply, reply]);
 });

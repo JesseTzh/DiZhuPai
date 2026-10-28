@@ -40,7 +40,7 @@ test('all supported Dou Dizhu shapes, ace limits, wings and invalid selections',
   ])
     assert.equal(classify(cards(...ranks)), null);
   assert.equal(classify([]), null);
-  assert.equal(classify([1, 1]), null);
+  assert.equal(classify([1, 1])?.type, 'pair');
   assert.equal(classify([-1]), null);
 });
 test('comparison enforces shapes and lengths; bombs and rocket override ordinary cards', () => {

@@ -13,6 +13,7 @@ import {
 } from './wild-reveal.js';
 import { transferCoinPose, TRANSFER_DURATION, STEAL_DURATION } from './transfer.js';
 import { DESKTOP_LAYOUT } from './scene-layout.js';
+import { selectedHandIndices } from './selection.js';
 
 // Layout and animation state only; no rendering calls.
 export const playerPalette = (key) => (key === 'tomato' ? 'cobalt' : key);
@@ -211,9 +212,10 @@ export function sceneFrame(st, layout = DESKTOP_LAYOUT) {
           (game.phase === 'dealing' && visual.dealTime < (i * 2 + p) * 0.043 + 0.48),
         back: p === 1,
         palette,
-        selected: p === 0 && game.selected.includes(hand[i]),
+        selected: p === 0 && selectedHandIndices(game).includes(i),
+        handIndex: i,
         shadowEffect: st.hoverShadow,
-        act: p === 0 ? `select-${hand[i]}` : null,
+        act: p === 0 ? `hand-${i}` : null,
         name:
           st.cardNames[shown ? stamp.card + 1 : hand[i]] +
           (isWild ? ' · 赖子' : shown && !isWild ? ' · 印章' : ''),

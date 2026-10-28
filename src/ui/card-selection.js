@@ -1,3 +1,5 @@
+import { selectedHandIndices } from '../game/selection.js';
+
 export function bindCardSelection(game, { canAct, selectCards }) {
   const figure = document.getElementById('fig');
   const hitContext = document.createElement('canvas').getContext('2d');
@@ -13,11 +15,11 @@ export function bindCardSelection(game, { canAct, selectCards }) {
       if (!card || !canAct()) return;
       event.preventDefault();
       event.stopImmediatePropagation();
-      const id = Number(card.dataset.card);
+      const id = Number(card.dataset.handIndex);
       const hits = [...figure.querySelectorAll('.hand-card')].reverse().map((node) => {
         const path = node.querySelector('path');
         return {
-          id: Number(node.dataset.card),
+          id: Number(node.dataset.handIndex),
           path: new Path2D(path.getAttribute('d')),
           inverse: path.getScreenCTM().inverse(),
         };
@@ -27,7 +29,7 @@ export function bindCardSelection(game, { canAct, selectCards }) {
         pointerId: event.pointerId,
         hand: game.hands[0],
         hits,
-        selected: !game.selected.includes(id),
+        selected: !selectedHandIndices(game).includes(id),
         visited: new Set([id]),
         x: event.clientX,
         y: event.clientY,

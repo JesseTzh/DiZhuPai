@@ -2,7 +2,10 @@
 export function patchSvg(parent, markup) {
   const next = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
   next.innerHTML = markup;
-  const key = (node) => (node.nodeType === 1 ? node.id || node.getAttribute('data-card') : null);
+  const key = (node) =>
+    node.nodeType === 1
+      ? node.id || node.getAttribute('data-hand-index') || node.getAttribute('data-card')
+      : null;
   const patch = (target, source) => {
     const children = [...target.childNodes],
       keyed = new Map(children.map((n) => [key(n), n]).filter(([k]) => k !== null));
