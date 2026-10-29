@@ -243,7 +243,7 @@
   function patchSvg(parent, markup) {
     const next = document.createElementNS("http://www.w3.org/2000/svg", "svg");
     next.innerHTML = markup;
-    const key = (node) => node.nodeType === 1 ? node.id || node.getAttribute("data-card") : null;
+    const key = (node) => node.nodeType === 1 ? node.id || node.getAttribute("data-hand-index") || node.getAttribute("data-card") : null;
     const patch = (target, source) => {
       const children = [...target.childNodes], keyed = new Map(children.map((n) => [key(n), n]).filter(([k]) => k !== null));
       let cursor = target.firstChild;
@@ -407,12 +407,35 @@
     }
   });
 
+  // src/game/selection.js
+  function selectedHandIndices(game2) {
+    const cached = selections.get(game2);
+    if (cached?.hand === game2.hands[0] && cached.cards === game2.selected) return cached.indices;
+    const available = [...game2.hands[0]], indices = [];
+    for (const id of game2.selected) {
+      const index = available.indexOf(id);
+      if (index < 0) continue;
+      indices.push(index);
+      available[index] = null;
+    }
+    selections.set(game2, { hand: game2.hands[0], cards: game2.selected, indices });
+    return indices;
+  }
+  var selections;
+  var init_selection = __esm({
+    "src/game/selection.js"() {
+      init_define_GAME_SOUNDS();
+      selections = /* @__PURE__ */ new WeakMap();
+    }
+  });
+
   // src/game/rules.js
   var rankOf, rankIn, sortHand;
   var init_rules = __esm({
     "src/game/rules.js"() {
       init_define_GAME_SOUNDS();
       init_deck();
+      init_selection();
       rankOf = (id) => {
         const c = cardDeck[id];
         return c.kind === "joker" ? c.variant === "red" ? 17 : 16 : { J: 11, Q: 12, K: 13, A: 14, 2: 15 }[c.rank] || +c.rank;
@@ -956,9 +979,10 @@
           dynamic: reveal?.dynamic || stampFlip?.dynamic || game2.phase === "dealing" && visual2.dealTime < (i * 2 + p) * 0.043 + 0.48,
           back: p === 1,
           palette,
-          selected: p === 0 && game2.selected.includes(hand2[i]),
+          selected: p === 0 && selectedHandIndices(game2).includes(i),
+          handIndex: i,
           shadowEffect: st.hoverShadow,
-          act: p === 0 ? `select-${hand2[i]}` : null,
+          act: p === 0 ? `hand-${i}` : null,
           name: st.cardNames[shown ? stamp2.card + 1 : hand2[i]] + (isWild ? " · 赖子" : shown && !isWild ? " · 印章" : ""),
           wild: reveal?.wild || false,
           revealing: isWild && game2.phase === "dealing" && visual2.dealTime > DEAL_DURATION,
@@ -1047,6 +1071,7 @@
       init_wild_reveal();
       init_transfer();
       init_scene_layout();
+      init_selection();
       playerPalette = (key) => key === "tomato" ? "cobalt" : key;
       rowV = (layout, p) => layout.rowV[p];
       bagPosition = (p, layout = DESKTOP_LAYOUT) => world(layout.bagU, rowV(layout, p));
@@ -1099,7 +1124,7 @@
     cache = {
       search,
       storage,
-      value: RENDER_DPR_OPTIONS.includes(query) ? query : RENDER_DPR_OPTIONS.includes(saved) ? saved : "2"
+      value: RENDER_DPR_OPTIONS.includes(query) ? query : RENDER_DPR_OPTIONS.includes(saved) ? saved : "1"
     };
     return cache;
   }
@@ -1134,7 +1159,7 @@
       init_define_GAME_SOUNDS();
       AUTO_MAX = 2;
       STORAGE_KEY = "render-scale";
-      RENDER_DPR_OPTIONS = ["auto", "0.75", "1", "1.5", "2", "3", "4"];
+      RENDER_DPR_OPTIONS = ["auto", "0.75", "1", "1.5", "2"];
       cache = null;
       listening = false;
     }
@@ -3398,7 +3423,7 @@
       init_palette();
       deckMarkup = ({ player, deckCount }, thickness, ring) => `<g class="card-deck" data-player="${player}" data-count="${deckCount}" data-thickness="${thickness}" role="img" aria-label="余牌 ${deckCount} 张"><path d="${ring}" fill="none" pointer-events="none"/></g>`;
       wildMarkup = (id, { wild, revealing }, ring) => `<g class="${wild ? "wild-card-model" : "wild-card-reveal"}" id="wild-card-${id}" data-card-model="frog-wild" data-wild-card="${id}" data-revealing="${!!revealing}" role="img" aria-label="青蛙赖子牌" pointer-events="none"><path d="${ring}" fill="none" pointer-events="none"/></g>`;
-      handCardMarkup = (id, { act, selected, name }, hover, ring) => `<g data-act="${act}" data-card="${id}" data-hover="${hover.toFixed(3)}" class="hand-card${selected ? " selected" : ""}" role="button" tabindex="0" aria-label="${name}" aria-pressed="${!!selected}"><path d="${ring}" fill="transparent" pointer-events="all"/></g>`;
+      handCardMarkup = (id, { act, selected, name, handIndex }, hover, ring) => `<g data-act="${act}" data-card="${id}" data-hand-index="${handIndex}" data-hover="${hover.toFixed(3)}" class="hand-card${selected ? " selected" : ""}" role="button" tabindex="0" aria-label="${name}" aria-pressed="${!!selected}"><path d="${ring}" fill="transparent" pointer-events="all"/></g>`;
       bagMarkup = (player, palette, fill, hit) => `<g class="money-bag" data-player="${player}" data-palette="${palette}" data-fill="${fill.toFixed(4)}"${player === 0 ? ' data-act="poke-bag" role="button" tabindex="0" aria-label="点击钱袋吐金币"' : ""}>${player === 0 ? `<path d="${hit}" fill="transparent" pointer-events="all"/>` : ""}</g>`;
       itemMarkup = (item, hit) => `<g class="table-item" id="table-item-${item.id}" data-item="${item.id}" role="img" tabindex="0" aria-label="${item.name}：${item.effect}" aria-describedby="item-tooltip"><path d="${hit}" fill="transparent" pointer-events="all"/></g>`;
       labelMarkup = ({ text, cls }, [x, y]) => `<text class="${cls}" x="${x}" y="${y}" text-anchor="middle" fill="${INK}" font-size="12" font-weight="600">${text}</text>`;
@@ -3409,7 +3434,7 @@
   function cardParts(scene, frame, st, images, hover) {
     const { canvas, sprites, layout, parts, overlay, hits } = scene;
     for (const { id, pose, options } of frame.cards) {
-      const lifted = options.act ? hover.get(id) || 0 : 0;
+      const lifted = options.act ? hover.get(options.handIndex) || 0 : 0;
       const lift = options.selected ? layout.selectedLift : 12 * lifted;
       const resting = canvas.cardGeometry(pose);
       const shown = lift ? { ...pose, v: pose.v - lift } : pose;
@@ -3593,11 +3618,11 @@
       if (hover.set(id == null ? null : Number(id), performance.now())) invalidate();
     };
     const setHover = (event) => {
-      updateHover(event.target.closest?.("[data-card]")?.dataset.card ?? null);
+      updateHover(event.target.closest?.("[data-card]")?.dataset.handIndex ?? null);
     };
     const leave = () => updateHover(null);
     const focusOut = (event) => {
-      updateHover(event.relatedTarget?.closest?.("[data-card]")?.dataset.card ?? null);
+      updateHover(event.relatedTarget?.closest?.("[data-card]")?.dataset.handIndex ?? null);
     };
     function aim(st, layout, mobile) {
       const entry = st.visual.entry;
@@ -4184,6 +4209,7 @@
   }
 
   // src/game/state.js
+  init_selection();
   var STAGE_COUNT = 3;
   var ROUNDS_PER_STAGE = 3;
   var HAND_SIZE = 18;

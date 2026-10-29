@@ -244,7 +244,7 @@
   function patchSvg(parent, markup) {
     const next = document.createElementNS("http://www.w3.org/2000/svg", "svg");
     next.innerHTML = markup;
-    const key = (node) => node.nodeType === 1 ? node.id || node.getAttribute("data-card") : null;
+    const key = (node) => node.nodeType === 1 ? node.id || node.getAttribute("data-hand-index") || node.getAttribute("data-card") : null;
     const patch = (target, source) => {
       const children = [...target.childNodes], keyed = new Map(children.map((n) => [key(n), n]).filter(([k]) => k !== null));
       let cursor = target.firstChild;
@@ -408,10 +408,51 @@
     }
   });
 
+  // src/game/selection.js
+  function selectedHandIndices(game2) {
+    const cached = selections.get(game2);
+    if (cached?.hand === game2.hands[0] && cached.cards === game2.selected) return cached.indices;
+    const available = [...game2.hands[0]], indices = [];
+    for (const id of game2.selected) {
+      const index = available.indexOf(id);
+      if (index < 0) continue;
+      indices.push(index);
+      available[index] = null;
+    }
+    selections.set(game2, { hand: game2.hands[0], cards: game2.selected, indices });
+    return indices;
+  }
+  function selectHandIndices(game2, indices, selected) {
+    const current = new Set(selectedHandIndices(game2));
+    for (const index of indices) {
+      if (!Number.isInteger(index) || index < 0 || index >= game2.hands[0].length) continue;
+      if (selected) current.add(index);
+      else current.delete(index);
+    }
+    const chosen = [...current];
+    game2.selected = chosen.map((index) => game2.hands[0][index]);
+    selections.set(game2, { hand: game2.hands[0], cards: game2.selected, indices: chosen });
+  }
+  function subtractCards(hand2, cards2) {
+    const remaining = [...hand2];
+    for (const id of cards2) {
+      const index = remaining.indexOf(id);
+      if (index < 0) return null;
+      remaining.splice(index, 1);
+    }
+    return remaining;
+  }
+  var selections;
+  var init_selection = __esm({
+    "src/game/selection.js"() {
+      init_define_GAME_SOUNDS();
+      selections = /* @__PURE__ */ new WeakMap();
+    }
+  });
+
   // src/game/rules.js
   function classifyAs(cards2, options = {}, wildRank = null) {
-    if (!cards2.length || new Set(cards2).size !== cards2.length || cards2.some((id) => !Number.isInteger(id) || !cardDeck[id]))
-      return null;
+    if (!cards2.length || cards2.some((id) => !Number.isInteger(id) || !cardDeck[id])) return null;
     const g = groups(cards2, options, wildRank), n = cards2.length, rs = g.map(([r]) => r);
     const out = (type, main) => ({ type, main, length: n, name: names[type] });
     if (n === 2 && rs.join() === "16,17") return out("rocket", 17);
@@ -510,9 +551,9 @@
           wings(a.slice(0, 3), 1, true);
           if (options.looseTriple) wings(a.slice(0, 3), 2);
         }
-        if (a.length === 4) {
-          wings(a, 2);
-          wings(a, 2, true);
+        if (a.length >= 4) {
+          wings(a.slice(0, 4), 2);
+          wings(a.slice(0, 4), 2, true);
         }
       }
       if (hand2.includes(52) && hand2.includes(53)) add([52, 53]);
@@ -541,7 +582,7 @@
     const moves = legalMoves(hand2, target, options);
     const score = (m) => {
       if (m.cards.length === hand2.length) return -1e4;
-      const remaining = groups(hand2.filter((id) => !m.cards.includes(id)));
+      const remaining = groups(subtractCards(hand2, m.cards));
       return remaining.length * 9 - m.cards.length * 3 + m.main * 0.35 + (["bomb", "rocket"].includes(m.type) ? 32 : 0) + (target && opponentCount <= 2 ? -m.main * 1.2 : 0);
     };
     return moves.sort((a, b) => score(a) - score(b) || a.main - b.main)[0] || null;
@@ -551,6 +592,7 @@
     "src/game/rules.js"() {
       init_define_GAME_SOUNDS();
       init_deck();
+      init_selection();
       rankOf = (id) => {
         const c = cardDeck[id];
         return c.kind === "joker" ? c.variant === "red" ? 17 : 16 : { J: 11, Q: 12, K: 13, A: 14, 2: 15 }[c.rank] || +c.rank;
@@ -1124,9 +1166,10 @@
           dynamic: reveal?.dynamic || stampFlip?.dynamic || game2.phase === "dealing" && visual2.dealTime < (i * 2 + p) * 0.043 + 0.48,
           back: p === 1,
           palette,
-          selected: p === 0 && game2.selected.includes(hand2[i]),
+          selected: p === 0 && selectedHandIndices(game2).includes(i),
+          handIndex: i,
           shadowEffect: st.hoverShadow,
-          act: p === 0 ? `select-${hand2[i]}` : null,
+          act: p === 0 ? `hand-${i}` : null,
           name: st.cardNames[shown ? stamp2.card + 1 : hand2[i]] + (isWild ? " · 赖子" : shown && !isWild ? " · 印章" : ""),
           wild: reveal?.wild || false,
           revealing: isWild && game2.phase === "dealing" && visual2.dealTime > DEAL_DURATION,
@@ -1215,6 +1258,7 @@
       init_wild_reveal();
       init_transfer();
       init_scene_layout();
+      init_selection();
       playerPalette = (key) => key === "tomato" ? "cobalt" : key;
       rowV = (layout, p) => layout.rowV[p];
       bagPosition = (p, layout = DESKTOP_LAYOUT) => world(layout.bagU, rowV(layout, p));
@@ -1267,7 +1311,7 @@
     cache = {
       search,
       storage,
-      value: RENDER_DPR_OPTIONS.includes(query) ? query : RENDER_DPR_OPTIONS.includes(saved2) ? saved2 : "2"
+      value: RENDER_DPR_OPTIONS.includes(query) ? query : RENDER_DPR_OPTIONS.includes(saved2) ? saved2 : "1"
     };
     return cache;
   }
@@ -1297,7 +1341,7 @@
       init_define_GAME_SOUNDS();
       AUTO_MAX = 2;
       STORAGE_KEY = "render-scale";
-      RENDER_DPR_OPTIONS = ["auto", "0.75", "1", "1.5", "2", "3", "4"];
+      RENDER_DPR_OPTIONS = ["auto", "0.75", "1", "1.5", "2"];
       cache = null;
       listening = false;
     }
@@ -3673,7 +3717,7 @@
       init_palette();
       deckMarkup = ({ player, deckCount }, thickness, ring) => `<g class="card-deck" data-player="${player}" data-count="${deckCount}" data-thickness="${thickness}" role="img" aria-label="余牌 ${deckCount} 张"><path d="${ring}" fill="none" pointer-events="none"/></g>`;
       wildMarkup = (id, { wild, revealing }, ring) => `<g class="${wild ? "wild-card-model" : "wild-card-reveal"}" id="wild-card-${id}" data-card-model="frog-wild" data-wild-card="${id}" data-revealing="${!!revealing}" role="img" aria-label="青蛙赖子牌" pointer-events="none"><path d="${ring}" fill="none" pointer-events="none"/></g>`;
-      handCardMarkup = (id, { act, selected, name }, hover, ring) => `<g data-act="${act}" data-card="${id}" data-hover="${hover.toFixed(3)}" class="hand-card${selected ? " selected" : ""}" role="button" tabindex="0" aria-label="${name}" aria-pressed="${!!selected}"><path d="${ring}" fill="transparent" pointer-events="all"/></g>`;
+      handCardMarkup = (id, { act, selected, name, handIndex }, hover, ring) => `<g data-act="${act}" data-card="${id}" data-hand-index="${handIndex}" data-hover="${hover.toFixed(3)}" class="hand-card${selected ? " selected" : ""}" role="button" tabindex="0" aria-label="${name}" aria-pressed="${!!selected}"><path d="${ring}" fill="transparent" pointer-events="all"/></g>`;
       bagMarkup = (player, palette, fill, hit) => `<g class="money-bag" data-player="${player}" data-palette="${palette}" data-fill="${fill.toFixed(4)}"${player === 0 ? ' data-act="poke-bag" role="button" tabindex="0" aria-label="点击钱袋吐金币"' : ""}>${player === 0 ? `<path d="${hit}" fill="transparent" pointer-events="all"/>` : ""}</g>`;
       itemMarkup = (item, hit) => `<g class="table-item" id="table-item-${item.id}" data-item="${item.id}" role="img" tabindex="0" aria-label="${item.name}：${item.effect}" aria-describedby="item-tooltip"><path d="${hit}" fill="transparent" pointer-events="all"/></g>`;
       labelMarkup = ({ text, cls }, [x, y]) => `<text class="${cls}" x="${x}" y="${y}" text-anchor="middle" fill="${INK}" font-size="12" font-weight="600">${text}</text>`;
@@ -3684,7 +3728,7 @@
   function cardParts(scene, frame, st, images, hover) {
     const { canvas, sprites, layout, parts, overlay, hits } = scene;
     for (const { id, pose, options } of frame.cards) {
-      const lifted = options.act ? hover.get(id) || 0 : 0;
+      const lifted = options.act ? hover.get(options.handIndex) || 0 : 0;
       const lift = options.selected ? layout.selectedLift : 12 * lifted;
       const resting = canvas.cardGeometry(pose);
       const shown = lift ? { ...pose, v: pose.v - lift } : pose;
@@ -3868,11 +3912,11 @@
       if (hover.set(id == null ? null : Number(id), performance.now())) invalidate();
     };
     const setHover = (event) => {
-      updateHover(event.target.closest?.("[data-card]")?.dataset.card ?? null);
+      updateHover(event.target.closest?.("[data-card]")?.dataset.handIndex ?? null);
     };
     const leave = () => updateHover(null);
     const focusOut = (event) => {
-      updateHover(event.relatedTarget?.closest?.("[data-card]")?.dataset.card ?? null);
+      updateHover(event.relatedTarget?.closest?.("[data-card]")?.dataset.handIndex ?? null);
     };
     function aim(st, layout, mobile) {
       const entry = st.visual.entry;
@@ -4465,6 +4509,7 @@
   }
 
   // src/game/state.js
+  init_selection();
   var PASS_COST = 5;
   var STAGE_COUNT = 3;
   var ROUNDS_PER_STAGE = 3;
@@ -4557,13 +4602,14 @@
     if (game2.phase !== "playing" || game2.turn !== p) return { error: "请等待你的回合" };
     if (!cards2.length) return { error: "请先选牌" };
     cards2 = [...cards2];
-    if (!cards2.every((id) => game2.hands[p].includes(id))) return { error: "只能打出自己的手牌" };
+    const remaining = subtractCards(game2.hands[p], cards2);
+    if (!remaining) return { error: "只能打出自己的手牌" };
     const options = ruleOptions(game2, p);
     const move = classify(cards2, options, game2.target?.move);
     if (!move) return { error: "这些牌不能组成有效牌型" };
     if (!beats(move, game2.target?.move, options))
       return { error: `请用更大的${game2.target.move.name}，或炸弹、王炸` };
-    for (const id of cards2) game2.hands[p].splice(game2.hands[p].indexOf(id), 1);
+    game2.hands[p] = remaining;
     game2.selected = [];
     game2.target = { player: p, move, cards: [...cards2] };
     game2.last = { player: p, type: "play", move, cards: [...cards2] };
@@ -5170,7 +5216,7 @@
 
   // src/ui/build-version.js
   init_define_GAME_SOUNDS();
-  var BUILD_VERSION = true ? "Version:261026-2330-5505b5e-prod" : "Version:dev-test";
+  var BUILD_VERSION = true ? "Version:261029-0911-7e5f9c2-prod" : "Version:dev-test";
   function mountBuildVersion(container) {
     const canvas = document.createElement("canvas");
     canvas.className = "settings-version";
@@ -7342,6 +7388,7 @@
 
   // src/ui/card-selection.js
   init_define_GAME_SOUNDS();
+  init_selection();
   function bindCardSelection(game2, { canAct, selectCards }) {
     const figure = document.getElementById("fig");
     const hitContext = document.createElement("canvas").getContext("2d");
@@ -7355,11 +7402,11 @@
         if (!card2 || !canAct()) return;
         event.preventDefault();
         event.stopImmediatePropagation();
-        const id = Number(card2.dataset.card);
+        const id = Number(card2.dataset.handIndex);
         const hits = [...figure.querySelectorAll(".hand-card")].reverse().map((node) => {
           const path3 = node.querySelector("path");
           return {
-            id: Number(node.dataset.card),
+            id: Number(node.dataset.handIndex),
             path: new Path2D(path3.getAttribute("d")),
             inverse: path3.getScreenCTM().inverse()
           };
@@ -7369,7 +7416,7 @@
           pointerId: event.pointerId,
           hand: game2.hands[0],
           hits,
-          selected: !game2.selected.includes(id),
+          selected: !selectedHandIndices(game2).includes(id),
           visited: /* @__PURE__ */ new Set([id]),
           x: event.clientX,
           y: event.clientY,
@@ -7443,7 +7490,7 @@
   }
 
   // src/ui/game-keyboard.js
-  function bindGameKeyboard(game2, { canAct, select, selectCards, playerPlay, playerPass, playerSteal, hint, clearSelection }) {
+  function bindGameKeyboard(game2, { canAct, selectHand, selectCards, playerPlay, playerPass, playerSteal, hint, clearSelection }) {
     bindCardSelection(game2, { canAct, selectCards });
     document.getElementById("fig").addEventListener("keydown", (e) => {
       if (e.target.closest('[data-act="poke-bag"]') && [" ", "Enter"].includes(e.key)) {
@@ -7455,7 +7502,7 @@
       if (card2 && [" ", "Enter"].includes(e.key)) {
         e.preventDefault();
         e.stopPropagation();
-        select(+card2.dataset.card);
+        selectHand(+card2.dataset.handIndex);
       }
     });
     addEventListener("keydown", (e) => {
@@ -7480,7 +7527,7 @@
       if (["ArrowLeft", "ArrowRight"].includes(e.key)) {
         e.preventDefault();
         const cards2 = [...document.querySelectorAll(".hand-card")].sort(
-          (a, b) => game2.hands[0].indexOf(+a.dataset.card) - game2.hands[0].indexOf(+b.dataset.card)
+          (a, b) => +a.dataset.handIndex - +b.dataset.handIndex
         );
         const index = cards2.indexOf(document.activeElement), next = index < 0 ? 0 : (index + (e.key === "ArrowLeft" ? -1 : 1) + cards2.length) % cards2.length;
         cards2[next]?.focus();
@@ -7495,6 +7542,7 @@
   init_define_GAME_SOUNDS();
   init_rules();
   init_items();
+  init_selection();
   init_table();
   var SAVE_KEY = "dizhupai-save";
   var SAVE_VERSION = 1;
@@ -7553,7 +7601,7 @@
       typeof g.matchOver === "boolean" && (g.matchWinner === null || integer(g.matchWinner, 0, 1))
     );
     requireValid(g.matchOver === (g.matchWinner !== null));
-    requireValid(cards(g.selected, HAND_SIZE) && g.selected.every((id) => g.hands[0].includes(id)));
+    requireValid(loose(g.selected, HAND_SIZE * 2) && subtractCards(g.hands[0], g.selected) !== null);
     requireValid(Array.isArray(g.history) && g.history.length <= HAND_SIZE * 4);
     let target = null, last = null, turn = (g.round - 1) % 2;
     const played = [[], []];
@@ -7561,7 +7609,7 @@
     for (const entry of g.history) {
       requireValid(entry && entry.player === turn);
       if (entry.type === "play") {
-        requireValid(cards(entry.cards, HAND_SIZE) && entry.cards.length > 0);
+        requireValid(loose(entry.cards, HAND_SIZE * 2) && entry.cards.length > 0);
         const move = classify(entry.cards, ruleOptions(g, turn), target?.move);
         requireValid(beats(move, target?.move, ruleOptions(g, turn)));
         requireValid(same(entry.move, move));
@@ -7570,7 +7618,7 @@
         played[turn].push(...entry.cards);
       } else if (entry.type === "steal") {
         requireValid(
-          turn === 0 && hasItemRule(g, "stealPlay") && !stolen.length && target && target.player !== turn && cards(entry.cards, HAND_SIZE) && entry.cards.length > 0 && entry.cards.every((id) => target.cards.includes(id))
+          turn === 0 && hasItemRule(g, "stealPlay") && !stolen.length && target && target.player !== turn && loose(entry.cards, HAND_SIZE * 2) && entry.cards.length > 0 && entry.cards.every((id) => target.cards.includes(id))
         );
         last = { type: "steal", player: turn, cards: [...entry.cards] };
         stolen = [...entry.cards];
@@ -7838,6 +7886,7 @@
   init_table();
   init_scene_layout();
   init_device_mode();
+  init_selection();
   function createGameController({
     state: state2,
     ui: ui2,
@@ -7908,12 +7957,14 @@
       });
     }
     function select(id) {
-      selectCards([id], !game2.selected.includes(id));
+      selectHand(game2.hands[0].indexOf(id));
     }
-    function selectCards(ids, selected) {
+    function selectHand(index) {
+      selectCards([index], !selectedHandIndices(game2).includes(index));
+    }
+    function selectCards(indices, selected) {
       if (!canAct()) return;
-      const cards2 = ids.filter((id) => game2.hands[0].includes(id));
-      game2.selected = selected ? [.../* @__PURE__ */ new Set([...game2.selected, ...cards2])] : game2.selected.filter((id) => !cards2.includes(id));
+      selectHandIndices(game2, indices, selected);
       ui2.render();
     }
     function clearSelection() {
@@ -7980,7 +8031,7 @@
       ui2.render();
     }
     function afterPlay(p, cards2) {
-      const before = [...game2.hands[p]], ordered = sortHand(cards2, p === 0 ? { stamp: game2.stamp } : null);
+      const before = [...game2.hands[p]], selectedIndices = p === 0 ? [...selectedHandIndices(game2)] : [], ordered = sortHand(cards2, p === 0 ? { stamp: game2.stamp } : null);
       const response = play(game2, p, cards2);
       if (response.error) {
         ui2.flash(response.error);
@@ -7988,9 +8039,13 @@
       }
       hintIndex = 0;
       visual2.playTime = 0;
-      visual2.playFrom = ordered.map(
-        (id) => handPose(p, before.indexOf(id), before.length, layoutFor(isMobileLandscape()))
-      );
+      const available = [...before];
+      visual2.playFrom = ordered.map((id) => {
+        const selectedIndex = selectedIndices.findIndex((index2) => available[index2] === id);
+        const index = selectedIndex < 0 ? available.indexOf(id) : selectedIndices.splice(selectedIndex, 1)[0];
+        available[index] = null;
+        return handPose(p, index, before.length, layoutFor(isMobileLandscape()));
+      });
       sound(SOUND.knock);
       animate();
       ui2.render();
@@ -8114,6 +8169,7 @@
       canAct,
       start,
       select,
+      selectHand,
       selectCards,
       clearSelection,
       hint,
@@ -8890,7 +8946,7 @@
     state,
     renderer: createGameRenderer,
     acts: {
-      ...Object.fromEntries(cardIds.map((id) => [`select-${id}`, () => controller.select(id)])),
+      ...Object.fromEntries(cardIds.map((i) => [`hand-${i}`, () => controller.selectHand(i)])),
       "poke-bag": () => controller.pokeBag()
     },
     buttons: [
