@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - main
+      - test
   workflow_dispatch:
 
 permissions:
@@ -220,12 +221,20 @@ jobs:
   deploy-pages:
     name: Publish to GitHub Pages
     needs: test
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: >-
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/test')
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
+      contents: write
       pages: write
       id-token: write
+    concurrency:
+      group: github-pages
+      cancel-in-progress: false
+    env:
+      BUILD_CHANNEL: ${{ github.ref_name == 'main' && 'prod' || 'test' }}
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -243,20 +252,77 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build production bundle
+      - name: Build branch bundle
         run: npm run build
 
-      - name: Disable Jekyll processing
-        run: touch dist/.nojekyll
+      - name: Restore published site
+        id: site
+        run: |
+          state="$RUNNER_TEMP/pages-state"
+          set +e
+          git ls-remote --exit-code origin refs/heads/gh-pages
+          status=$?
+          set -e
+          if [ "$status" -eq 0 ]; then
+            git fetch --no-tags origin gh-pages
+            git worktree add --detach "$state" FETCH_HEAD
+          elif [ "$status" -eq 2 ]; then
+            git worktree add --detach "$state" HEAD
+            git -C "$state" switch --orphan pages-initial
+          else
+            exit "$status"
+          fi
+          if [ -f "$state/index.html" ]; then
+            echo "has_production=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      # 首次从 test 发布时，用 main 初始化正式版，保留原站点入口。
+      - name: Checkout main for first publication
+        if: github.ref_name == 'test' && steps.site.outputs.has_production != 'true'
+        uses: actions/checkout@v5
+        with:
+          ref: main
+          path: pages-main
+
+      - name: Build initial production site
+        if: github.ref_name == 'test' && steps.site.outputs.has_production != 'true'
+        working-directory: pages-main
+        env:
+          BUILD_CHANNEL: prod
+        run: |
+          npm ci
+          npm run build
+          cp -a dist/. "$RUNNER_TEMP/pages-state/"
+
+      - name: Merge production and test sites
+        run: node scripts/pages-site.mjs dist "$RUNNER_TEMP/pages-state" "$RUNNER_TEMP/pages-site" "$BUILD_CHANNEL"
+
+      # 保存双版本快照。该分支只存构建产物，不触发 CI。
+      - name: Save published site snapshot
+        run: |
+          state="$RUNNER_TEMP/pages-state"
+          rsync -a --checksum --delete --exclude=/.git "$RUNNER_TEMP/pages-site/" "$state/"
+          git -C "$state" config user.name 'github-actions[bot]'
+          git -C "$state" config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git -C "$state" add --all
+          if ! git -C "$state" diff --cached --quiet; then
+            git -C "$state" commit -m "Deploy $BUILD_CHANNEL $GITHUB_SHA"
+            git push origin "$(git -C "$state" rev-parse HEAD):refs/heads/gh-pages"
+          fi
 
       - name: Upload GitHub Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: dist
+          path: ${{ runner.temp }}/pages-site
 
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
 
       - name: Publish URL in summary
-        run: echo "地主牌在线试玩：${{ steps.deployment.outputs.page_url }}" >> "$GITHUB_STEP_SUMMARY"
+        env:
+          PAGE_URL: ${{ steps.deployment.outputs.page_url }}
+        run: |
+          echo "正式版：${PAGE_URL%/}/" >> "$GITHUB_STEP_SUMMARY"
+          echo "测试版：${PAGE_URL%/}/test/" >> "$GITHUB_STEP_SUMMARY"
+          cat dist/version.json >> "$GITHUB_STEP_SUMMARY"

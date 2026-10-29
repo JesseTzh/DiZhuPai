@@ -13,6 +13,7 @@ export function mountNavigation({
   catalogue,
   saveProgress,
 }) {
+  audio.startMusic();
   const home = document.createElement('main');
   home.id = 'home-screen';
   home.innerHTML = homeMarkup();

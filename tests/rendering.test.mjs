@@ -64,18 +64,18 @@ test('Canvas startup draws the latest state and disposes if the page leaves duri
   assert.equal(disposed, 2);
 });
 
-test('render scale defaults to 2×, restores 4× and supports a query override', (t) => {
+test('render scale defaults to 1× and caps saved and query settings at 2×', (t) => {
   globals(t, {
     location: { search: '' },
     localStorage: { getItem: () => null },
     devicePixelRatio: 3,
   });
-  assert.equal(renderDprSetting(), '2');
-  assert.equal(renderPixelRatio(), 2);
+  assert.equal(renderDprSetting(), '1');
+  assert.equal(renderPixelRatio(), 1);
   globalThis.localStorage = { getItem: () => '4' };
-  assert.equal(renderPixelRatio(), 4);
+  assert.equal(renderPixelRatio(), 1);
   globalThis.location.search = '?dpr=3';
-  assert.equal(renderPixelRatio(), 3);
+  assert.equal(renderPixelRatio(), 1);
   globalThis.location.search = '?dpr=auto';
   assert.equal(renderPixelRatio(), 2);
 });
@@ -84,10 +84,10 @@ test('render scale re-reads storage only when it changes between frames', (t) =>
   let reads = 0;
   globals(t, {
     location: { search: '' },
-    localStorage: { getItem: () => (reads++, '4') },
+    localStorage: { getItem: () => (reads++, '1.5') },
     devicePixelRatio: 3,
   });
-  assert.equal(renderPixelRatio(), 4);
+  assert.equal(renderPixelRatio(), 1.5);
   for (let i = 0; i < 5; i++) renderPixelRatio();
   assert.equal(reads, 1);
   globalThis.localStorage = { getItem: () => (reads++, '2') };

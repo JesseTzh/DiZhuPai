@@ -98,6 +98,38 @@ try {
   });
   await sweep(await point(2), await point(6));
   assert.deepEqual(await selected(), [order[1]], '锁定期间不能划选');
+  // 相同牌面保留两个交互节点，鼠标与键盘可分别选取，划选后可一起出牌。
+  await page.evaluate(() => {
+    gameApp.state.locked = false;
+  });
+  await setHand(page, [2, 2, 15]);
+  await setTarget(page, null);
+  const twins = page.locator('.hand-card[data-card="2"]');
+  assert.equal(await twins.count(), 2);
+  assert.equal(
+    await twins.evaluateAll((nodes) => new Set(nodes.map((n) => n.dataset.handIndex)).size),
+    2,
+  );
+  await twins.nth(1).focus();
+  await page.keyboard.press('Enter');
+  assert.equal(await twins.nth(0).getAttribute('aria-pressed'), 'false');
+  assert.equal(await twins.nth(1).getAttribute('aria-pressed'), 'true');
+  await page.keyboard.press('ArrowLeft');
+  await page.keyboard.press('Space');
+  assert.deepEqual(await selected(), [2, 2]);
+  await page.keyboard.press('Escape');
+  const twinPoints = await twins.evaluateAll((nodes) =>
+    nodes.map((node) => {
+      const box = node.getBoundingClientRect();
+      return { x: box.x + 5, y: box.y + box.height / 2 };
+    }),
+  );
+  await sweep(twinPoints[0], twinPoints[1], true);
+  assert.deepEqual(await selected(), [2, 2]);
+  assert.equal(await page.locator('#play-cards').isEnabled(), true);
+  await page.locator('#play-cards').click();
+  assert.deepEqual(await page.evaluate(() => gameApp.state.game.hands[0]), [15]);
+  assert.deepEqual(await page.evaluate(() => gameApp.state.game.target.cards), [2, 2]);
   assert.deepEqual(errors, []);
   console.log('双向快速划选、折返、取消、空白处松手及出牌按钮 Canvas 状态检查通过。');
 } finally {

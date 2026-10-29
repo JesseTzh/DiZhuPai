@@ -10,6 +10,7 @@ import {
 import { classify, beats, rankOf } from './rules.js';
 import { ITEMS, hasItemRule } from './items.js';
 import { SEED_MAX_LENGTH } from './random.js';
+import { subtractCards } from './selection.js';
 import { TABLES } from './table.js';
 
 export const SAVE_KEY = 'dizhupai-save';
@@ -101,7 +102,7 @@ export function parseSave(text) {
     typeof g.matchOver === 'boolean' && (g.matchWinner === null || integer(g.matchWinner, 0, 1)),
   );
   requireValid(g.matchOver === (g.matchWinner !== null));
-  requireValid(cards(g.selected, HAND_SIZE) && g.selected.every((id) => g.hands[0].includes(id)));
+  requireValid(loose(g.selected, HAND_SIZE * 2) && subtractCards(g.hands[0], g.selected) !== null);
   requireValid(Array.isArray(g.history) && g.history.length <= HAND_SIZE * 4);
   let target = null,
     last = null,
@@ -111,7 +112,7 @@ export function parseSave(text) {
   for (const entry of g.history) {
     requireValid(entry && entry.player === turn);
     if (entry.type === 'play') {
-      requireValid(cards(entry.cards, HAND_SIZE) && entry.cards.length > 0);
+      requireValid(loose(entry.cards, HAND_SIZE * 2) && entry.cards.length > 0);
       const move = classify(entry.cards, ruleOptions(g, turn), target?.move);
       requireValid(beats(move, target?.move, ruleOptions(g, turn)));
       // Recompute names and rule metadata rather than trusting imported markup.
@@ -127,7 +128,7 @@ export function parseSave(text) {
           !stolen.length &&
           target &&
           target.player !== turn &&
-          cards(entry.cards, HAND_SIZE) &&
+          loose(entry.cards, HAND_SIZE * 2) &&
           entry.cards.length > 0 &&
           entry.cards.every((id) => target.cards.includes(id)),
       );

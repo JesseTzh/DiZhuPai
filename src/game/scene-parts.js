@@ -28,7 +28,7 @@ const cardCorners = (g) => {
 export function cardParts(scene, frame, st, images, hover) {
   const { canvas, sprites, layout, parts, overlay, hits } = scene;
   for (const { id, pose, options } of frame.cards) {
-    const lifted = options.act ? hover.get(id) || 0 : 0;
+    const lifted = options.act ? hover.get(options.handIndex) || 0 : 0;
     // Slide on the tabletop; retain the resting pose for stacking and hit order.
     const lift = options.selected ? layout.selectedLift : 12 * lifted;
     const resting = canvas.cardGeometry(pose);

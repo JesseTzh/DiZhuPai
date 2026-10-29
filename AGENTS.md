@@ -13,5 +13,6 @@
 
 ## 代码要求
 
-- 不要直接使用 HTML 元素绘制页面，遵循 [colorfigures](.agents/skills/colorfigures) 技能的标准使用 Canvas 绘制
+- 当对页面进行修改时，不要直接使用 HTML 元素绘制页面，遵循 [colorfigures](.agents/skills/colorfigures) 技能的标准使用 Canvas 绘制
+- 当对页面进行修改时，注意同步修改 tests 下的测试
 - 页面避免不必要的二级标签或说明。让布局来传达说明

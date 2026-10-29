@@ -1,6 +1,7 @@
 import { sortHand, classify, beats, rankOf } from './rules.js';
 import { ITEMS, hasItemRule } from './items.js';
 import { gameRandom } from './random.js';
+import { subtractCards } from './selection.js';
 export const PASS_COST = 5;
 export const STAGE_COUNT = 3;
 export const ROUNDS_PER_STAGE = 3;
@@ -97,7 +98,8 @@ export function play(game, p, cards) {
   if (game.phase !== 'playing' || game.turn !== p) return { error: '请等待你的回合' };
   if (!cards.length) return { error: '请先选牌' };
   cards = [...cards];
-  if (!cards.every((id) => game.hands[p].includes(id))) return { error: '只能打出自己的手牌' };
+  const remaining = subtractCards(game.hands[p], cards);
+  if (!remaining) return { error: '只能打出自己的手牌' };
   const options = ruleOptions(game, p);
   const move = classify(cards, options, game.target?.move);
   if (!move) return { error: '这些牌不能组成有效牌型' };
@@ -105,7 +107,7 @@ export function play(game, p, cards) {
     return { error: `请用更大的${game.target.move.name}，或炸弹、王炸` };
   // The mouse can bring home a twin of a card already held; every played id
   // leaves the hand exactly once.
-  for (const id of cards) game.hands[p].splice(game.hands[p].indexOf(id), 1);
+  game.hands[p] = remaining;
   game.selected = [];
   game.target = { player: p, move, cards: [...cards] };
   game.last = { player: p, type: 'play', move, cards: [...cards] };

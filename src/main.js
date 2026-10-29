@@ -58,7 +58,7 @@ const ui = mountFigure({
   state,
   renderer: createGameRenderer,
   acts: {
-    ...Object.fromEntries(cardIds.map((id) => [`select-${id}`, () => controller.select(id)])),
+    ...Object.fromEntries(cardIds.map((i) => [`hand-${i}`, () => controller.selectHand(i)])),
     'poke-bag': () => controller.pokeBag(),
   },
   buttons: [
@@ -91,7 +91,6 @@ controller = createGameController({
 });
 const view = mountGameView({ state, ui, actions: controller, isGamePage });
 const settings = mountSettings({ state, ui, audio });
-audio.startMusic();
 const catalogue = mountItemCatalogue({ state });
 const saves = mountSaveScreen({
   session,

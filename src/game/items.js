@@ -59,7 +59,7 @@ export const ITEMS = [
     id: 'mouse',
     name: '小老鼠',
     price: 30,
-    color: '#a9b1c2',
+    color: '#d69a67',
     description: '每小局一次，可以把对方的出牌拿回自己的手牌。',
     effect: '收回对方出牌一次',
     rule: 'stealPlay',

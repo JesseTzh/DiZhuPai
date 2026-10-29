@@ -7,7 +7,9 @@ RUN npm ci
 COPY .prettierrc.json ./
 COPY scripts ./scripts
 COPY src ./src
-RUN npm run build
+ARG BUILD_SHA=0000000
+ARG BUILD_CHANNEL=prod
+RUN BUILD_SHA="$BUILD_SHA" BUILD_CHANNEL="$BUILD_CHANNEL" npm run build
 
 FROM nginx:stable-alpine
 

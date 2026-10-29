@@ -43,11 +43,11 @@ export async function createRenderer(art, svg, host) {
     if (hover.set(id == null ? null : Number(id), performance.now())) invalidate();
   };
   const setHover = (event) => {
-    updateHover(event.target.closest?.('[data-card]')?.dataset.card ?? null);
+    updateHover(event.target.closest?.('[data-card]')?.dataset.handIndex ?? null);
   };
   const leave = () => updateHover(null);
   const focusOut = (event) => {
-    updateHover(event.relatedTarget?.closest?.('[data-card]')?.dataset.card ?? null);
+    updateHover(event.relatedTarget?.closest?.('[data-card]')?.dataset.handIndex ?? null);
   };
   // Aim the camera and fit the view box; phones look straight down with a compact frame.
   function aim(st, layout, mobile) {

@@ -16,6 +16,7 @@ import { TABLES } from '../game/table.js';
 import { SOUND } from '../game/sound.js';
 import { layoutFor } from '../game/scene-layout.js';
 import { isMobileLandscape } from '../ui/device-mode.js';
+import { selectedHandIndices, selectHandIndices } from '../game/selection.js';
 
 export function createGameController({
   state,
@@ -90,14 +91,14 @@ export function createGameController({
     });
   }
   function select(id) {
-    selectCards([id], !game.selected.includes(id));
+    selectHand(game.hands[0].indexOf(id));
   }
-  function selectCards(ids, selected) {
+  function selectHand(index) {
+    selectCards([index], !selectedHandIndices(game).includes(index));
+  }
+  function selectCards(indices, selected) {
     if (!canAct()) return;
-    const cards = ids.filter((id) => game.hands[0].includes(id));
-    game.selected = selected
-      ? [...new Set([...game.selected, ...cards])]
-      : game.selected.filter((id) => !cards.includes(id));
+    selectHandIndices(game, indices, selected);
     ui.render();
   }
   function clearSelection() {
@@ -169,6 +170,7 @@ export function createGameController({
   }
   function afterPlay(p, cards) {
     const before = [...game.hands[p]],
+      selectedIndices = p === 0 ? [...selectedHandIndices(game)] : [],
       ordered = sortHand(cards, p === 0 ? { stamp: game.stamp } : null);
     const response = play(game, p, cards);
     if (response.error) {
@@ -177,9 +179,14 @@ export function createGameController({
     }
     hintIndex = 0;
     visual.playTime = 0;
-    visual.playFrom = ordered.map((id) =>
-      handPose(p, before.indexOf(id), before.length, layoutFor(isMobileLandscape())),
-    );
+    const available = [...before];
+    visual.playFrom = ordered.map((id) => {
+      const selectedIndex = selectedIndices.findIndex((index) => available[index] === id);
+      const index =
+        selectedIndex < 0 ? available.indexOf(id) : selectedIndices.splice(selectedIndex, 1)[0];
+      available[index] = null;
+      return handPose(p, index, before.length, layoutFor(isMobileLandscape()));
+    });
     sound(SOUND.knock);
     animate();
     ui.render();
@@ -317,6 +324,7 @@ export function createGameController({
     canAct,
     start,
     select,
+    selectHand,
     selectCards,
     clearSelection,
     hint,

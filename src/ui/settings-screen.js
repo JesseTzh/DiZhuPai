@@ -3,6 +3,7 @@ import {
   setRenderDprSetting,
   RENDER_DPR_OPTIONS,
 } from '../engine/render-pixel-ratio.js';
+import { mountBuildVersion } from './build-version.js';
 
 const ink = '#292a28';
 const speaker = `<path d="M8 17H15L24 10V34L15 27H8Z" fill="#f4b829" stroke="${ink}" stroke-width="2" stroke-linejoin="round"/><g class="sound-waves" fill="none" stroke="${ink}" stroke-width="2" stroke-linecap="round"><path d="M30 16Q36 22 30 28M35 11Q46 22 35 33"/></g><path class="toggle-cross" d="M30 17L40 27M40 17L30 27" fill="none" stroke="${ink}" stroke-width="2" stroke-linecap="round"/>`;
@@ -28,6 +29,7 @@ export function mountSettings({ state, ui, audio }) {
     <button id="return-home" type="button"><svg viewBox="0 0 180 54" aria-hidden="true"><path d="M8 9L170 6 174 46 11 49Z" fill="#6487bd"/><path d="M4 4L167 3 170 41 7 44Z" fill="#f4b829" stroke="${ink}" stroke-width="2" stroke-linejoin="round"/><path d="M29 16L21 24 29 32M22 24H42" fill="none" stroke="${ink}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><text x="104" y="29" text-anchor="middle">返回主界面</text></svg><span class="sr-only">返回主界面</span></button></div>
   </div>`;
   document.body.append(settings);
+  mountBuildVersion(settings.querySelector('.settings-content'));
   const sound = settings.querySelector('#sound-enabled');
   const music = settings.querySelector('#music-enabled');
   const syncToggle = (button, on) => {

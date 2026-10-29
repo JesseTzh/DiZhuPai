@@ -30,8 +30,21 @@ try {
   await page.locator('#home-settings').click();
   await page.waitForFunction(() => !gameApp.audio.music.paused);
   assert.ok(await page.locator('#settings-screen').isVisible());
-  assert.equal(await page.locator('[data-scale="2"]').getAttribute('aria-checked'), 'true');
-  await page.locator('[data-scale="4"]').click();
+  const version = page.locator('#settings-screen canvas.settings-version');
+  assert.ok(await version.isVisible());
+  assert.match(
+    await version.getAttribute('aria-label'),
+    /^Version:(dev-test|\d{6}-\d{4}-[a-f0-9]{7}-(prod|test))$/,
+  );
+  assert.ok(
+    await version.evaluate((canvas) =>
+      [...canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data].some(
+        (value, index) => index % 4 === 3 && value > 0,
+      ),
+    ),
+  );
+  assert.equal(await page.locator('[data-scale="1"]').getAttribute('aria-checked'), 'true');
+  await page.locator('[data-scale="2"]').click();
   await page.locator('#sound-enabled').click();
   assert.equal(await page.evaluate(() => gameApp.audio.muted), true);
   await page.locator('#music-enabled').click();
@@ -39,12 +52,12 @@ try {
   await page.screenshot({ path: 'test-results/settings-desktop.png' });
   await page.reload();
   await page.evaluate(() => gameApp.ready());
-  assert.equal(await page.locator('[data-scale="4"]').getAttribute('aria-checked'), 'true');
+  assert.equal(await page.locator('[data-scale="2"]').getAttribute('aria-checked'), 'true');
   assert.equal(await page.evaluate(() => gameApp.audio.muted), true);
   assert.equal(await page.evaluate(() => gameApp.audio.musicMuted), true);
   assert.equal(await page.evaluate(() => gameApp.audio.music.paused), true);
   await page.locator('#home-settings').click();
-  await page.locator('[data-scale="2"]').click();
+  await page.locator('[data-scale="1"]').click();
   await page.locator('#sound-enabled').click();
   assert.equal(await page.evaluate(() => gameApp.audio.muted), false);
   await page.locator('#music-enabled').click();
@@ -128,12 +141,12 @@ try {
   // Settings changes apply without recreating or resetting the current deal.
   const hands = await page.evaluate(() => gameApp.state.game.hands);
   await page.locator('#open-settings').click();
-  await page.locator('[data-scale="3"]').click();
+  await page.locator('[data-scale="2"]').click();
   await page.locator('#close-settings').click();
   assert.deepEqual(await page.evaluate(() => gameApp.state.game.hands), hands);
-  await page.waitForFunction(() => document.getElementById('cpu-scene').width === innerWidth * 3);
+  await page.waitForFunction(() => document.getElementById('cpu-scene').width === innerWidth * 2);
   await page.locator('#open-settings').click();
-  await page.locator('[data-scale="2"]').click();
+  await page.locator('[data-scale="1"]').click();
   await page.locator('#close-settings').click();
   // Force a substantial balance transfer to inspect the actual sack easing in both directions.
   const bags = await page.evaluate(async () => {

@@ -19,7 +19,7 @@ test('only the randomly chosen card lifts and changes model during the round ope
   deal(st.game, () => 0.4);
   const id = st.game.wildCard;
   const rest = handPose(0, st.game.hands[0].indexOf(id), 18);
-  const chosen = () => sceneFrame(st).cards.find((card) => card.options.act === `select-${id}`);
+  const chosen = () => sceneFrame(st).cards.find((card) => card.id === id && card.options.act);
   assert.equal(dealDuration(st.game), DEAL_DURATION + WILD_REVEAL_DURATION);
   st.visual.dealTime = DEAL_DURATION;
   for (const key of Object.keys(rest)) assert.ok(Math.abs(chosen().pose[key] - rest[key]) < 1e-8);
@@ -59,7 +59,7 @@ test('the stamped card flips mid-deal and settles into its upgraded slot', () =>
     .indexOf(stamp.card);
   const newIndex = st.game.hands[0].indexOf(stamp.card);
   const chosen = () =>
-    sceneFrame(st).cards.find((card) => card.options.act === `select-${stamp.card}`);
+    sceneFrame(st).cards.find((card) => card.id === stamp.card && card.options.act);
   assert.equal(dealDuration(st.game), DEAL_DURATION + STAMP_REVEAL_DURATION);
   // dealt to its natural spot with its original face showing
   st.visual.dealTime = stampStart(st.game) - 0.1;

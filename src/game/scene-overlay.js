@@ -8,8 +8,8 @@ export const deckMarkup = ({ player, deckCount }, thickness, ring) =>
 export const wildMarkup = (id, { wild, revealing }, ring) =>
   `<g class="${wild ? 'wild-card-model' : 'wild-card-reveal'}" id="wild-card-${id}" data-card-model="frog-wild" data-wild-card="${id}" data-revealing="${!!revealing}" role="img" aria-label="青蛙赖子牌" pointer-events="none"><path d="${ring}" fill="none" pointer-events="none"/></g>`;
 
-export const handCardMarkup = (id, { act, selected, name }, hover, ring) =>
-  `<g data-act="${act}" data-card="${id}" data-hover="${hover.toFixed(3)}" class="hand-card${selected ? ' selected' : ''}" role="button" tabindex="0" aria-label="${name}" aria-pressed="${!!selected}"><path d="${ring}" fill="transparent" pointer-events="all"/></g>`;
+export const handCardMarkup = (id, { act, selected, name, handIndex }, hover, ring) =>
+  `<g data-act="${act}" data-card="${id}" data-hand-index="${handIndex}" data-hover="${hover.toFixed(3)}" class="hand-card${selected ? ' selected' : ''}" role="button" tabindex="0" aria-label="${name}" aria-pressed="${!!selected}"><path d="${ring}" fill="transparent" pointer-events="all"/></g>`;
 
 export const bagMarkup = (player, palette, fill, hit) =>
   `<g class="money-bag" data-player="${player}" data-palette="${palette}" data-fill="${fill.toFixed(4)}"${player === 0 ? ' data-act="poke-bag" role="button" tabindex="0" aria-label="点击钱袋吐金币"' : ''}>${player === 0 ? `<path d="${hit}" fill="transparent" pointer-events="all"/>` : ''}</g>`;
