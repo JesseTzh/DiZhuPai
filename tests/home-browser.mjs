@@ -23,6 +23,17 @@ try {
   await page.goto(home());
   await page.evaluate(() => gameApp.ready());
   await page.evaluate(() => gameApp.homeAnimation.ready);
+  // 首页按钮悬停只播一次音效，且不会导航。
+  await page.evaluate(() => {
+    window.hoverSounds = 0;
+    const hover = gameApp.audio.hover;
+    gameApp.audio.hover = (index) => {
+      if (index === 3) window.hoverSounds++;
+      return hover(index);
+    };
+  });
+  await page.locator('#enter-game').hover();
+  assert.equal(await page.evaluate(() => window.hoverSounds), 1);
   const firstWave = await page.evaluate(() => gameApp.homeAnimation.snapshot());
   assert.ok(
     firstWave.every((coin) => coin.mode === 'falling'),
@@ -71,7 +82,8 @@ try {
       .count(),
     3,
   );
-  await page.locator('#close-settings').click();
+  await page.keyboard.press('Escape');
+  assert.equal(await page.locator('#settings-screen').evaluate((node) => node.open), false);
   await page.locator('#home-catalogue').click();
   assert.ok(await page.locator('#item-catalogue').evaluate((el) => el.open));
   assert.equal(await page.locator('#item-catalogue .catalogue-card').count(), 7);

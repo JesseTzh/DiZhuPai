@@ -89,7 +89,7 @@ jobs:
           mkdir -p test-results
           : > test-results/failed.txt
           status=0
-          for t in entry-browser interactions-browser home-browser save-browser browser gameplay-browser items-browser shop-browser mobile-game-browser ui-pages responsive-browser longplay-browser; do
+          for t in entry-browser home-browser browser gameplay-browser items-browser shop-browser mobile-game-browser ui-pages responsive-browser longplay-browser; do
             if ! node "tests/${t}.mjs"; then
               echo "${t}" >> test-results/failed.txt
               status=1
@@ -162,13 +162,6 @@ jobs:
           path: test-results/videos/home-browser.webm
           archive: false
           if-no-files-found: ignore
-      - name: Upload video · interactions-browser
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          path: test-results/videos/interactions-browser.webm
-          archive: false
-          if-no-files-found: ignore
       - name: Upload video · items-browser
         if: always()
         uses: actions/upload-artifact@v7
@@ -188,13 +181,6 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           path: test-results/videos/mobile-game-browser.webm
-          archive: false
-          if-no-files-found: ignore
-      - name: Upload video · save-browser
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          path: test-results/videos/save-browser.webm
           archive: false
           if-no-files-found: ignore
       - name: Upload video · shop-browser

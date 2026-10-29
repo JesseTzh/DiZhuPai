@@ -22,15 +22,13 @@ const videoDir = path.join(resultsDir, 'videos');
 // 与 ci.yml 的运行顺序一致;failed.txt 由工作流在脚本失败时追加脚本名。
 const scripts = [
   ['entry-browser', '入场序列(桌面 + 移动视口)'],
-  ['interactions-browser', '交互、悬停与弹层'],
-  ['home-browser', '首页与金币物理动画'],
-  ['save-browser', '存档管理'],
-  ['browser', '对局主流程'],
+  ['home-browser', '首页、金币物理与存档管理'],
+  ['browser', '对局主流程与交互(悬停/划选/设置/转账)'],
   ['gameplay-browser', '玩法规则(顺子/压牌/炸弹/王炸/过牌/收牌)'],
   ['items-browser', '道具效果(七件逐一,真实 UI 触发)'],
   ['shop-browser', '商店流程'],
   ['mobile-game-browser', '手机端触控对局(858×396 横屏 · 19.5:9)'],
-  ['ui-pages', '页面结构与音效'],
+  ['ui-pages', '页面结构、音效与性能页'],
   ['responsive-browser', '响应式布局(手机/小窗/笔记本/全高清)'],
   ['longplay-browser', '长程对局(固定种子整场 9 小局 · 真实 UI 游玩)'],
   ['performance-browser', '性能采样(只留指标,不录像)'],

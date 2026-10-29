@@ -68,6 +68,26 @@ try {
   await page.evaluate(() => gameApp.ready());
   await newGame(page);
   for (const expected of reference) {
+    await page.waitForFunction(
+      () => gameApp.state.game.phase === 'playing' && !gameApp.state.locked,
+    );
+    // 逐局核对关卡、桌面与牌堆，覆盖整场推进而不另跑一遍人工小局。
+    const stage = Math.ceil(expected.round / 3),
+      substage = ((expected.round - 1) % 3) + 1;
+    assert.equal(
+      await page.evaluate(() => gameApp.state.tableStyle),
+      ['planks', 'walnut', 'marble'][stage - 1],
+      `第 ${expected.round} 小局桌面`,
+    );
+    assert.equal(
+      await page.locator('#level-label').textContent(),
+      `第 ${stage} / 3 大关，第 ${substage} / 3 小关`,
+    );
+    assert.equal(
+      await page.evaluate(() => gameApp.state.game.decks[0].length),
+      (3 - substage) * 18,
+    );
+    if (substage === 1) await page.screenshot({ path: `test-results/stage-${stage}.png` });
     // 每回合只提示一次:hint 首选即 chooseMove,出牌/过牌后 hintIndex 归零,
     // 因此整场的玩家决策与参考模拟逐手一致;动画锁与电脑回合由等待条件自然跳过。
     let finished = false;
@@ -99,6 +119,11 @@ try {
     assert.deepEqual(actual, expected, `第 ${expected.round} 小局与参考模拟不一致`);
     if (!expected.matchOver) {
       await page.waitForFunction(() => gameApp.state.game.phase === 'shop');
+      assert.ok(await page.locator('#shop').isVisible());
+      assert.equal(
+        await page.locator('#start-game').textContent(),
+        substage === 3 ? `进入第 ${stage + 1} 大关` : `下一小关 · ${stage}-${substage + 1}`,
+      );
       await page.locator('#leave-shop').click();
     }
   }
@@ -108,6 +133,18 @@ try {
   assert.equal(final.wins[0] + final.wins[1], 9);
   assert.ok(final.coins[0] >= 0);
   assert.equal(final.coins[1], Infinity);
+  assert.ok(await page.locator('#result').isVisible());
+  assert.match(await page.locator('#result').textContent(), /本场结束/);
+  assert.match(await page.locator('#result').textContent(), /电脑 无限/);
+  assert.equal(await page.locator('#start-game').textContent(), '新一场 · 500 金币');
+  await page.screenshot({ path: 'test-results/longplay-result.png' });
+  // 新一场清空进度与道具，回到第一关木桌。
+  await page.locator('#start-game').click();
+  await page.waitForFunction(() => gameApp.state.game.phase === 'playing');
+  assert.deepEqual(await page.evaluate(() => gameApp.state.game.wins), [0, 0]);
+  assert.deepEqual(await page.evaluate(() => gameApp.state.game.coins), [500, Infinity]);
+  assert.equal(await page.evaluate(() => gameApp.state.game.stage), 1);
+  assert.equal(await page.evaluate(() => gameApp.state.tableStyle), 'planks');
   assert.equal(errors.length, 0, errors.join('\n'));
   console.log(
     `Longplay browser flow passed: 9 rounds replayed exactly from seed ${LONGPLAY_SEED} ` +

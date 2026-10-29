@@ -92,54 +92,7 @@ try {
     })),
     { loop: false, paused: true },
   );
-  await page.screenshot({ path: 'test-results/table-marble.png' });
-  for (let round = 1; round <= 9; round++) {
-    const stage = Math.ceil(round / 3);
-    const substage = ((round - 1) % 3) + 1;
-    assert.equal(
-      await page.evaluate(() => gameApp.state.tableStyle),
-      ['planks', 'walnut', 'marble'][stage - 1],
-    );
-    assert.equal(
-      await page.locator('#level-label').textContent(),
-      `第 ${stage} / 3 大关，第 ${substage} / 3 小关`,
-    );
-    assert.equal(
-      await page.evaluate(() => gameApp.state.game.decks[0].length),
-      (3 - substage) * 18,
-    );
-    if (substage === 1) await page.screenshot({ path: `test-results/stage-${stage}.png` });
-    await page.evaluate(async () => {
-      const { play } = await import('/game/state.js');
-      const game = gameApp.state.game;
-      game.turn = 0;
-      game.hands[0] = [game.hands[0][0]];
-      game.target = null;
-      play(game, 0, [...game.hands[0]]);
-      gameApp.render();
-    });
-    if (round === 9) assert.ok(await page.locator('#result').isVisible());
-    if (round < 9) {
-      await page.waitForFunction(() => gameApp.state.game.phase === 'shop');
-      assert.ok(await page.locator('#shop').isVisible());
-      assert.equal(
-        await page.locator('#start-game').textContent(),
-        substage === 3 ? `进入第 ${stage + 1} 大关` : `下一小关 · ${stage}-${substage + 1}`,
-      );
-      await page.locator('#leave-shop').click();
-      await page.waitForFunction(() => gameApp.state.game.phase === 'playing');
-    }
-  }
-  assert.equal(await page.evaluate(() => gameApp.state.game.matchOver), true);
-  assert.match(await page.locator('#result').textContent(), /本场结束/);
-  assert.match(await page.locator('#result').textContent(), /电脑 无限/);
-  assert.equal(await page.locator('#start-game').textContent(), '新一场 · 500 金币');
-  await page.locator('#start-game').click();
-  await page.waitForFunction(() => gameApp.state.game.phase === 'playing');
-  assert.deepEqual(await page.evaluate(() => gameApp.state.game.wins), [0, 0]);
-  assert.deepEqual(await page.evaluate(() => gameApp.state.game.coins), [500, Infinity]);
-  assert.equal(await page.evaluate(() => gameApp.state.game.stage), 1);
-  assert.equal(await page.evaluate(() => gameApp.state.tableStyle), 'planks');
+  // 九小局的关卡推进、整场结算与新一场由 longplay-browser 用真实 UI 覆盖。
   // Settings changes apply without recreating or resetting the current deal.
   const hands = await page.evaluate(() => gameApp.state.game.hands);
   await page.locator('#open-settings').click();
@@ -256,7 +209,7 @@ try {
     JSON.stringify({ passed: true, bags, errors }, null, 2),
   );
   console.log(
-    'Home, all tables, viewport fit, looping audio, sacks, animation toggles, FPS and physics passed.',
+    'Home, settings persistence, looping audio, sacks, animation toggles, FPS and physics passed.',
   );
 } finally {
   await browser.close();

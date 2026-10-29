@@ -10,7 +10,7 @@ export const FULL_HD = { width: 1920, height: 1080 };
 // 845 就变成了 844),所以取偶数档 858×396,画布与视口一致即精确 19.5:9 满幅横屏录像。
 export const PHONE_LANDSCAPE = { width: 858, height: 396 };
 
-// 以入口脚本命名视频:home-browser 被 save-browser 复用时,两次运行各自落盘互不覆盖。
+// 以入口脚本命名视频,合并后的脚本按自身名字落盘。
 export const videoName = () => path.basename(process.argv[1] ?? 'browser', '.mjs');
 
 // 打开一个录制 webm 的页面;视频在页面/浏览器关闭后才写完,之后调用 save() 固定命名。
