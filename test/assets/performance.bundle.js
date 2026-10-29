@@ -4230,6 +4230,14 @@
 
   // src/game/state.js
   init_selection();
+
+  // src/game/economy.js
+  init_define_GAME_SOUNDS();
+  init_rules();
+  var INITIAL_COINS = 500;
+  var coinBagCount = (balance2) => Math.min(40, Math.max(0, balance2 / 25));
+
+  // src/game/state.js
   var STAGE_COUNT = 3;
   var ROUNDS_PER_STAGE = 3;
   var HAND_SIZE = 18;
@@ -4244,7 +4252,7 @@
     stealUsed: false,
     hands: [[], []],
     decks: [[], []],
-    coins: [100, 100],
+    coins: [INITIAL_COINS, Infinity],
     wins: [0, 0],
     round: 0,
     stage: 1,
@@ -4257,7 +4265,8 @@
     matchWinner: null,
     matchOver: false,
     message: "地主牌",
-    history: []
+    history: [],
+    legacyHistoryLength: 0
   });
   function deal(game2, random) {
     if (!["ready", "over", "shop"].includes(game2.phase) || game2.matchOver || game2.matchWinner != null)
@@ -4296,6 +4305,7 @@
     game2.selected = [];
     game2.winner = null;
     game2.history = [];
+    game2.legacyHistoryLength = 0;
     game2.message = "正在发牌";
     return true;
   }
@@ -4498,7 +4508,7 @@
   init_table();
   init_scene_frame();
   init_wild_reveal();
-  function makeVisual() {
+  function makeVisual(game2 = null) {
     return {
       time: 0,
       dealTime: 0,
@@ -4507,7 +4517,14 @@
       transfer: null,
       spill: null,
       steal: null,
-      bags: [coinState(), coinState()]
+      bags: [0, 1].map((player) => {
+        const bag = coinState();
+        if (game2) {
+          bag.count = coinBagCount(game2.coins[player]);
+          bag.fillShow = bag.count / 40;
+        }
+        return bag;
+      })
     };
   }
   function createGameRenderer(art, svg, host) {
