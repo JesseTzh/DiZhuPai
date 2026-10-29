@@ -29,8 +29,13 @@ try {
   });
   await setHand(page, [53, 2]);
   await page.evaluate(() => gameApp.select(53));
+  const coinsBefore = await page.evaluate(() => gameApp.state.game.coins[0]);
   await page.locator('#play-cards').click();
-  await page.waitForFunction(() => gameApp.state.game.coins[0] === 105 && !gameApp.state.locked);
+  // 过牌按双方点数差收费：大王 20 点，电脑过牌后玩家收下 20 金币。
+  await page.waitForFunction(
+    (before) => gameApp.state.game.coins[0] === before + 20 && !gameApp.state.locked,
+    coinsBefore,
+  );
   assert.ok(await page.evaluate(() => window.soundLog.includes(4)), '电脑过牌播放赢钱音效');
   // 自由出牌回合:没选牌时出牌/过牌都不可用。
   assert.equal(await page.evaluate(() => gameApp.state.game.target), null);
