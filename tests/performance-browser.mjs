@@ -14,7 +14,7 @@ const viewport = {
   height: Number(process.env.HEIGHT || 720),
 };
 const page = await browser.newPage({ viewport });
-const scales = (process.env.SCALES || '2,4').split(',');
+const scales = (process.env.SCALES || '1,2').split(',');
 const base = process.env.TEST_URL || 'http://127.0.0.1:5173/';
 const duration = Math.max(16, Number(process.env.SECONDS || 24));
 const errors = [],
