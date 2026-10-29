@@ -11,7 +11,7 @@ const urls =
         './assets/sound/win.mp3',
       ];
 // 背景音乐以独立文件发布，不内嵌进 bundle，避免入口体积随音乐增长。
-const MUSIC_URL = './assets/sound/theme.m4a';
+const MUSIC_URLS = ['./assets/sound/theme-1.m4a', './assets/sound/theme-2.m4a'];
 const MUSIC_LEVEL = 0.6;
 export function createSounds() {
   const tracks = urls.map((url) => {
@@ -20,15 +20,20 @@ export function createSounds() {
     audio.volume = 0.35;
     return audio;
   });
-  const music = new Audio(MUSIC_URL);
-  music.loop = true;
-  music.preload = 'none';
-  music.volume = 0.35 * MUSIC_LEVEL;
-  let muted = false,
+  // 两首曲子按顺序轮播，末尾接回第一首即形成循环。
+  const musicTracks = MUSIC_URLS.map((url) => {
+    const track = new Audio(url);
+    track.preload = 'none';
+    track.volume = 0.35 * MUSIC_LEVEL;
+    return track;
+  });
+  let musicIndex = 0,
+    muted = false,
     musicMuted = false,
     dealing = false,
     musicWanted = false,
     waitingGesture = false;
+  const currentMusic = () => musicTracks[musicIndex];
   const play = (index) => {
     if (muted || document.hidden) return;
     tracks[index].currentTime = 0;
@@ -60,19 +65,30 @@ export function createSounds() {
   // 浏览器会拦截无用户手势的自动播放；首次交互后再续上音乐。
   const attemptMusic = () => {
     if (!musicWanted || musicMuted || document.hidden) return;
-    music.play().catch(() => {
-      if (musicWanted && !musicMuted && !document.hidden) retryMusicOnGesture();
-    });
+    currentMusic()
+      .play()
+      .catch(() => {
+        if (musicWanted && !musicMuted && !document.hidden) retryMusicOnGesture();
+      });
   };
+  musicTracks.forEach((track, index) => {
+    track.addEventListener('ended', () => {
+      if (index !== musicIndex || !musicWanted || musicMuted || document.hidden) return;
+      musicIndex = (musicIndex + 1) % musicTracks.length;
+      currentMusic().preload = 'auto';
+      currentMusic().currentTime = 0;
+      attemptMusic();
+    });
+  });
   const startMusic = () => {
     musicWanted = true;
-    music.preload = 'auto';
+    currentMusic().preload = 'auto';
     attemptMusic();
   };
   // 暂停时保留播放位置，下次启动时继续。
   const stopMusic = () => {
     musicWanted = false;
-    music.pause();
+    currentMusic().pause();
   };
   if (tracks[SOUND.hover]) {
     tracks[SOUND.hover].preload = 'auto';
@@ -91,7 +107,7 @@ export function createSounds() {
   };
   const suspend = () => {
     tracks.forEach((audio) => audio.pause());
-    music.pause();
+    musicTracks.forEach((audio) => audio.pause());
   };
   const resume = () => {
     if (dealing && !muted && !document.hidden) tracks[SOUND.deal].play().catch(() => {});
@@ -107,13 +123,18 @@ export function createSounds() {
   addEventListener('pageshow', resume);
   return {
     tracks,
-    music,
+    musicTracks,
+    get music() {
+      return currentMusic();
+    },
     setVolume(value) {
       const volume = Math.max(0, Math.min(1, value));
       tracks.forEach((track) => {
         track.volume = volume;
       });
-      music.volume = volume * MUSIC_LEVEL;
+      musicTracks.forEach((track) => {
+        track.volume = volume * MUSIC_LEVEL;
+      });
     },
     play,
     hover,
@@ -128,7 +149,7 @@ export function createSounds() {
     },
     muteMusic(value) {
       musicMuted = value;
-      if (musicMuted) music.pause();
+      if (musicMuted) currentMusic().pause();
       else attemptMusic();
     },
     get musicMuted() {

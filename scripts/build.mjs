@@ -16,11 +16,10 @@ const gameSounds = await Promise.all(
 );
 await mkdir(outputAssets, { recursive: true });
 await mkdir(path.join(outputAssets, 'sound'), { recursive: true });
-// The BGM stays an external file: inlining several minutes of audio would bloat the bundle.
-await copyFile(
-  path.join(source, 'assets/sound/theme.m4a'),
-  path.join(outputAssets, 'sound/theme.m4a'),
-);
+// The BGM stays external files: inlining several minutes of audio would bloat the bundle.
+for (const name of ['theme-1.m4a', 'theme-2.m4a']) {
+  await copyFile(path.join(source, 'assets/sound', name), path.join(outputAssets, 'sound', name));
+}
 for (const name of ['favicon.svg', 'favicon.png', 'apple-touch-icon.png']) {
   await copyFile(path.join(source, 'assets', name), path.join(outputAssets, name));
 }

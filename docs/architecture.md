@@ -20,7 +20,7 @@
 | `src/game/model-canvas.js`、`table-geometry.js` | 牌/金币/钱袋绘制、桌面几何 |
 | `src/engine/` | 通用相机、数学、光照、Canvas/SVG 图元、保留精灵（`sprite-cache.js`）、渲染生命周期和动画调度 |
 | `src/cards/`、`coins/`、`shop/` | 牌模型、金币/钱袋物理与几何（不含绘制）、商店视图和玩具美术 |
-| `src/assets/` | 原始牌面美术、栅格化工具、音效（`sound/deal`、`knock`、`shuffle`、`hover`、`win`）与背景音乐 `sound/theme.m4a`；牌面导出规则见 `cards/README.md` |
+| `src/assets/` | 原始牌面美术、栅格化工具、音效（`sound/deal`、`knock`、`shuffle`、`hover`、`win`）与背景音乐 `sound/theme-1.m4a`、`sound/theme-2.m4a`（按顺序轮播）；牌面导出规则见 `cards/README.md` |
 | `src/performance.js`、`ui/performance.js` | 独立性能页及采样面板，复用真实场景和模型 |
 | `src/styles/` | `game.css` 对局/菜单，`settings.css` 设置，`home-layout.css` 首页基础布局，`home.css` 首页美术/存档，其他按功能命名 |
 

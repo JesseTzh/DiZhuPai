@@ -55,7 +55,22 @@ try {
   await page.waitForFunction(() => gameApp.state.visual.dealTime > 0.5);
   assert.equal(await page.evaluate(() => gameApp.audio.tracks[0].loop), true);
   await page.waitForFunction(() => !gameApp.audio.music.paused);
-  assert.equal(await page.evaluate(() => gameApp.audio.music.loop), true);
+  assert.deepEqual(
+    await page.evaluate(() =>
+      gameApp.audio.musicTracks.map((track) => new URL(track.src).pathname.split('/').pop()),
+    ),
+    ['theme-1.m4a', 'theme-2.m4a'],
+  );
+  // 第一首结束后应切换到第二首继续播放。
+  await page.evaluate(() => {
+    gameApp.audio.music.pause();
+    gameApp.audio.music.dispatchEvent(new Event('ended'));
+  });
+  await page.waitForFunction(
+    () =>
+      !gameApp.audio.music.paused &&
+      new URL(gameApp.audio.music.src).pathname.endsWith('/theme-2.m4a'),
+  );
   await page.waitForFunction(() => gameApp.state.game.phase === 'playing');
   assert.deepEqual(
     await page.evaluate(() => ({
