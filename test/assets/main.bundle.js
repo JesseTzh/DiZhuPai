@@ -5283,7 +5283,7 @@
 
   // src/ui/build-version.js
   init_define_GAME_SOUNDS();
-  var BUILD_VERSION = true ? "Version:261029-1734-5ce22aa-test" : "Version:dev-test";
+  var BUILD_VERSION = true ? "Version:261029-1746-de6ae80-test" : "Version:dev-test";
   function mountBuildVersion(container) {
     const canvas = document.createElement("canvas");
     canvas.className = "settings-version";
