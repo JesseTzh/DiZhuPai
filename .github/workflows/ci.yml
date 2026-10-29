@@ -46,6 +46,22 @@ jobs:
       - name: Verify Chrome availability
         run: google-chrome --version
 
+      # The runner image ships no CJK font, so every Chinese label in the canvas
+      # UI (PingFang SC / Songti SC / Microsoft YaHei / SimSun stacks in src)
+      # falls back to tofu boxes in screenshots and recordings. Noto Sans CJK
+      # and Noto Serif CJK give fontconfig a glyph-level fallback for both the
+      # sans and serif stacks. The fc-list check fails the job if the install
+      # stops providing zh-cn glyphs, so tofu never reaches the artifacts.
+      - name: Install CJK fonts
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends fonts-noto-cjk fonts-noto-cjk-extra
+          fc-list :lang=zh-cn family | sort -u | head -20
+          if ! fc-list :lang=zh-cn | grep -qi cjk; then
+            echo "::error::no CJK font resolved for lang=zh-cn; recordings would show tofu boxes"
+            exit 1
+          fi
+
       # recordVideo requires Playwright's own bundled ffmpeg; the runner image's
       # system ffmpeg is never consulted and preinstalled Chrome does not cover it.
       - name: Install Playwright ffmpeg
