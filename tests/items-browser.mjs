@@ -129,7 +129,7 @@ try {
   assert.equal(await targetPlayer(), 0);
   assert.equal((await targetMove()).main, 8);
 
-  // 口罩:本小局第一次过牌免费,金币纹丝不动;第二次过牌收费 5 金币。
+  // 口罩:本小局第一次过牌免费,金币纹丝不动;第二次过牌按点数差收费 10 金币。
   await freshGame();
   await injectItem(page, 'mask');
   await page.evaluate(() => {
@@ -149,10 +149,10 @@ try {
   await page.locator('#pass-turn').click();
   await page.waitForFunction(() => !gameApp.state.locked);
   assert.deepEqual(await page.evaluate(() => gameApp.state.game.coins), [
-    coinsBefore[0] - 5,
-    coinsBefore[1] + 5,
+    coinsBefore[0] - 10,
+    Infinity,
   ]);
-  assert.equal(await page.evaluate(() => gameApp.state.game.history.at(-1).amount), 5);
+  assert.equal(await page.evaluate(() => gameApp.state.game.history.at(-1).amount), 10);
 
   // 小老鼠:把电脑的出牌收回手牌,一局一次,按钮随之隐藏。
   await freshGame();

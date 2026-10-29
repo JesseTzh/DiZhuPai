@@ -48,6 +48,7 @@ test('engine stays independent, domain logic avoids UI, and module imports remai
   );
   const domain = new Set([
     'src/game/rules.js',
+    'src/game/economy.js',
     'src/game/state.js',
     'src/game/save.js',
     'src/game/items.js',

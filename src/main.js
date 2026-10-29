@@ -1,6 +1,6 @@
 import { mountFigure } from './engine/figure.js';
 import { cardDeck, cardIds } from './cards/constants.js';
-import { createGame, PASS_COST } from './game/state.js';
+import { createGame } from './game/state.js';
 import { createGameRenderer, makeVisual, DEAL_DURATION } from './game/scene.js';
 import { createSounds, SOUND } from './game/sound.js';
 import { mountShell } from './ui/controls.js';
@@ -21,12 +21,8 @@ addEventListener('error', (event) => {
 const session = createSaveSession(localStorage);
 const saved = session.initialSave;
 const game = saved?.game || createGame(),
-  visual = makeVisual();
+  visual = makeVisual(game);
 visual.dealTime = game.round ? DEAL_DURATION : 0;
-visual.bags.forEach((bag, player) => {
-  bag.count = Math.min(40, game.coins[player] / 5);
-  bag.fillShow = bag.count / 40;
-});
 const state = {
   game,
   visual,
@@ -64,7 +60,7 @@ const ui = mountFigure({
   buttons: [
     { label: '开始发牌', onClick: () => controller.start() },
     { label: '出牌', onClick: () => controller.playerPlay() },
-    { label: `过牌 · ${PASS_COST} 金币`, onClick: () => controller.playerPass() },
+    { label: '过牌', onClick: () => controller.playerPass() },
     { label: '收牌', onClick: () => controller.playerSteal() },
   ],
 });

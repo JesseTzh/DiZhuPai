@@ -121,7 +121,7 @@ try {
   await page.tap('#play-cards');
   await waitMyTurn();
   await page.screenshot({ path: 'test-results/mobile-played.png' });
-  // 造一个电脑目标,触控过牌触发 5 金币转移。
+  // 造一个电脑目标,触控过牌触发 10 金币转移。
   const coins = await page.evaluate(() => [...gameApp.state.game.coins]);
   await page.evaluate(() => {
     const state = gameApp.state,
@@ -134,15 +134,13 @@ try {
       cards: [9],
     };
     game.last = { player: 1, type: 'play', move: game.target.move, cards: [9] };
+    game.history = [game.last];
     state.locked = false;
     gameApp.render();
   });
   await page.tap('#pass-turn');
   await page.waitForFunction(() => !gameApp.state.locked);
-  assert.deepEqual(await page.evaluate(() => gameApp.state.game.coins), [
-    coins[0] - 5,
-    coins[1] + 5,
-  ]);
+  assert.deepEqual(await page.evaluate(() => gameApp.state.game.coins), [coins[0] - 10, Infinity]);
   await waitMyTurn();
   // 收官:直接打出最后一张牌进商店,触控购买并进入下一局。
   await page.evaluate(() => {

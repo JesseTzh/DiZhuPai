@@ -15,7 +15,7 @@
 | `scripts/build-version.mjs`、`pages-site.mjs` | 构建时间、源码 SHA 和环境标识；合并正式版与测试版的 Pages 产物 |
 | `src/ui/game-view.js`、`game-keyboard.js` | 对局 HUD、按钮、结算、商店反馈及键盘绑定 |
 | `src/ui/home-art.js`、`home-title.js`、`home-models.js` | 首页动画/碰撞、标题笔画数据、真实模型预绘制 |
-| `src/game/rules.js`、`state.js`、`items.js`、`random.js` | 纯规则、对局状态变化、道具定义、种子随机派生；不接触 DOM、计时器和存储 |
+| `src/game/rules.js`、`state.js`、`economy.js`、`items.js`、`random.js` | 纯规则、对局状态变化、金币计分、道具定义、种子随机派生；不接触 DOM、计时器和存储 |
 | `src/game/save.js` | 存档格式、严格校验、序列化、恢复归一化及旧存档迁移 |
 | `src/game/scene.js`、`scene-frame.js`、`scene-layout.js`、`transfer.js` | 动画状态推进、场景布局描述、桌面/手机两套牌桌布局、金币转账轨迹 |
 | `src/game/cpu-renderer.js`、`scene-parts.js`、`scene-overlay.js`、`table-layer.js`、`hover.js` | 一帧的编排、画家部件与缓存键、SVG 命中标注、桌面底层、手牌悬停进度 |
@@ -29,7 +29,7 @@
 ## 依赖与状态边界
 
 - `main → app / ui → game / cards / coins / shop → engine / assets` 表示主要调用方向。`engine` 只依赖自身；具体业务模型放在 `game/model-canvas.js`，不回塞到通用 Canvas。
-- `game/rules.js`、`state.js`、`save.js`、`items.js`、`random.js` 不依赖 `app`、`ui`、`shop` 或 `engine`；所有模块禁止循环导入。跨模块协作用显式参数、返回值或回调，不新增全局服务对象。
+- `game/rules.js`、`state.js`、`save.js`、`economy.js`、`items.js`、`random.js` 不依赖 `app`、`ui`、`shop` 或 `engine`；所有模块禁止循环导入。跨模块协作用显式参数、返回值或回调，不新增全局服务对象。
 - 随机种子经 `?seed=` 链接指定后随存档保存；`deal`/`enterShop` 按（种子, 用途, 局数）派生独立随机流，同一种子加相同决策可整场复现，未指定时保持真随机。浏览器测试统一用固定种子 `dizhupai-347` 访问。
 - `game` 保存可持久化规则状态，`visual` 保存动画状态；定时器、操作锁、动画进度和音频不写入存档。恢复时保留状态对象引用，重置动画并取消过期电脑任务。
 - `save-session` 管理单个存档，`save.js` 负责数据可信性，并从旧版栏位迁移进度；导入须先校验，覆盖已有存档须确认，删除须二次点击。写入失败保留现有对局并提示导出。

@@ -225,7 +225,7 @@ export function mountGameView({ state, ui, actions: controller, isGamePage }) {
       game.phase === 'ready'
         ? '开始发牌'
         : game.matchOver
-          ? '新一场 · 100 金币'
+          ? '新一场 · 500 金币'
           : game.substage === ROUNDS_PER_STAGE
             ? `进入第 ${game.stage + 1} 大关`
             : `下一小关 · ${game.stage}-${game.substage + 1}`;
@@ -268,7 +268,7 @@ export function mountGameView({ state, ui, actions: controller, isGamePage }) {
         game.substage === ROUNDS_PER_STAGE
           ? '本大关完成，下一大关换桌并重新洗牌。'
           : `下一小关继续从余牌发出18张，不重新洗牌。`;
-      result.innerHTML = `<span class="eyebrow">${game.matchOver ? '本场结束' : `第 ${game.stage}-${game.substage} 小关结束`}</span><strong>${winner === 0 ? '你赢了！' : '电脑获胜'}</strong><span>${game.matchOver ? game.message : next}</span><span>胜场 ${game.wins[0]} : ${game.wins[1]}</span><div>你 ${game.coins[0]} <small>金币</small><em>/</em>电脑 ${game.coins[1]} <small>金币</small></div>`;
+      result.innerHTML = `<span class="eyebrow">${game.matchOver ? '本场结束' : `第 ${game.stage}-${game.substage} 小关结束`}</span><strong>${winner === 0 ? '你赢了！' : '电脑获胜'}</strong><span>${game.matchOver ? game.message : next}</span><span>胜场 ${game.wins[0]} : ${game.wins[1]}</span><div>你 ${game.coins[0]} <small>金币</small><em>/</em>电脑 无限 <small>金币</small></div>`;
     }
   }
   return {

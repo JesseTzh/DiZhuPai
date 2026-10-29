@@ -36,9 +36,9 @@ test('shop purchases are atomic, unique, affordable and scoped to a match', () =
     assert.equal(response.item.id, id);
     spent += response.item.price;
   }
-  assert.equal(g.coins[0], 100 - spent);
+  assert.equal(g.coins[0], 500 - spent);
   assert.ok(buyItem(g, stock[0]).error);
-  assert.equal(g.coins[0], 100 - spent);
+  assert.equal(g.coins[0], 500 - spent);
   assert.deepEqual(ruleOptions(g, 1), {});
   assert.ok(deal(g, () => 0.5));
   assert.ok(g.hands[0].includes(g.wildCard) === g.items.includes('frog'));
@@ -183,7 +183,7 @@ test('buying an item that empties the player wallet ends the match immediately',
   g.coins[0] = 20;
   const response = buyItem(g, 'frog');
   assert.equal(response.item.id, 'frog');
-  assert.deepEqual(g.coins, [0, 100]);
+  assert.deepEqual(g.coins, [0, Infinity]);
   assert.equal(g.phase, 'over');
   assert.equal(g.matchOver, true);
   assert.equal(g.matchWinner, 1);
@@ -221,11 +221,11 @@ test('the mask makes the first pass of each round free and charges the rest', ()
   g.hands = [cards(3, 4), [...cards(5, 6), ...cards(7, 8)]];
   play(g, 1, g.hands[1].slice(0, 1));
   assert.equal(pass(g, 0).amount, 0);
-  assert.deepEqual(g.coins, [100, 100]);
+  assert.deepEqual(g.coins, [500, Infinity]);
   assert.equal(g.freePassUsed, true);
   play(g, 1, g.hands[1].slice(0, 1));
-  assert.equal(pass(g, 0).amount, 5);
-  assert.deepEqual(g.coins, [95, 105]);
+  assert.equal(pass(g, 0).amount, 6);
+  assert.deepEqual(g.coins, [494, Infinity]);
   // a new round restores the cover
   g.phase = 'over';
   assert.ok(deal(g));

@@ -45,7 +45,7 @@ export function createSaveSession(storage) {
     },
     import(index, save) {
       if (index !== 0) throw new Error('仅支持一个存档');
-      storage.setItem(SLOT_KEYS[index], JSON.stringify(save));
+      storage.setItem(SLOT_KEYS[index], serializeSave(save.game, save, new Date(save.savedAt)));
       select(index);
     },
     delete(index) {

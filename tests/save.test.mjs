@@ -139,7 +139,7 @@ test('invalid imports are rejected before replacing any state', () => {
 test('stamp, free pass, mouse take and the featured shelf survive a save round trip', () => {
   const game = createGame();
   game.items = ['stamp', 'mask', 'mouse', 'balance'];
-  game.coins = [50, 45];
+  game.coins = [50, Infinity];
   // a CPU-led round: the mouse steals the opening play
   game.phase = 'over';
   game.round = 1;
@@ -251,14 +251,17 @@ test('bankruptcy during a coin transfer restores the final balance and match res
   const game = createGame();
   deal(game);
   finishDeal(game);
-  game.coins = [195, 5];
-  play(game, 0, [game.hands[0][0]]);
-  pass(game, 1);
+  game.coins = [1, Infinity];
+  play(game, 0, [game.hands[0].at(-1)]);
+  const reply = chooseMove(game.hands[1], game.target.move);
+  assert.ok(reply);
+  play(game, 1, reply.cards);
+  pass(game, 0);
   const restored = parseSave(save(game)).game;
   assert.equal(restored.phase, 'over');
-  assert.equal(restored.matchWinner, 0);
-  assert.equal(restored.turn, 0);
-  assert.deepEqual(restored.coins, [200, 0]);
+  assert.equal(restored.matchWinner, 1);
+  assert.equal(restored.turn, 1);
+  assert.deepEqual(restored.coins, [0, Infinity]);
 });
 
 test('single save migrates the old active slot once and preserves old backups', () => {
@@ -333,7 +336,7 @@ test('failed migration keeps the original save and reports storage errors', () =
 test('小老鼠道具获得的重复牌可选取、出牌并恢复存档', () => {
   const game = createGame();
   game.items = ['mouse'];
-  game.coins = [100 - ITEMS.find((item) => item.id === 'mouse').price, 100];
+  game.coins = [500 - ITEMS.find((item) => item.id === 'mouse').price, Infinity];
   deal(game, () => 0.5);
   finishDeal(game);
   const id = game.hands[0].at(-1);
@@ -353,4 +356,76 @@ test('小老鼠道具获得的重复牌可选取、出牌并恢复存档', () =>
   const restored = parseSave(save(game)).game;
   assert.deepEqual(restored.hands, game.hands);
   assert.deepEqual(restored.target.cards, [reply, reply]);
+});
+
+test('无限金币和超过旧上限的余额可往返存档', () => {
+  const game = createGame();
+  deal(game, () => 0.5);
+  finishDeal(game);
+  game.coins[0] = 1200;
+  play(game, 0, [game.hands[0].at(-1)]);
+  pass(game, 1);
+  assert.deepEqual(parseSave(save(game)).game.coins, game.coins);
+  assert.equal(JSON.parse(save(game)).game.coins[1], 'unlimited');
+});
+
+test('旧存档保留玩家余额，并将电脑余额迁移为无限', () => {
+  const game = createGame();
+  deal(game, () => 0.5);
+  const legacy = JSON.parse(save(game));
+  legacy.version = 1;
+  legacy.game.coins = [95, 105];
+  assert.deepEqual(parseSave(JSON.stringify(legacy)).game.coins, [95, Infinity]);
+});
+
+test('普通过牌不会消耗未持有的口罩', () => {
+  const game = createGame();
+  deal(game, () => 0.5);
+  finishDeal(game);
+  play(game, 0, [game.hands[0].at(-1)]);
+  const reply = chooseMove(game.hands[1], game.target.move);
+  play(game, 1, reply.cards);
+  pass(game, 0);
+  assert.equal(parseSave(save(game)).game.freePassUsed, false);
+});
+
+test('旧版固定费用历史在迁移后仍可重复保存，并在发牌时清除兼容标记', () => {
+  const game = createGame();
+  deal(game, () => 0.5);
+  finishDeal(game);
+  play(game, 0, [game.hands[0].at(-1)]);
+  pass(game, 1);
+  const legacy = JSON.parse(save(game));
+  legacy.version = 1;
+  legacy.game.coins = [105, 95];
+  legacy.game.last.amount = 5;
+  legacy.game.history.at(-1).amount = 5;
+  const migrated = parseSave(JSON.stringify(legacy)).game;
+  assert.equal(migrated.legacyHistoryLength, 2);
+  assert.deepEqual(parseSave(save(migrated)).game, migrated);
+  migrated.phase = 'over';
+  deal(migrated, () => 0.5);
+  assert.equal(migrated.legacyHistoryLength, 0);
+});
+
+test('合法牌型的零差值过牌可存档，并且不产生口罩使用记录', () => {
+  const game = createGame();
+  deal(game, () => 0.5);
+  finishDeal(game);
+  const lead = cardDeck
+    .filter((card) => rankOf(card.id) === 6)
+    .slice(0, 2)
+    .map((card) => card.id);
+  const reply = cardDeck.filter((card) => rankOf(card.id) === 3).map((card) => card.id);
+  for (const [player, played] of [lead, reply].entries()) {
+    const rest = cardDeck.map((card) => card.id).filter((id) => !played.includes(id));
+    game.hands[player] = [...played, ...rest.slice(0, 18 - played.length)];
+    game.decks[player] = rest.slice(18 - played.length);
+  }
+  assert.ok(play(game, 0, lead).move);
+  assert.ok(play(game, 1, reply).move);
+  assert.equal(pass(game, 0).amount, 0);
+  const restored = parseSave(save(game)).game;
+  assert.equal(restored.freePassUsed, false);
+  assert.deepEqual(restored.coins, [500, Infinity]);
 });

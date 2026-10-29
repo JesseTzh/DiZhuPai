@@ -1,10 +1,11 @@
+import { coinBagCount } from './economy.js';
 import { TRANSFER_DURATION, TRANSFER_COLLECT_AT, STEAL_DURATION } from './transfer.js';
 import { coinState, coinStep } from '../coins/scene.js';
 import { createCanvasRenderer } from '../engine/canvas-renderer.js';
 export { world } from './table.js';
 export { playerPalette, bagPosition, deckPosition, handPose } from './scene-frame.js';
 export { DEAL_DURATION } from './wild-reveal.js';
-export function makeVisual() {
+export function makeVisual(game = null) {
   return {
     time: 0,
     dealTime: 0,
@@ -13,7 +14,14 @@ export function makeVisual() {
     transfer: null,
     spill: null,
     steal: null,
-    bags: [coinState(), coinState()],
+    bags: [0, 1].map((player) => {
+      const bag = coinState();
+      if (game) {
+        bag.count = coinBagCount(game.coins[player]);
+        bag.fillShow = bag.count / 40;
+      }
+      return bag;
+    }),
   };
 }
 
@@ -28,7 +36,7 @@ export function stepVisual(st, dt) {
   for (let p = 0; p < 2; p++) {
     const tr = v.transfer;
     let balance = st.game.coins[p];
-    if (tr?.before) {
+    if (tr?.before && Number.isFinite(balance)) {
       const elapsed = v.time - tr.start;
       const progress = Math.max(
         0,
@@ -42,8 +50,8 @@ export function stepVisual(st, dt) {
       if (p !== tr.from && elapsed > TRANSFER_COLLECT_AT + 0.6 && elapsed < TRANSFER_DURATION - 0.1)
         v.bags[p].squash = 0.055;
     }
-    // Fixed capacity makes equal transfers visibly inflate one sack and deflate the other.
-    v.bags[p].count = Math.min(40, Math.max(0, balance / 5));
+    // 玩家钱袋随余额变化，电脑的无限钱袋保持满载。
+    v.bags[p].count = coinBagCount(balance);
     active = coinStep(v.bags[p], dt) || active;
   }
   if (v.transfer) {

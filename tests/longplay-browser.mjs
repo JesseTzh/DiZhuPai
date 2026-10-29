@@ -17,7 +17,7 @@ import { chooseMove } from '../src/game/rules.js';
 import { FULL_HD, openRecording } from './video.mjs';
 import { newGame, url } from './harness.mjs';
 
-// 长程对局专用种子:已验证能打满 9 小局、无中途破产(最低金币 80)、玩家赢得整场。
+// 长程对局专用种子：覆盖九小局和整场结算。
 const LONGPLAY_SEED = 'dizhupai-longplay';
 
 // 参考实现:双方都走 chooseMove(与页面 hint 首选/电脑完全同源),不购物、不注入,
@@ -102,11 +102,12 @@ try {
       await page.locator('#leave-shop').click();
     }
   }
-  // 整场终局:金币守恒(未购物,总和保持 200),胜场之和为 9。
+  // 整场终局：玩家余额非负，电脑金币无限，胜场之和为 9。
   const final = reference.at(-1);
   assert.equal(await page.evaluate(() => gameApp.state.game.matchWinner), final.matchWinner);
   assert.equal(final.wins[0] + final.wins[1], 9);
-  assert.equal(final.coins[0] + final.coins[1], 200);
+  assert.ok(final.coins[0] >= 0);
+  assert.equal(final.coins[1], Infinity);
   assert.equal(errors.length, 0, errors.join('\n'));
   console.log(
     `Longplay browser flow passed: 9 rounds replayed exactly from seed ${LONGPLAY_SEED} ` +

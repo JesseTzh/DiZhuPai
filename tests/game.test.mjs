@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { cardDeck } from '../src/assets/cards/deck.js';
 import { rankOf, classify, beats, legalMoves, chooseMove } from '../src/game/rules.js';
 import { createGame, deal, finishDeal, play, pass } from '../src/game/state.js';
+import { passCost, cardPoints } from '../src/game/economy.js';
 const cards = (...ranks) => {
   const used = new Set();
   return ranks.map((rank) => {
@@ -55,7 +56,7 @@ test('comparison enforces shapes and lengths; bombs and rocket override ordinary
 });
 test('independent decks deal 18 unique cards each and retain 36 cards each', () => {
   const g = createGame();
-  assert.deepEqual(g.coins, [100, 100]);
+  assert.deepEqual(g.coins, [500, Infinity]);
   assert.ok(deal(g, () => 0.5));
   for (let p = 0; p < 2; p++) {
     assert.equal(new Set(g.hands[p]).size, 18);
@@ -67,7 +68,7 @@ test('independent decks deal 18 unique cards each and retain 36 cards each', () 
   finishDeal(g);
   assert.equal(g.turn, 0);
 });
-test('illegal actions do not mutate state; pass conserves coins and restores free lead', () => {
+test('illegal actions do not mutate state; pass pays the point difference and restores free lead', () => {
   const g = createGame();
   deal(g);
   finishDeal(g);
@@ -80,8 +81,9 @@ test('illegal actions do not mutate state; pass conserves coins and restores fre
   assert.ok(play(g, 0, [id]).move);
   assert.equal(g.turn, 1);
   assert.equal(g.hands[0].length, 17);
-  assert.equal(pass(g, 1).amount, 5);
-  assert.deepEqual(g.coins, [105, 95]);
+  const cost = cardPoints(id);
+  assert.equal(pass(g, 1).amount, cost);
+  assert.deepEqual(g.coins, [500 + cost, Infinity]);
   assert.equal(g.turn, 0);
   assert.equal(g.target, null);
   assert.ok(pass(g, 0).error);
@@ -145,19 +147,21 @@ test('empty hand wins; next deal retains balances and alternates lead; bankruptc
   deal(g);
   finishDeal(g);
   g.hands[0] = cards(3);
-  g.coins = [111, 89];
+  g.coins = [511, Infinity];
   play(g, 0, g.hands[0]);
   assert.equal(g.winner, 0);
   assert.equal(g.phase, 'over');
   deal(g);
   finishDeal(g);
   assert.equal(g.turn, 1);
-  assert.deepEqual(g.coins, [111, 89]);
+  assert.deepEqual(g.coins, [511, Infinity]);
   g.target = { player: 0, move: classify(cards(17)), cards: cards(17) };
-  g.coins = [198, 2];
-  assert.equal(pass(g, 1).amount, 2);
-  assert.deepEqual(g.coins, [200, 0]);
-  assert.equal(g.matchWinner, 0);
+  g.turn = 0;
+  g.target.player = 1;
+  g.coins = [2, Infinity];
+  assert.equal(pass(g, 0).amount, 2);
+  assert.deepEqual(g.coins, [0, Infinity]);
+  assert.equal(g.matchWinner, 1);
   assert.ok(!deal(g));
 });
 test('generated choices cover every legal shape in representative hands', () => {
@@ -173,7 +177,7 @@ test('generated choices cover every legal shape in representative hands', () => 
     }
   }
 });
-test('100 complete computer-vs-computer games terminate with legal moves and conserved coins', () => {
+test('100 complete computer-vs-computer games terminate with legal moves and unlimited computer coins', () => {
   let seed = 99;
   const random = () => {
     seed = (1664525 * seed + 1013904223) >>> 0;
@@ -190,9 +194,54 @@ test('100 complete computer-vs-computer games terminate with legal moves and con
         m = chooseMove(g.hands[p], g.target?.move, g.hands[1 - p].length);
       const res = m ? play(g, p, m.cards) : pass(g, p);
       assert.ok(!res.error, res.error);
-      assert.equal(g.coins[0] + g.coins[1], 200);
+      assert.ok(Number.isSafeInteger(g.coins[0]) && g.coins[0] >= 0);
+      assert.equal(g.coins[1], Infinity);
     }
     assert.ok(g.winner === 0 || g.winner === 1);
     assert.ok(g.matchWinner != null || g.hands[g.winner].length === 0);
   }
+});
+
+test('过牌按本轮双方最后出牌总点数的绝对差扣费', () => {
+  const g = createGame();
+  g.phase = 'playing';
+  g.hands = [cards(7, 7, 12), cards(10, 10, 13)];
+  play(g, 0, cards(7, 7));
+  play(g, 1, cards(10, 10));
+  assert.equal(passCost(g), 6);
+  assert.equal(pass(g, 0).amount, 6);
+  assert.deepEqual(g.coins, [494, Infinity]);
+  play(g, 1, cards(13));
+  assert.equal(passCost(g), 13);
+});
+
+test('点数覆盖普通牌、A、2和双王，出牌大小保持原规则', () => {
+  for (let rank = 3; rank <= 17; rank++)
+    assert.equal(cardPoints(cards(rank)[0]), { 16: 18, 17: 20 }[rank] ?? rank);
+  const g = createGame();
+  g.phase = 'playing';
+  g.hands = [cards(16, 3), cards(17, 4)];
+  play(g, 0, cards(16));
+  play(g, 1, cards(17));
+  assert.equal(pass(g, 0).amount, 2);
+});
+
+test('只取最近一次出牌，跨牌型计算绝对差，零差值不会扣费', () => {
+  const g = createGame();
+  g.phase = 'playing';
+  g.hands = [cards(14, 14, 15, 15, 3), cards(3, 3, 3, 3, 4)];
+  play(g, 0, cards(14, 14));
+  play(g, 1, cards(3, 3, 3, 3));
+  assert.equal(passCost(g), 16);
+  assert.equal(pass(g, 0).amount, 16);
+  g.turn = 0;
+  g.target = { player: 1, cards: cards(10, 10) };
+  g.history = [
+    { type: 'play', player: 0, cards: cards(3) },
+    { type: 'play', player: 1, cards: cards(4) },
+    { type: 'play', player: 0, cards: cards(7, 13) },
+  ];
+  assert.equal(passCost(g), 0);
+  assert.equal(pass(g, 0).amount, 0);
+  assert.equal(g.freePassUsed, false);
 });

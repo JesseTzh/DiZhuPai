@@ -50,11 +50,7 @@ export function createGameController({
     return isGamePage() && game.phase === 'playing' && game.turn === 0 && !state.locked;
   }
   function resetVisual() {
-    Object.assign(visual, makeVisual(), { dealTime: DEAL_DURATION });
-    visual.bags.forEach((bag, p) => {
-      bag.count = Math.min(40, game.coins[p] / 5);
-      bag.fillShow = bag.count / 40;
-    });
+    Object.assign(visual, makeVisual(game), { dealTime: DEAL_DURATION });
   }
   function restoreProgress(save) {
     epoch++;

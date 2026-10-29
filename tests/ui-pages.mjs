@@ -132,10 +132,12 @@ try {
   }
   assert.equal(await page.evaluate(() => gameApp.state.game.matchOver), true);
   assert.match(await page.locator('#result').textContent(), /本场结束/);
+  assert.match(await page.locator('#result').textContent(), /电脑 无限/);
+  assert.equal(await page.locator('#start-game').textContent(), '新一场 · 500 金币');
   await page.locator('#start-game').click();
   await page.waitForFunction(() => gameApp.state.game.phase === 'playing');
   assert.deepEqual(await page.evaluate(() => gameApp.state.game.wins), [0, 0]);
-  assert.deepEqual(await page.evaluate(() => gameApp.state.game.coins), [100, 100]);
+  assert.deepEqual(await page.evaluate(() => gameApp.state.game.coins), [500, Infinity]);
   assert.equal(await page.evaluate(() => gameApp.state.game.stage), 1);
   assert.equal(await page.evaluate(() => gameApp.state.tableStyle), 'planks');
   // Settings changes apply without recreating or resetting the current deal.
@@ -152,15 +154,20 @@ try {
   const bags = await page.evaluate(async () => {
     const { state } = gameApp;
     const { stepVisual } = await import('/game/scene.js');
-    state.game.coins = [50, 150];
-    state.visual.transfer = { from: 0, amount: 50, before: [100, 100], start: state.visual.time };
+    state.game.coins = [450, Infinity];
+    state.visual.transfer = {
+      from: 0,
+      amount: 50,
+      before: [500, Infinity],
+      start: state.visual.time,
+    };
     const before = state.visual.bags.map((bag) => bag.fillShow);
     for (let i = 0; i < 180; i++) stepVisual(state, 1 / 60);
     gameApp.render();
     return { before, after: state.visual.bags.map((bag) => bag.fillShow) };
   });
   assert.ok(bags.after[0] < bags.before[0]);
-  assert.ok(bags.after[1] > bags.before[1]);
+  assert.equal(bags.after[1], bags.before[1]);
   await page.screenshot({ path: 'test-results/sack-balance.png' });
   // 小视口的适配检查在 responsive-browser;录像视口全程保持全高清不切换。
   await page.evaluate(() => gameApp.render());

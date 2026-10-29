@@ -60,7 +60,7 @@ try {
   assert.equal(await page.title(), '地主牌');
   assert.equal(await page.locator('.game-topbar').isVisible(), true);
   assert.match(await page.locator('#level-label').textContent(), /第 1 \/ 3 大关，第 1 \/ 3 小关/);
-  assert.equal(await page.locator('#current-coins').textContent(), '当前金币 100');
+  assert.equal(await page.locator('#current-coins').textContent(), '当前金币 500');
   assert.equal(await page.locator('#current-items').count(), 0);
   assert.equal(await page.locator('.game-topbar canvas').count(), 1);
   assert.equal(await page.locator('.game-topbar svg, .topbar-title').count(), 0);
@@ -121,6 +121,7 @@ try {
       move: { type: 'single', main: 17, length: 1, name: '单张' },
     };
     g.last = { ...g.target, type: 'play' };
+    g.history = [g.last];
     g.selected = [];
     gameApp.render();
   });
@@ -133,11 +134,8 @@ try {
   );
   await shot('game-coin-transfer');
   await page.waitForFunction(() => !gameApp.state.locked);
-  assert.deepEqual(await page.evaluate(() => gameApp.state.game.coins), [
-    coins[0] - 5,
-    coins[1] + 5,
-  ]);
-  assert.equal(await page.locator('#current-coins').textContent(), `当前金币 ${coins[0] - 5}`);
+  assert.deepEqual(await page.evaluate(() => gameApp.state.game.coins), [coins[0] - 20, Infinity]);
+  assert.equal(await page.locator('#current-coins').textContent(), `当前金币 ${coins[0] - 20}`);
   await clean();
   await page.locator('#open-settings').click();
   assert.equal(await page.locator('#settings-screen').evaluate((node) => node.open), true);

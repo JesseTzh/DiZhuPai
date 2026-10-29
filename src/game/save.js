@@ -7,6 +7,7 @@ import {
   ROUNDS_PER_STAGE,
   HAND_SIZE,
 } from './state.js';
+import { passCost } from './economy.js';
 import { classify, beats, rankOf } from './rules.js';
 import { ITEMS, hasItemRule } from './items.js';
 import { SEED_MAX_LENGTH } from './random.js';
@@ -14,7 +15,7 @@ import { subtractCards } from './selection.js';
 import { TABLES } from './table.js';
 
 export const SAVE_KEY = 'dizhupai-save';
-export const SAVE_VERSION = 1;
+export const SAVE_VERSION = 2;
 export const MAX_SAVE_SIZE = 256 * 1024;
 const palettes = ['mustard', 'tomato', 'mint', 'cobalt', 'blush'];
 const integer = (n, min, max) => Number.isInteger(n) && n >= min && n <= max;
@@ -50,7 +51,7 @@ export function parseSave(text) {
     throw new Error('无法读取存档，请选择有效的 JSON 文件');
   }
   requireValid(data && data.format === 'dizhupai');
-  if (data.version !== SAVE_VERSION) throw new Error('不支持此存档版本');
+  if (![1, SAVE_VERSION].includes(data.version)) throw new Error('不支持此存档版本');
   requireValid(typeof data.savedAt === 'string' && Number.isFinite(Date.parse(data.savedAt)));
   requireValid(TABLES.some((table) => table.id === data.tableStyle));
   requireValid(TABLES.some((table) => table.id === data.firstTable));
@@ -65,7 +66,14 @@ export function parseSave(text) {
   requireValid(
     pair(g.hands, (hand) => loose(hand, HAND_SIZE * 2)) && pair(g.decks, (deck) => cards(deck)),
   );
-  requireValid(pair(g.coins, (n) => integer(n, 0, 200)) && pair(g.wins, (n) => integer(n, 0, 9)));
+  const legacy = data.version === 1;
+  requireValid(
+    Array.isArray(g.coins) &&
+      g.coins.length === 2 &&
+      integer(g.coins[0], 0, legacy ? 200 : Number.MAX_SAFE_INTEGER) &&
+      (legacy ? integer(g.coins[1], 0, 200) : g.coins[1] === 'unlimited') &&
+      pair(g.wins, (n) => integer(n, 0, 9)),
+  );
   requireValid(
     Array.isArray(g.items) &&
       g.items.length <= ITEMS.length &&
@@ -78,8 +86,9 @@ export function parseSave(text) {
       (typeof g.seed === 'string' && g.seed.length <= SEED_MAX_LENGTH && g.seed.trim() !== ''),
   );
   requireValid(
-    g.coins[0] + g.coins[1] ===
-      200 - g.items.reduce((sum, id) => sum + ITEMS.find((item) => item.id === id).price, 0),
+    !legacy ||
+      g.coins[0] + g.coins[1] ===
+        200 - g.items.reduce((sum, id) => sum + ITEMS.find((item) => item.id === id).price, 0),
   );
   requireValid(g.wildCard === null || (hasItemRule(g, 'wildCard') && integer(g.wildCard, 0, 53)));
   requireValid(
@@ -104,12 +113,15 @@ export function parseSave(text) {
   requireValid(g.matchOver === (g.matchWinner !== null));
   requireValid(loose(g.selected, HAND_SIZE * 2) && subtractCards(g.hands[0], g.selected) !== null);
   requireValid(Array.isArray(g.history) && g.history.length <= HAND_SIZE * 4);
+  // 保留旧版固定费用的历史范围，迁移后再次保存也能通过校验。
+  const legacyHistoryLength = legacy ? g.history.length : (g.legacyHistoryLength ?? 0);
+  requireValid(integer(legacyHistoryLength, 0, g.history.length));
   let target = null,
     last = null,
     turn = (g.round - 1) % 2;
   const played = [[], []];
   let stolen = [];
-  for (const entry of g.history) {
+  for (const [index, entry] of g.history.entries()) {
     requireValid(entry && entry.player === turn);
     if (entry.type === 'play') {
       requireValid(loose(entry.cards, HAND_SIZE * 2) && entry.cards.length > 0);
@@ -138,7 +150,16 @@ export function parseSave(text) {
       continue;
     } else {
       requireValid(
-        entry.type === 'pass' && target && target.player !== turn && integer(entry.amount, 0, 5),
+        entry.type === 'pass' &&
+          target &&
+          target.player !== turn &&
+          integer(
+            entry.amount,
+            0,
+            index < legacyHistoryLength
+              ? 5
+              : passCost({ target, history: g.history.slice(0, index) }),
+          ),
       );
       last = { type: 'pass', player: turn, amount: entry.amount };
       target = null;
@@ -173,8 +194,10 @@ export function parseSave(text) {
   const game = Object.fromEntries(Object.keys(createGame()).map((key) => [key, g[key]]));
   // The free pass and the mouse are once per round, so history tells whether they were spent.
   game.freePassUsed = g.history.some(
-    (entry) => entry.type === 'pass' && entry.player === 0 && entry.amount === 0,
+    (entry) => entry.type === 'pass' && entry.player === 0 && hasItemRule(g, 'freePass'),
   );
+  game.coins = [g.coins[0], Infinity];
+  game.legacyHistoryLength = legacyHistoryLength;
   game.stealUsed = g.history.some((entry) => entry.type === 'steal');
   game.seed = g.seed ?? null;
   game.stamp = g.stamp ?? null;
@@ -194,7 +217,7 @@ export function parseSave(text) {
         : game.turn === 0
           ? '轮到你出牌'
           : '电脑思考中';
-  return { ...data, game };
+  return { ...data, version: SAVE_VERSION, game };
 }
 
 export function serializeSave(game, { tableStyle, firstTable, palette }, now = new Date()) {
@@ -206,7 +229,10 @@ export function serializeSave(game, { tableStyle, firstTable, palette }, now = n
       tableStyle,
       firstTable,
       palette,
-      game: Object.fromEntries(Object.keys(createGame()).map((key) => [key, game[key]])),
+      game: {
+        ...Object.fromEntries(Object.keys(createGame()).map((key) => [key, game[key]])),
+        coins: [game.coins[0], 'unlimited'],
+      },
     },
     null,
     2,

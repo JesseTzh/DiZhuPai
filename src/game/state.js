@@ -2,7 +2,7 @@ import { sortHand, classify, beats, rankOf } from './rules.js';
 import { ITEMS, hasItemRule } from './items.js';
 import { gameRandom } from './random.js';
 import { subtractCards } from './selection.js';
-export const PASS_COST = 5;
+import { INITIAL_COINS, passCost } from './economy.js';
 export const STAGE_COUNT = 3;
 export const ROUNDS_PER_STAGE = 3;
 export const HAND_SIZE = 18;
@@ -18,7 +18,7 @@ export const createGame = (seed = null) => ({
   stealUsed: false,
   hands: [[], []],
   decks: [[], []],
-  coins: [100, 100],
+  coins: [INITIAL_COINS, Infinity],
   wins: [0, 0],
   round: 0,
   stage: 1,
@@ -32,10 +32,11 @@ export const createGame = (seed = null) => ({
   matchOver: false,
   message: '地主牌',
   history: [],
+  legacyHistoryLength: 0,
 });
 
 function finishOnBankruptcy(game, player) {
-  if (game.coins[player] !== 0) return false;
+  if (player !== 0 || game.coins[player] !== 0) return false;
   const winner = 1 - player;
   game.phase = 'over';
   game.winner = winner;
@@ -85,6 +86,7 @@ export function deal(game, random) {
   game.selected = [];
   game.winner = null;
   game.history = [];
+  game.legacyHistoryLength = 0;
   game.message = '正在发牌';
   return true;
 }
@@ -135,7 +137,7 @@ export function pass(game, p) {
   // The mask covers the first pass of every small round.
   const free = p === 0 && hasItemRule(game, 'freePass') && !game.freePassUsed;
   if (free) game.freePassUsed = true;
-  const amount = free ? 0 : Math.min(PASS_COST, game.coins[p]);
+  const amount = free ? 0 : Math.min(passCost(game), game.coins[p]);
   game.coins[p] -= amount;
   game.coins[1 - p] += amount;
   game.last = { type: 'pass', player: p, amount };

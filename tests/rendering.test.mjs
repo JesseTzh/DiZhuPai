@@ -10,6 +10,8 @@ import {
   TRANSFER_DURATION,
   TRANSFER_COLLECT_AT,
 } from '../src/game/transfer.js';
+import { createGame } from '../src/game/state.js';
+import { makeVisual, stepVisual } from '../src/game/scene.js';
 import { COIN_T } from '../src/coins/coin.js';
 
 function globals(t, values) {
@@ -169,4 +171,25 @@ test('all coins settle on the table before collection, preserve their landing po
       }
       assert.equal(new Set(landings).size, amount, 'scatter to distinct positions');
     }
+});
+
+test('无限电脑金币的转账动画保持有限坐标和稳定钱袋', () => {
+  for (const from of [0, 1]) {
+    const game = createGame();
+    const visual = makeVisual(game);
+    const before = [...game.coins];
+    game.coins[0] += from === 0 ? -30 : 30;
+    visual.transfer = { from, amount: 30, before, start: 0 };
+    for (let frame = 0; frame < 180; frame++) {
+      stepVisual({ game, visual }, 1 / 60);
+      assert.equal(visual.bags[1].count, 40);
+      assert.equal(visual.bags[1].fillShow, 1);
+      for (const bag of visual.bags) {
+        assert.ok(Number.isFinite(bag.count));
+        assert.ok(Number.isFinite(bag.fillShow));
+      }
+    }
+    assert.equal(visual.transfer, null);
+    assert.equal(visual.bags[0].count, game.coins[0] / 25);
+  }
 });

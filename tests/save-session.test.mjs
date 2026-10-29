@@ -64,3 +64,13 @@ test('failed writes are retried and failed imports leave the active slot intact'
   };
   assert.doesNotThrow(() => createSaveSession(store));
 });
+
+test('导入后重载仍保留电脑无限金币', () => {
+  const store = storage();
+  const session = createSaveSession(store);
+  const value = game();
+  const imported = parseSave(serializeSave(value, options));
+  session.import(0, imported);
+  assert.deepEqual(createSaveSession(store).initialSave.game, imported.game);
+  assert.equal(session.readSlots()[0].save.game.coins[1], Infinity);
+});
