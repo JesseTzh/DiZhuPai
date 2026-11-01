@@ -1,12 +1,12 @@
-/* Per-mode table geometry. Desktop keeps the full, slightly tilted tabletop.
- * The phone mode looks straight down and frames only the area that matters:
+/* Per-mode table geometry. Both modes look straight down.
+ * The phone mode frames only the area that matters:
  * rows sit closer, cards are drawn larger and the board runs to the edges, so a
  * wide phone screen is used edge to edge.
  * Units are world coordinates (u across the table, v from the computer's rows
  * toward the player's rows).
  *
- * Every consumer (scene, renderer, controller) picks one layout up front, so the
- * desktop numbers stay exactly as they were and phone tuning cannot reach them. */
+ * Every consumer (scene, renderer, controller) picks one layout up front, so
+ * tuning one mode keeps the other mode's card geometry independent. */
 export const DESKTOP_LAYOUT = {
   // Rows 0 (player) and 1 (computer); bags, decks and hands all sit on these.
   rowV: [180, -165],
@@ -21,8 +21,8 @@ export const DESKTOP_LAYOUT = {
   deckU: 315,
   // Collectibles keep their authored corner below the player's hand.
   itemLayout: null,
-  // Whole tabletop plus the usual breathing room.
-  bounds: null,
+  // Keep cards and collectibles visible without extra camera padding.
+  bounds: { u0: -384, u1: 384, v0: -273, v1: 273 },
   // Action pills are drawn at this fraction of their desktop size.
   actionScale: 1,
 };
@@ -48,9 +48,9 @@ export const MOBILE_LAYOUT = {
    * end, instead of below the hand where they would eat vertical space. */
   itemLayout: { u: -352, v: -78, step: 26, scale: 0.28 },
   /* Straight-down frame around everything the player acts on: toy column
-   * (-366) to the decks on the right (372); the computer's card tops (-191) down
-   * to the player's hand and the status line beneath it (208). */
-  bounds: { u0: -384, u1: 378, v0: -198, v1: 208 },
+   * (-366) to the decks on the right (372); center both axes and include the
+   * computer's card tops (-191) and the status line beneath the hand (208). */
+  bounds: { u0: -384, u1: 384, v0: -208, v1: 208 },
   // Action pills grow with the table but stay out of the card rows.
   actionScale: 0.8,
 };

@@ -26,11 +26,14 @@ GitHub Pages 每次部署都会替换整个站点。`gh-pages` 分支保存两�
 
 `main` 推送并发布镜像后，`deploy` 任务通过 SSH 执行服务器脚本。手动运行不部署。需要 `DEPLOY_HOST`、`DEPLOY_USER` 和 `DEPLOY_SSH_PRIVATE_KEY` 机密。可选 `DEPLOY_PORT`（默认 `22`）和 `DEPLOY_SCRIPT`（默认 `/root/dizhupai/deploy.sh`）。服务器脚本负责更新运行的容器。
 
-镜像使用 Nginx 提供静态文件，监听 80 端口：
+镜像使用 Nginx 提供静态文件，监听 80 端口。根目录的 `docker-compose.yml` 使用 `jessetzh/dizhupai` 镜像并映射主机 `8080` 端口：
 
 ```sh
-docker run --rm -p 8080:80 <DOCKERHUB_USERNAME>/dizhupai:latest
+docker compose pull
+docker compose up -d
 ```
+
+服务器脚本需在包含该 Compose 文件的目录运行以上命令。
 
 设置弹窗底部显示 Canvas 绘制的版本号，例如 `Version:261026-1430-abcdef1-test`。每次打包都会按北京时间生成日期和时间，并读取当前源码的 7 位 Git SHA。`main` 默认使用 `prod`，其他分支默认使用 `test`。可用 `BUILD_CHANNEL=prod` 或 `BUILD_CHANNEL=test` 显式指定。构建同时输出 `dist/version.json`，记录完整 SHA、环境和构建时间。
 

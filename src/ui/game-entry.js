@@ -127,7 +127,7 @@ export function mountGameEntry({ home, state, ui, onComplete }) {
     wrap.style.removeProperty('transform');
     ui.render();
     // Measured against the home framing: the first entry frame reproduces it
-    // exactly (the phone layout interpolates from the same wide frame).
+    // exactly (both layouts interpolate from the same wide frame).
     const { sx, sy, tx, ty } = homeTransform();
     state.visual.entry = { time: 0, pitch: 90 };
     home.inert = true;
@@ -136,7 +136,6 @@ export function mountGameEntry({ home, state, ui, onComplete }) {
     const update = (time) => {
       const t = ease((time - 0.16) / 0.56);
       state.visual.entry.time = time;
-      state.visual.entry.pitch = 90 - 22 * t;
       wrap.style.transform = `translate(${tx * (1 - t)}px,${ty * (1 - t)}px) scale(${sx + (1 - sx) * t},${sy + (1 - sy) * t})`;
     };
     update(0);

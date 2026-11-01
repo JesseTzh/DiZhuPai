@@ -4,7 +4,7 @@ import { P, paintOrder, setCameraPitch, viewKey } from '../engine/camera.js';
 import { SpriteCache } from '../engine/sprite-cache.js';
 import { patchSvg } from '../engine/svg-dom.js';
 import { cpuArt } from './cpu-art.js';
-import { sceneFrame, fitScene, handPose } from './scene-frame.js';
+import { sceneFrame, fitScene, handPose, tableSize } from './scene-frame.js';
 import { layoutFor } from './scene-layout.js';
 import { tableGeometry } from './table-geometry.js';
 import { tableItemModel } from './table-items.js';
@@ -30,7 +30,7 @@ export async function createRenderer(art, svg, host) {
     anchors = null;
   svg.classList.add('cpu-active');
   // Stable DOM anchors; per-frame lookups would cost more than the draw itself.
-  let stageEl, topbarEl, wbEl;
+  let wbEl;
   const invalidate = () => {
     if (disposed) return;
     if (host?.invalidate) return host.invalidate();
@@ -49,24 +49,19 @@ export async function createRenderer(art, svg, host) {
   const focusOut = (event) => {
     updateHover(event.relatedTarget?.closest?.('[data-card]')?.dataset.handIndex ?? null);
   };
-  // Aim the camera and fit the view box; phones look straight down with a compact frame.
-  function aim(st, layout, mobile) {
+  // Fit the playable area with the same orthographic overhead camera on all devices.
+  function aim(st, layout) {
     const entry = st.visual.entry;
     const progress = entry ? Math.min(1, Math.max(0, (entry.time - 0.16) / 0.56)) : 1;
     const home = st.visual.home && !entry;
-    setCameraPitch(
-      mobile ? 90 : (entry?.pitch ?? (home ? 90 : 68)),
-      mobile || home || progress === 0 ? 0 : 1800 / progress,
-    );
+    setCameraPitch(90, 0);
     // CSS transforms must not change the viewport or raster resolution.
     canvas.size = { width: svg.clientWidth, height: svg.clientHeight };
-    stageEl ||= svg.closest('.stage');
-    topbarEl ||= stageEl?.querySelector('.game-topbar');
     let framing = {};
-    if (!home && mobile) {
-      /* Phone gameplay frames a tighter window than the home board. Interpolate
+    if (!home) {
+      /* Gameplay frames a tighter window than the home board. Interpolate
        * between the two while the entry animation runs, so switching modes never
-       * jumps the table. `tall` headroom is folded into the bounds at the end. */
+       * jumps the table. Extra padding shrinks to zero at the end. */
       const t = entry ? progress : 1,
         wide = { u0: -372, u1: 372, v0: -273, v1: 273 },
         tight = layout.bounds,
@@ -83,17 +78,12 @@ export async function createRenderer(art, svg, host) {
         padY: 55 * (1 - t),
         tall: 82 * (1 - t),
       };
-    } else if (!home && topbarEl) {
-      const { A, B } = tableGeometry(st.tableStyle);
-      framing = {
-        zoom: 1.02,
-        surface: [...A, ...B],
-        centerY:
-          (topbarEl.offsetTop + topbarEl.offsetHeight + stageEl.clientHeight) / 2 -
-          svg.parentElement.offsetTop,
-      };
     }
-    fitScene(svg, canvas.size, framing);
+    const view = fitScene(svg, canvas.size, framing);
+    if (home) return undefined;
+    const size = tableSize(view, canvas.size),
+      t = entry ? progress : 1;
+    return { u: 365 + (size.u - 365) * t, v: 265 + (size.v - 265) * t };
   }
   // Anchor controls to the gap between resting cards, so selection and dealing never move them.
   function anchorControls(st, layout, view) {
@@ -124,9 +114,9 @@ export async function createRenderer(art, svg, host) {
     const home = st.visual.home && !st.visual.entry,
       mobile = isMobileLandscape(),
       layout = layoutFor(mobile);
-    aim(st, layout, mobile);
+    const size = aim(st, layout);
     const frame = sceneFrame(st, layout),
-      table = tableGeometry(st.tableStyle);
+      table = tableGeometry(st.tableStyle, size);
     canvas.begin();
     const view = `${viewKey()}|${canvas.transformKey()}`;
     sprites.begin(view);
@@ -141,7 +131,7 @@ export async function createRenderer(art, svg, host) {
         : null;
       return { id, model: tableItemModel(id, place), key: `item|${id}|${JSON.stringify(place)}` };
     });
-    sprites.draw(canvas, `table|${st.tableStyle}|${items.map((i) => i.key).join()}`, null, () =>
+    sprites.draw(canvas, `table|${table.key}|${items.map((i) => i.key).join()}`, null, () =>
       paintTable(
         canvas,
         table,

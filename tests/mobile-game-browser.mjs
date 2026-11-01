@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import { chromium } from 'playwright';
 import { PHONE_LANDSCAPE, openRecording } from './video.mjs';
-import { setTarget, url } from './harness.mjs';
+import { checkTableViewport, setTarget, url } from './harness.mjs';
 
 const browser = await chromium.launch({ channel: 'chrome' });
 const recording = await openRecording(browser, 'mobile-game-browser', {
@@ -50,6 +50,7 @@ const checkMobileLayout = async () => {
     );
   }
   await noHorizontalScroll();
+  await checkTableViewport(page);
 };
 const waitMyTurn = () =>
   page.waitForFunction(

@@ -35,7 +35,7 @@
 /* The viewport is identical before, during and after entry, so the table never reframes. */
 .game-page .stage .zwrap {
   top: 98px;
-  bottom: 16px;
+  bottom: max(4px, env(safe-area-inset-bottom));
 }
 /* 窄桌面窗口:状态栏改成横向两行。触屏横屏是竖排侧栏(styles/mobile.css),
    由指针能力区分,避免窄屏手机同时命中两套规则。 */
@@ -47,6 +47,6 @@
     height: 116px;
   }
   .game-page .stage .zwrap {
-    top: 134px;
+    top: 128px;
   }
 }

@@ -71,6 +71,19 @@ export function fitScene(
   setOrigin((width - minX - maxX) / 2, originY);
   const view = `0 0 ${width} ${height}`;
   if (svg.getAttribute('viewBox') !== view) svg.setAttribute('viewBox', view);
+  return { width, height };
+}
+
+// Extend the tabletop to the viewport while leaving a thin ink border. Cards
+// keep their world dimensions, so wider tables never stretch their artwork.
+export function tableSize(view, viewport) {
+  const origin = P(...world(0, 0)),
+    unit = P(...world(1, 1)),
+    inset = (4 * view.width) / viewport.width;
+  return {
+    u: Math.ceil(Math.max(365, (view.width / 2 - inset) / (unit[0] - origin[0]))),
+    v: Math.ceil(Math.max(265, (view.height / 2 - inset) / (unit[1] - origin[1]))),
+  };
 }
 export function sceneFrame(st, layout = DESKTOP_LAYOUT) {
   const { game, visual } = st;

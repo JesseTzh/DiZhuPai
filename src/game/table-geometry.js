@@ -1,12 +1,10 @@
 import { rrUV } from '../engine/math.js';
 import { world } from './table.js';
-// Renderer-independent surface geometry; both backends own their draw commands.
+// Surface geometry stays separate from Canvas draw commands.
 const cache = new Map();
-export function tableGeometry(style = 'planks') {
-  const key = style;
+export function tableGeometry(style = 'planks', { u: U = 365, v: V = 265 } = {}) {
+  const key = `${style}|${U}|${V}`;
   if (cache.has(key)) return cache.get(key);
-  const U = 365,
-    V = 265;
   const marble = style === 'marble',
     walnut = style === 'walnut';
   const material = marble
@@ -160,7 +158,9 @@ export function tableGeometry(style = 'planks') {
         }
   }
 
-  const model = { A, B, outline, material, polygons, lines };
+  const model = { A, B, outline, material, polygons, lines, key };
+  // Resizing and entry animation produce many sizes; retain only recent models.
+  if (cache.size >= 24) cache.delete(cache.keys().next().value);
   cache.set(key, model);
   return model;
 }

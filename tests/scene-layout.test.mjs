@@ -1,15 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { DESKTOP_LAYOUT, MOBILE_LAYOUT, layoutFor } from '../src/game/scene-layout.js';
-import { handPose, fitScene } from '../src/game/scene-frame.js';
-import { setCameraPitch } from '../src/engine/camera.js';
+import { handPose, fitScene, tableSize } from '../src/game/scene-frame.js';
+import { P, setCameraPitch } from '../src/engine/camera.js';
+import { tableGeometry } from '../src/game/table-geometry.js';
+import { world } from '../src/game/table.js';
 import { tableItemModel } from '../src/game/table-items.js';
 import { ITEMS } from '../src/game/items.js';
 
-// The two modes are separate constants: desktop numbers are a contract (the desktop
-// scene must not drift when phone values are tuned), and phone values only apply
-// where layoutFor(true) is passed.
-test('desktop geometry is unchanged and only the phone mode departs from it', () => {
+// Each mode keeps its own card geometry and centered framing contract.
+test('each mode retains its card layout and uses a centered overhead frame', () => {
   assert.deepEqual(DESKTOP_LAYOUT.rowV, [180, -165]);
   assert.equal(DESKTOP_LAYOUT.handSpacing, 24);
   assert.equal(DESKTOP_LAYOUT.handScale, 0.86);
@@ -17,7 +17,10 @@ test('desktop geometry is unchanged and only the phone mode departs from it', ()
   assert.equal(DESKTOP_LAYOUT.bagU, -315);
   assert.equal(DESKTOP_LAYOUT.deckU, 315);
   assert.equal(DESKTOP_LAYOUT.itemLayout, null);
-  assert.equal(DESKTOP_LAYOUT.bounds, null);
+  for (const { bounds } of [DESKTOP_LAYOUT, MOBILE_LAYOUT]) {
+    assert.equal(bounds.u0, -bounds.u1);
+    assert.equal(bounds.v0, -bounds.v1);
+  }
   assert.equal(layoutFor(false), DESKTOP_LAYOUT);
   assert.equal(layoutFor(true), MOBILE_LAYOUT);
   assert.notEqual(MOBILE_LAYOUT, DESKTOP_LAYOUT);
@@ -62,6 +65,37 @@ test('the phone frame fits tighter than the desktop frame on a 19.5:9 viewport',
   const phone = svg.attributes.viewBox;
   const width = (view) => Number(view.split(' ')[2]);
   assert.ok(width(phone) < width(desktop) * 0.8, '手机取景更紧,牌面更大');
+});
+
+test('all table finishes fill wide and tall viewports without stretching the cards', () => {
+  const svg = { getAttribute() {}, setAttribute() {} };
+  setCameraPitch(90, 0);
+  for (const layout of [DESKTOP_LAYOUT, MOBILE_LAYOUT]) {
+    for (const viewport of [
+      { width: 1916, height: 978 },
+      { width: 748, height: 388 },
+      { width: 460, height: 312 },
+      { width: 792, height: 600 },
+    ]) {
+      const view = fitScene(svg, viewport, { bounds: layout.bounds, padX: 0, padY: 0, tall: 0 });
+      const size = tableSize(view, viewport),
+        scale = viewport.width / view.width;
+      for (const style of ['planks', 'walnut', 'marble']) {
+        const table = tableGeometry(style, size),
+          points = table.B.map((p) => P(...p)),
+          xs = points.map(([x]) => x * scale),
+          ys = points.map(([, y]) => y * scale);
+        assert.ok(Math.min(...xs) <= 4 && Math.max(...xs) >= viewport.width - 4);
+        assert.ok(Math.min(...ys) <= 4 && Math.max(...ys) >= viewport.height - 4);
+        assert.equal(tableGeometry(style, size), table, '相同尺寸复用桌面模型');
+      }
+      const left = P(...world(-100, -100)),
+        right = P(...world(100, -100)),
+        bottom = P(...world(-100, 100));
+      assert.ok(Math.abs(right[0] - left[0] - (bottom[1] - left[1])) < 1e-9);
+    }
+  }
+  assert.notEqual(tableGeometry('planks'), tableGeometry('planks', { u: 600, v: 300 }));
 });
 
 test('the phone toy column stays inside the tabletop between the two sacks', () => {

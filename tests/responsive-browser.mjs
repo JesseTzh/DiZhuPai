@@ -5,7 +5,7 @@
 import assert from 'node:assert/strict';
 import { chromium } from 'playwright';
 import { mkdir, writeFile } from 'node:fs/promises';
-import { url } from './harness.mjs';
+import { checkTableViewport, url } from './harness.mjs';
 
 const browser = await chromium.launch({ channel: 'chrome' });
 // 从手机横屏视口开始,逐档放大;每档重新加载页面,状态互不粘连。
@@ -17,6 +17,8 @@ const sizes = [
   [800, 600, '小窗口'],
   [1280, 720, '笔记本 16:9'],
   [1920, 1080, '全高清(录像视口)'],
+  [2560, 1080, '超宽屏'],
+  [800, 900, '窄高窗口'],
 ];
 await mkdir('test-results', { recursive: true });
 const noHorizontalScroll = async () =>
@@ -56,6 +58,7 @@ try {
     assert.ok(await page.locator('.game-topbar').isVisible(), `${label}:顶栏`);
     assert.equal(await page.locator('.hand-card').count(), 18, `${label}:整手牌`);
     assert.ok(await page.locator('#play-cards').isVisible(), `${label}:出牌按钮`);
+    await checkTableViewport(page);
     await page.locator('.hand-card').nth(9).dispatchEvent('pointerdown', { button: 0 });
     assert.equal(await page.evaluate(() => gameApp.state.game.selected.length), 1);
     // 点左上角空白处撤销选牌:任何视口下都不与牌面、顶栏命中区重叠。

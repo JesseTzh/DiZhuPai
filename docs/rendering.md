@@ -28,7 +28,7 @@ SVG 字符串图元（`engine/stage3d.js`、`engine/primitives.js`）仍服务�
 
 入口是 `ui.render()`（`figure.js`），它调用 `renderScene(st, PALS[st.pal])`，最终到达 `cpu-renderer.js` 的 `draw(st, material)`：
 
-1. **相机与取景** — `aim()`：`setCameraPitch(pitch, distance)`（首页俯视 90°、对局 68°；入场动画期间透视距离从很大收敛到 1800，静止时透视保持开启），再由 `fitScene` 把桌面包围盒适配 SVG viewBox，顶栏在场时按其下沿重定位画面中心。
+1. **相机与取景** — `aim()`：`setCameraPitch(90, 0)`，首页、入场和对局统一采用垂直无透视视角。`fitScene` 将交互区域适配 SVG viewBox；容器避开桌面顶栏或手机侧栏，桌面模型随可用区域扩展，牌面保持原比例。
 2. **布局** — `sceneFrame(st)` 产出 `{ cards, bags, coins, labels }`。发牌、赖子翻面、收牌、出牌、入场坠落等动画全部在这里把「逻辑状态 + 时间」换算成位姿，渲染器不再插值。
 3. **画布复位** — `canvas.begin()` 按 `renderPixelRatio()` 设置画布物理尺寸（乘渲染倍率，独立于 devicePixelRatio），清屏并写入 viewBox 变换。随后 `sprites.begin(view)`：`view` 由 `viewKey()`（俯仰、透视距离、原点、光照）与 `transformKey()`（画布尺寸、缩放、平移）拼成，任何一项变化都清空精灵。
 4. **按钮锚点** — 由手牌与出牌区的投影边缘求出按钮中线与间隙，结果按 `view` 与手牌数缓存。
@@ -69,7 +69,7 @@ SVG 字符串图元（`engine/stage3d.js`、`engine/primitives.js`）仍服务�
 | --- | --- | --- |
 | 部件精灵与投影记忆 | `sprite-cache.js` | 视图键变化，或部件一帧未出现 |
 | 按钮锚点 | `cpu-renderer.js` `anchorControls` | 视图键、手牌数或布局缩放变化 |
-| 桌面几何/纹理 | `table-geometry.js` | 按材质键常驻 |
+| 桌面几何/纹理 | `table-geometry.js` | 按材质与桌面尺寸缓存，最多保留 24 个模型 |
 | 道具模型 | `table-items.js` | 按道具 id 与摆位常驻 |
 | 钱袋蒙皮 | `model-canvas.js` `sackGeometry` | 键 `fillShow:squash:punchT` 变化（鼓瘪动画本身需要重建） |
 | 袋口底面与金币堆 | `model-canvas.js` `mouths`（WeakMap） | 随钱袋形状对象释放 |

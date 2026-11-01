@@ -30,15 +30,17 @@ try {
     assert.equal(await page.locator('.card-deck').count(), 0);
     await page.locator('#enter-game').click();
     await page.waitForFunction(() => gameApp.state.visual.entry?.time > 0.2);
-    const tilt = await page.evaluate(() => ({ ...gameApp.state.visual.entry }));
-    // 此处的 858×396 只是窄窗口视口(未启用触屏),仍走桌面相机;触屏手机横屏在
-    // mobile-game-browser 里验证:保持垂直俯视。
-    assert.ok(tilt.pitch < 90 && tilt.pitch > 68);
+    const entry = await page.evaluate(() => ({ ...gameApp.state.visual.entry }));
+    assert.equal(entry.pitch, 90, '入场全程保持垂直俯视');
+    assert.deepEqual(
+      await page.evaluate(async () => (await import('/engine/camera.js')).cameraView()),
+      { pitch: 90, distance: 0 },
+    );
     assert.equal(await page.evaluate(() => gameApp.state.game.round), 0);
     assert.equal(await page.locator('.money-bag').count(), 0);
     await page.waitForFunction(() => gameApp.state.visual.entry?.time > 1.0);
     assert.equal(await page.locator('.money-bag').count(), 2);
-    assert.equal(await page.evaluate(() => gameApp.state.visual.entry.pitch), 68);
+    assert.equal(await page.evaluate(() => gameApp.state.visual.entry.pitch), 90);
     await page.screenshot({ path: `/tmp/entry-${viewport.width}-landing.png` });
     await page.waitForFunction(() => gameApp.state.game.phase === 'playing');
     assert.equal(await page.evaluate(() => gameApp.state.game.round), 1);
@@ -62,7 +64,7 @@ try {
     assert.equal(await page.locator('#camera-pitch, .camera-controls').count(), 0);
     assert.equal(
       await page.evaluate(async () => (await import('/engine/camera.js')).cameraView().pitch),
-      68,
+      90,
     );
     await page.locator('#open-settings').click();
     await page.screenshot({ path: `/tmp/settings-${viewport.width}.png` });
@@ -81,7 +83,7 @@ try {
   }
   assert.deepEqual(errors, []);
   console.log(
-    'Entry sequence, 68° pitch, delayed props, first deal, resume and reduced motion passed on desktop and mobile.',
+    'Entry sequence, 90° pitch, delayed props, first deal, resume and reduced motion passed on desktop and mobile.',
   );
 } finally {
   await browser.close();

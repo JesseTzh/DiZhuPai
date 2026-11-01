@@ -55,3 +55,46 @@ export const injectItem = (page, id) =>
     game.items = [item];
     gameApp.render();
   }, id);
+
+// 同时检查相机、可用区域和实际 Canvas 像素，避免仅容器变大而桌面仍有留白。
+export async function checkTableViewport(page) {
+  const assert = (await import('node:assert/strict')).default;
+  const result = await page.evaluate(async () => {
+    const camera = (await import('/engine/camera.js')).cameraView();
+    const mobile = (await import('/ui/device-mode.js')).isMobileLandscape();
+    const rect = document.querySelector('.zwrap').getBoundingClientRect();
+    const bar = document.querySelector('.game-topbar').getBoundingClientRect();
+    const canvas = document.getElementById('cpu-scene');
+    const ctx = canvas.getContext('2d');
+    const pixels = [0.02, 0.25, 0.5, 0.75, 0.98].flatMap((x) =>
+      [0.06, 0.25, 0.5, 0.75, 0.94].map(
+        (y) =>
+          ctx.getImageData(Math.floor(x * canvas.width), Math.floor(y * canvas.height), 1, 1)
+            .data[3],
+      ),
+    );
+    const hands = [...document.querySelectorAll('.hand-card')].map((el) => {
+      const r = el.getBoundingClientRect();
+      return (
+        r.left >= rect.left && r.right <= rect.right && r.top >= rect.top && r.bottom <= rect.bottom
+      );
+    });
+    return {
+      camera,
+      clearOfBar: mobile ? rect.left >= bar.right : rect.top >= bar.bottom,
+      used: mobile
+        ? (rect.width * rect.height) / ((innerWidth - bar.right) * innerHeight)
+        : (rect.width * rect.height) / (innerWidth * (innerHeight - bar.bottom)),
+      pixels,
+      hands,
+    };
+  });
+  assert.deepEqual(result.camera, { pitch: 90, distance: 0 }, '统一垂直无透视视角');
+  assert.ok(result.clearOfBar, '牌桌避开顶栏或侧栏');
+  assert.ok(result.used > 0.94, '牌桌占满剩余页面');
+  assert.ok(
+    result.pixels.every((alpha) => alpha > 240),
+    '桌面材质覆盖画布边缘及中心',
+  );
+  assert.ok(result.hands.every(Boolean), '手牌完整保留在牌桌内');
+}
