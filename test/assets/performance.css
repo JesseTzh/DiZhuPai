@@ -695,7 +695,7 @@ html:has(.game-page) {
 }
 .game-page .turn-bar {
   position: absolute;
-  bottom: 76px;
+  bottom: max(6px, env(safe-area-inset-bottom));
   left: 12px;
   right: 12px;
   display: flex;
@@ -923,9 +923,6 @@ a {
   }
   .game-page .actions.game-actions {
     inset: 0;
-  }
-  .game-page .turn-bar {
-    bottom: 62px;
   }
 }
 @media (prefers-reduced-motion: reduce) {

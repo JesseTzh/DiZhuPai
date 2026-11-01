@@ -796,8 +796,8 @@
         deckU: 315,
         // Collectibles keep their authored corner below the player's hand.
         itemLayout: null,
-        // Whole tabletop plus the usual breathing room.
-        bounds: null,
+        // Keep cards and collectibles visible without extra camera padding.
+        bounds: { u0: -384, u1: 384, v0: -273, v1: 273 },
         // Action pills are drawn at this fraction of their desktop size.
         actionScale: 1
       };
@@ -822,9 +822,9 @@
          * end, instead of below the hand where they would eat vertical space. */
         itemLayout: { u: -352, v: -78, step: 26, scale: 0.28 },
         /* Straight-down frame around everything the player acts on: toy column
-         * (-366) to the decks on the right (372); the computer's card tops (-191) down
-         * to the player's hand and the status line beneath it (208). */
-        bounds: { u0: -384, u1: 378, v0: -198, v1: 208 },
+         * (-366) to the decks on the right (372); center both axes and include the
+         * computer's card tops (-191) and the status line beneath the hand (208). */
+        bounds: { u0: -384, u1: 384, v0: -208, v1: 208 },
         // Action pills grow with the table but stay out of the card rows.
         actionScale: 0.8
       };
@@ -867,6 +867,14 @@
     setOrigin((width - minX - maxX) / 2, originY);
     const view = `0 0 ${width} ${height}`;
     if (svg.getAttribute("viewBox") !== view) svg.setAttribute("viewBox", view);
+    return { width, height };
+  }
+  function tableSize(view, viewport) {
+    const origin = P(...world(0, 0)), unit = P(...world(1, 1)), inset = 4 * view.width / viewport.width;
+    return {
+      u: Math.ceil(Math.max(365, (view.width / 2 - inset) / (unit[0] - origin[0]))),
+      v: Math.ceil(Math.max(265, (view.height / 2 - inset) / (unit[1] - origin[1])))
+    };
   }
   function sceneFrame(st, layout = DESKTOP_LAYOUT) {
     const { game: game2, visual: visual2 } = st;
@@ -2269,10 +2277,9 @@
   });
 
   // src/game/table-geometry.js
-  function tableGeometry(style = "planks") {
-    const key = style;
+  function tableGeometry(style = "planks", { u: U = 365, v: V = 265 } = {}) {
+    const key = `${style}|${U}|${V}`;
     if (cache2.has(key)) return cache2.get(key);
-    const U = 365, V = 265;
     const marble = style === "marble", walnut = style === "walnut";
     const material = marble ? { l: "#dfe8de", m: "#b4c9bc", d: "#819c90" } : walnut ? { l: "#ae8055", m: "#92623e", d: "#64432e" } : { l: "#d2af7e", m: "#b58b5e", d: "#886849" };
     const outline = rrUV(-U, -V, U, V, marble ? 32 : walnut ? 22 : 12, 8);
@@ -2416,7 +2423,8 @@
             );
           }
     }
-    const model2 = { A, B, outline, material, polygons, lines };
+    const model2 = { A, B, outline, material, polygons, lines, key };
+    if (cache2.size >= 24) cache2.delete(cache2.keys().next().value);
     cache2.set(key, model2);
     return model2;
   }
@@ -3625,7 +3633,7 @@
     art.append(layer);
     let current, disposed = false, fallback = 0, anchors = null;
     svg.classList.add("cpu-active");
-    let stageEl, topbarEl, wbEl;
+    let wbEl;
     const invalidate = () => {
       if (disposed) return;
       if (host?.invalidate) return host.invalidate();
@@ -3644,20 +3652,15 @@
     const focusOut = (event) => {
       updateHover(event.relatedTarget?.closest?.("[data-card]")?.dataset.handIndex ?? null);
     };
-    function aim(st, layout, mobile) {
+    function aim(st, layout) {
       const entry = st.visual.entry;
       const progress = entry ? Math.min(1, Math.max(0, (entry.time - 0.16) / 0.56)) : 1;
       const home = st.visual.home && !entry;
-      setCameraPitch(
-        mobile ? 90 : entry?.pitch ?? (home ? 90 : 68),
-        mobile || home || progress === 0 ? 0 : 1800 / progress
-      );
+      setCameraPitch(90, 0);
       canvas.size = { width: svg.clientWidth, height: svg.clientHeight };
-      stageEl ||= svg.closest(".stage");
-      topbarEl ||= stageEl?.querySelector(".game-topbar");
       let framing = {};
-      if (!home && mobile) {
-        const t = entry ? progress : 1, wide = { u0: -372, u1: 372, v0: -273, v1: 273 }, tight = layout.bounds, mix2 = (a, b) => a + (b - a) * t;
+      if (!home) {
+        const t2 = entry ? progress : 1, wide = { u0: -372, u1: 372, v0: -273, v1: 273 }, tight = layout.bounds, mix2 = (a, b) => a + (b - a) * t2;
         framing = {
           zoom: 1,
           bounds: {
@@ -3666,19 +3669,15 @@
             v0: mix2(wide.v0, tight.v0),
             v1: mix2(wide.v1, tight.v1)
           },
-          padX: 45 * (1 - t),
-          padY: 55 * (1 - t),
-          tall: 82 * (1 - t)
-        };
-      } else if (!home && topbarEl) {
-        const { A, B } = tableGeometry(st.tableStyle);
-        framing = {
-          zoom: 1.02,
-          surface: [...A, ...B],
-          centerY: (topbarEl.offsetTop + topbarEl.offsetHeight + stageEl.clientHeight) / 2 - svg.parentElement.offsetTop
+          padX: 45 * (1 - t2),
+          padY: 55 * (1 - t2),
+          tall: 82 * (1 - t2)
         };
       }
-      fitScene(svg, canvas.size, framing);
+      const view = fitScene(svg, canvas.size, framing);
+      if (home) return void 0;
+      const size = tableSize(view, canvas.size), t = entry ? progress : 1;
+      return { u: 365 + (size.u - 365) * t, v: 265 + (size.v - 265) * t };
     }
     function anchorControls(st, layout, view) {
       const handCount = st.game.hands[0].length || 18, key = `${view}|${handCount}|${layout.handScale}|${layout.playScale}`;
@@ -3703,8 +3702,8 @@
       if (disposed) return;
       current = [st, material];
       const home = st.visual.home && !st.visual.entry, mobile = isMobileLandscape(), layout = layoutFor(mobile);
-      aim(st, layout, mobile);
-      const frame = sceneFrame(st, layout), table = tableGeometry(st.tableStyle);
+      const size = aim(st, layout);
+      const frame = sceneFrame(st, layout), table = tableGeometry(st.tableStyle, size);
       canvas.begin();
       const view = `${viewKey()}|${canvas.transformKey()}`;
       sprites.begin(view);
@@ -3719,7 +3718,7 @@
       });
       sprites.draw(
         canvas,
-        `table|${st.tableStyle}|${items.map((i) => i.key).join()}`,
+        `table|${table.key}|${items.map((i) => i.key).join()}`,
         null,
         () => paintTable(
           canvas,

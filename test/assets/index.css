@@ -695,7 +695,7 @@ html:has(.game-page) {
 }
 .game-page .turn-bar {
   position: absolute;
-  bottom: 76px;
+  bottom: max(6px, env(safe-area-inset-bottom));
   left: 12px;
   right: 12px;
   display: flex;
@@ -923,9 +923,6 @@ a {
   }
   .game-page .actions.game-actions {
     inset: 0;
-  }
-  .game-page .turn-bar {
-    bottom: 62px;
   }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -1420,7 +1417,7 @@ a {
 /* The viewport is identical before, during and after entry, so the table never reframes. */
 .game-page .stage .zwrap {
   top: 98px;
-  bottom: 16px;
+  bottom: max(4px, env(safe-area-inset-bottom));
 }
 /* 窄桌面窗口:状态栏改成横向两行。触屏横屏是竖排侧栏(styles/mobile.css),
    由指针能力区分,避免窄屏手机同时命中两套规则。 */
@@ -1432,7 +1429,7 @@ a {
     height: 116px;
   }
   .game-page .stage .zwrap {
-    top: 134px;
+    top: 128px;
   }
 }
 
