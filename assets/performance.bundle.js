@@ -787,7 +787,7 @@
         // Rows 0 (player) and 1 (computer); bags, decks and hands all sit on these.
         rowV: [150, -174],
         handSpacing: 27,
-        handSpan: null,
+        handSpan: 620,
         handScale: 1.03,
         playScale: 0.94,
         playV: -32,
@@ -796,12 +796,13 @@
         selectedLift: 22,
         bagU: -350,
         deckU: 350,
-        // 道具沿桌面左侧排列，避开底部手牌和钱袋。
-        itemLayout: { u: -352, v: -80, step: 24, scale: 0.32 },
+        clearanceShift: 120,
+        // 道具从玩家左下桌沿向右摆放。
+        itemLayout: { insetU: 42, insetV: 16, step: 34, scale: 0.28 },
         // Keep cards and collectibles visible without extra camera padding.
         bounds: { u0: -396, u1: 396, v0: -236, v1: 236 },
         // Action pills are drawn at this fraction of their desktop size.
-        actionScale: 1
+        actionScale: 0.85
       };
       MOBILE_LAYOUT = {
         /* Rows hug the middle. Their separation has to hold the played card plus the
@@ -811,7 +812,7 @@
         // Wide enough to tap the exposed strip of an 18-card hand without covering it.
         handSpacing: 30,
         // Long hands (steals, late rounds) tighten up instead of growing over the sacks.
-        handSpan: 500,
+        handSpan: 540,
         handScale: 1.15,
         playScale: 1,
         playV: -32,
@@ -821,13 +822,11 @@
         selectedLift: 10,
         bagU: -342,
         deckU: 342,
-        /* Toys line the free left edge between the two sacks, oldest at the player's
-         * end, instead of below the hand where they would eat vertical space. */
-        itemLayout: { u: -352, v: -78, step: 26, scale: 0.28 },
-        /* Straight-down frame around everything the player acts on: toy column
-         * (-366) to the decks on the right (372); center both axes and include the
-         * computer's card tops (-191) and the status line beneath the hand (208). */
-        bounds: { u0: -384, u1: 384, v0: -208, v1: 208 },
+        clearanceShift: 84,
+        // 道具沿玩家左下桌沿排列，为手牌保留整行空间。
+        itemLayout: { insetU: 38, insetV: 14, step: 32, scale: 0.25 },
+        // 取景包含两侧牌堆、手牌和玩家下桌沿的道具，四边保留留白。
+        bounds: { u0: -384, u1: 384, v0: -220, v1: 220 },
         // Action pills grow with the table but stay out of the card rows.
         actionScale: 0.8
       };
@@ -887,7 +886,7 @@
     const unit = P(...world(1, v, -1))[0] - center2;
     return { u: (Math.min(center2, view.width - center2) - inset) / unit, v };
   }
-  function sceneFrame(st, layout = DESKTOP_LAYOUT) {
+  function sceneFrame(st, layout = DESKTOP_LAYOUT, clearance = [0, 0]) {
     const { game: game2, visual: visual2 } = st;
     if (visual2.home && !visual2.entry) return { cards: [], bags: [], coins: [], labels: [] };
     const cards = [], bags = [], coins = [], labels = [], pockets = [[], []];
@@ -896,7 +895,7 @@
     const card = (id, pose, options = {}) => cards.push({ id, pose, options });
     for (const tr of [visual2.transfer, visual2.spill].filter(Boolean)) {
       const mouths = [0, 1].map((p) => {
-        const m = sackModel(visual2.bags[p]), pos = bagPosition(p, layout), axis = m.axis(m.top);
+        const m = sackModel(visual2.bags[p]), pos = bagPosition(p, layout, clearance[p]), axis = m.axis(m.top);
         return { m, pos, at: pos.map((q, k) => q + 1.08 * (axis[k] - (k === 2 ? 0 : 48))) };
       });
       for (let i = 0; i < tr.amount; i++) {
@@ -927,7 +926,7 @@
       }
     }
     for (let p = 0; p < 2; p++) {
-      const pos = bagPosition(p, layout), bag = visual2.bags[p], palette = p === 0 ? ownPalette : "tomato";
+      const pos = bagPosition(p, layout, clearance[p]), bag = visual2.bags[p], palette = p === 0 ? ownPalette : "tomato";
       bags.push({ pos, state: { ...bag, coins: [...bag.coins, ...pockets[p]] }, palette, player: p });
       if (visual2.transfer) {
         const tr = visual2.transfer, elapsed = tr.elapsed ?? visual2.time - tr.start;
@@ -936,13 +935,13 @@
           label(
             `${delta > 0 ? "+" : ""}${delta}`,
             layout.bagU,
-            rowV(layout, p),
+            clearedV(layout, p, clearance[p]),
             100 + elapsed * 8,
             "coin-delta " + (delta > 0 ? "gain" : "loss")
           );
         }
       }
-      const deck = deckPosition(p, layout), count = game2.phase === "ready" ? 54 : game2.decks[p].length;
+      const deck = deckPosition(p, layout, clearance[p]), count = game2.phase === "ready" ? 54 : game2.decks[p].length;
       if (count > 0) {
         const thickness = count * cardThickness;
         card(
@@ -1083,7 +1082,7 @@
     }
     return { cards, bags, coins, labels };
   }
-  var playerPalette, rowV, bagPosition, deckPosition;
+  var playerPalette, rowV, clearedV, bagPosition, deckPosition;
   var init_scene_frame = __esm({
     "src/game/scene-frame.js"() {
       init_define_GAME_SOUNDS();
@@ -1098,10 +1097,11 @@
       init_selection();
       playerPalette = (key) => key === "tomato" ? "cobalt" : key;
       rowV = (layout, p) => layout.rowV[p];
-      bagPosition = (p, layout = DESKTOP_LAYOUT) => world(layout.bagU, rowV(layout, p));
-      deckPosition = (p, layout = DESKTOP_LAYOUT) => ({
+      clearedV = (layout, p, clearance) => rowV(layout, p) + (p === 0 ? -1 : 1) * clearance;
+      bagPosition = (p, layout = DESKTOP_LAYOUT, clearance = 0) => world(layout.bagU, clearedV(layout, p, clearance));
+      deckPosition = (p, layout = DESKTOP_LAYOUT, clearance = 0) => ({
         u: layout.deckU,
-        v: rowV(layout, p)
+        v: clearedV(layout, p, clearance)
       });
     }
   });
@@ -3253,19 +3253,15 @@
             m.rod(tail[i], tail[i + 1], 3.2 - i * 0.42, "pink", 3.2 - (i + 1) * 0.42, "", false);
         },
         icon: [
-          ["M33 35q10-1 8 6", null],
-          ["M7 16a9 9 0 1 0 18 0a9 9 0 1 0-18 0", "#d69a67"],
-          ["M23 16a9 9 0 1 0 18 0a9 9 0 1 0-18 0", "#d69a67"],
-          ["M11.4 16a4.4 4.4 0 1 0 8.8 0a4.4 4.4 0 1 0-8.8 0", "#f3a6bb"],
-          ["M27.4 16a4.4 4.4 0 1 0 8.8 0a4.4 4.4 0 1 0-8.8 0", "#f3a6bb"],
-          ["M10 26q0-13 14-13t14 13q0 12-14 12T10 26Z", "#d69a67"],
-          ["M15 31a9 6.5 0 1 0 18 0a9 6.5 0 1 0-18 0", "#fff2cc"],
-          ["M14 23.5a4.6 4.6 0 1 0 9.2 0a4.6 4.6 0 1 0-9.2 0", "#fffdf0"],
-          ["M24.8 23.5a4.6 4.6 0 1 0 9.2 0a4.6 4.6 0 1 0-9.2 0", "#fffdf0"],
-          ["M16.2 24.5a2.2 2.2 0 1 0 4.4 0a2.2 2.2 0 1 0-4.4 0", "#29251e"],
-          ["M27.4 24.5a2.2 2.2 0 1 0 4.4 0a2.2 2.2 0 1 0-4.4 0", "#29251e"],
-          ["M21.6 29.5a2.4 2.4 0 1 0 4.8 0a2.4 2.4 0 1 0-4.8 0", "#29251e"],
-          ["M20 33.5q4 3.5 8 0M14 30l-6-1M14 33l-6 2M34 30l6-1M34 33l6 2", null]
+          ["M32 34q11-3 9 5", null],
+          ["M7 16a8 8 0 1 0 16 0a8 8 0 1 0-16 0M25 16a8 8 0 1 0 16 0a8 8 0 1 0-16 0", "#f0c79b"],
+          ["M12 16a3 3 0 1 0 6 0a3 3 0 1 0-6 0M30 16a3 3 0 1 0 6 0a3 3 0 1 0-6 0", "#e89cae"],
+          ["M12 25q0-10 12-10t12 10l-3 10-9 4-9-4Z", "#d69a67"],
+          ["M12 25q0-10 12-10v24l-9-4Z", "#f0c79b"],
+          ["M15 31q3-6 9-3 6-3 9 3l-3 5H18Z", "#fff2cc"],
+          ["M19 23v3m10-3v3", null],
+          ["M21 29h6l-3 3Z", "#29251e"],
+          ["M24 32v2m-3 0q3 2 6 0", null]
         ],
         shop: { y: 18, s: 0.4, standHalf: 22, standExtend: 0, priceOffset: 0, withdraw: 0.28 },
         table: { u: -157, v: 242 }
@@ -3351,6 +3347,10 @@
   });
 
   // src/game/table-items.js
+  function tableItemPlacement(layout, index, size) {
+    const { insetU, insetV, step, scale } = layout.itemLayout;
+    return { u: -size.u + insetU + index * step, v: size.v - insetV, scale };
+  }
   function tableItemModel(id, place = null) {
     const { u, v } = place || TOYS[id].table, scale = place?.scale || 0.25, key = `${id}:${u}:${v}:${scale}`;
     if (cache3.has(key)) return cache3.get(key);
@@ -3374,6 +3374,7 @@
       (end) => [0, 1, 2].map((axis) => (end ? Math.max : Math.min)(...points.map((p) => p[axis])))
     );
     const model2 = { parts, points, box, at: world(u, v, 20) };
+    if (cache3.size >= 56) cache3.delete(cache3.keys().next().value);
     cache3.set(key, model2);
     return model2;
   }
@@ -3431,6 +3432,42 @@
       init_palette();
       cache3 = /* @__PURE__ */ new Map();
       tableItemHit = (canvas, model2) => sp(hull(model2.points.map((p) => canvas.project(p))));
+    }
+  });
+
+  // src/game/row-clearance.js
+  function rowClearance(count, layout) {
+    if (!count) return 0;
+    const edge = handPose(0, count - 1, count, layout).u + cardW * layout.handScale / 2;
+    const inner = Math.min(Math.abs(layout.bagU) - 38, layout.deckU - cardW * layout.deckScale / 2);
+    return edge + 12 > inner ? layout.clearanceShift : 0;
+  }
+  function createRowClearance() {
+    const rows = [0, 1].map(() => ({ value: 0, from: 0, target: 0, start: 0 }));
+    return {
+      sample(counts, layout, now) {
+        let moving = false;
+        const values = rows.map((row, p) => {
+          const t = Math.max(0, Math.min(1, (now - row.start) / 320));
+          row.value = row.from + (row.target - row.from) * t * t * (3 - 2 * t);
+          const target = rowClearance(counts[p], layout);
+          if (target !== row.target) {
+            row.from = row.value;
+            row.target = target;
+            row.start = now;
+          }
+          moving ||= row.value !== row.target;
+          return row.value;
+        });
+        return { values, moving };
+      }
+    };
+  }
+  var init_row_clearance = __esm({
+    "src/game/row-clearance.js"() {
+      init_define_GAME_SOUNDS();
+      init_constants();
+      init_scene_frame();
     }
   });
 
@@ -3750,7 +3787,7 @@
     createRenderer: () => createRenderer
   });
   async function createRenderer(art, svg, host) {
-    const images = await cpuArt(), canvas = new ModelCanvas(svg), sprites = new SpriteCache(), hover = createHover();
+    const images = await cpuArt(), canvas = new ModelCanvas(svg), sprites = new SpriteCache(), hover = createHover(), rowMotion = createRowClearance();
     const layer = document.createElementNS(svg.namespaceURI, "g");
     art.append(layer);
     let current, disposed = false, fallback = 0, anchors = null;
@@ -3825,17 +3862,18 @@
       current = [st, material];
       const home = st.visual.home && !st.visual.entry, mobile = isMobileLandscape(), layout = layoutFor(mobile);
       const size = aim(st, layout);
-      const frame = sceneFrame(st, layout), table = tableGeometry(st.tableStyle, size);
+      const clearance = rowMotion.sample(
+        home ? [0, 0] : st.game.hands.map((hand2) => hand2.length),
+        layout,
+        performance.now()
+      );
+      const frame = sceneFrame(st, layout, clearance.values), table = tableGeometry(st.tableStyle, size);
       canvas.begin();
       const view = `${viewKey()}|${canvas.transformKey()}`;
       sprites.begin(view);
       anchorControls(st, layout, view);
       const items = (home ? [] : st.game.items).map((id, index) => {
-        const place = layout.itemLayout ? {
-          u: layout.itemLayout.u,
-          v: layout.itemLayout.v + index * layout.itemLayout.step,
-          scale: layout.itemLayout.scale || 0.25
-        } : null;
+        const place = tableItemPlacement(layout, index, size);
         return { id, model: tableItemModel(id, place), key: `item|${id}|${JSON.stringify(place)}` };
       });
       sprites.draw(
@@ -3895,7 +3933,7 @@
         patchSvg(layer, markup);
         layer._markup = markup;
       }
-      if (lift.moving) invalidate();
+      if (lift.moving || clearance.moving) invalidate();
     }
     svg.addEventListener("pointerover", setHover);
     svg.addEventListener("focusin", setHover);
@@ -3936,6 +3974,7 @@
       init_scene_layout();
       init_table_geometry();
       init_table_items();
+      init_row_clearance();
       init_table();
       init_table_layer();
       init_scene_parts();
