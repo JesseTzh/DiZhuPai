@@ -74,15 +74,15 @@ export function fitScene(
   return { width, height };
 }
 
-// Extend the tabletop to the viewport while leaving a thin ink border. Cards
-// keep their world dimensions, so wider tables never stretch their artwork.
+// 桌面边缘在画布内保留 4px，确保窄屏也能完整显示边框。
+// 牌面保留世界尺寸，不随桌面的宽高比拉伸。
 export function tableSize(view, viewport) {
   const origin = P(...world(0, 0)),
     unit = P(...world(1, 1)),
     inset = (4 * view.width) / viewport.width;
   return {
-    u: Math.ceil(Math.max(365, (view.width / 2 - inset) / (unit[0] - origin[0]))),
-    v: Math.ceil(Math.max(265, (view.height / 2 - inset) / (unit[1] - origin[1]))),
+    u: (view.width / 2 - inset) / (unit[0] - origin[0]),
+    v: (view.height / 2 - inset) / (unit[1] - origin[1]),
   };
 }
 export function sceneFrame(st, layout = DESKTOP_LAYOUT) {

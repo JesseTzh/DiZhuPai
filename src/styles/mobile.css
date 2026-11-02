@@ -18,22 +18,24 @@
 @media (hover: none) and (pointer: coarse) and (orientation: landscape) {
   .game-page {
     height: 100dvh;
+    --game-block-edge: max(6px, env(safe-area-inset-top), env(safe-area-inset-bottom));
+    --game-gap: 10px;
     --mobile-sidebar-left: max(6px, env(safe-area-inset-left));
-    --mobile-table-left: calc(var(--mobile-sidebar-left) + 100px);
+    --mobile-table-left: calc(var(--mobile-sidebar-left) + 94px + var(--game-gap));
   }
   .game-topbar {
-    top: max(6px, env(safe-area-inset-top));
-    bottom: max(6px, env(safe-area-inset-bottom));
+    top: var(--game-block-edge);
+    bottom: var(--game-block-edge);
     left: var(--mobile-sidebar-left);
     right: auto;
     width: 94px;
     height: auto;
   }
   .game-page .stage .zwrap {
-    top: max(4px, env(safe-area-inset-top));
-    bottom: max(4px, env(safe-area-inset-bottom));
+    top: var(--game-block-edge);
+    bottom: var(--game-block-edge);
     left: var(--mobile-table-left);
-    right: max(4px, env(safe-area-inset-right));
+    right: max(6px, env(safe-area-inset-right));
     width: auto;
   }
   .game-page .turn-bar {

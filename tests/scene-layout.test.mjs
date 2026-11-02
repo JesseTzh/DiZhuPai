@@ -67,7 +67,7 @@ test('the phone frame fits tighter than the desktop frame on a 19.5:9 viewport',
   assert.ok(width(phone) < width(desktop) * 0.8, '手机取景更紧,牌面更大');
 });
 
-test('all table finishes fill wide and tall viewports without stretching the cards', () => {
+test('all table finishes retain a visible border in wide and tall viewports', () => {
   const svg = { getAttribute() {}, setAttribute() {} };
   setCameraPitch(90, 0);
   for (const layout of [DESKTOP_LAYOUT, MOBILE_LAYOUT]) {
@@ -85,8 +85,14 @@ test('all table finishes fill wide and tall viewports without stretching the car
           points = table.B.map((p) => P(...p)),
           xs = points.map(([x]) => x * scale),
           ys = points.map(([, y]) => y * scale);
-        assert.ok(Math.min(...xs) <= 4 && Math.max(...xs) >= viewport.width - 4);
-        assert.ok(Math.min(...ys) <= 4 && Math.max(...ys) >= viewport.height - 4);
+        for (const gap of [
+          Math.min(...xs),
+          viewport.width - Math.max(...xs),
+          Math.min(...ys),
+          viewport.height - Math.max(...ys),
+        ]) {
+          assert.ok(Math.abs(gap - 4) < 1e-6, `桌面边框完整显示，留白为 ${gap}px`);
+        }
         assert.equal(tableGeometry(style, size), table, '相同尺寸复用桌面模型');
       }
       const left = P(...world(-100, -100)),

@@ -32,8 +32,9 @@ const checkMobileLayout = async () => {
   const actionRight = Math.max(...actionRects.map((rect) => rect.x + rect.width));
   const viewport = page.viewportSize();
   assert.ok(bar.height > bar.width * 2, '手机状态栏竖排');
-  assert.ok(bar.x + bar.width <= table.x, '侧栏不遮挡牌桌');
-  assert.ok(table.height >= viewport.height * 0.94, '牌桌充分利用屏幕高度');
+  assert.equal(table.x - bar.x - bar.width, 10, '牌桌与侧栏间隔 10px');
+  assert.equal(table.y, bar.y, '牌桌与侧栏顶部对齐');
+  assert.equal(table.y + table.height, bar.y + bar.height, '牌桌与侧栏底部对齐');
   assert.ok(play.width < 112 && play.height < 52, '手机出牌按钮缩小');
   assert.ok(pass.width < 112 && pass.height < 52, '手机过牌按钮缩小');
   assert.ok(

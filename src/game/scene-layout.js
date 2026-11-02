@@ -1,7 +1,7 @@
 /* Per-mode table geometry. Both modes look straight down.
  * The phone mode frames only the area that matters:
- * rows sit closer, cards are drawn larger and the board runs to the edges, so a
- * wide phone screen is used edge to edge.
+ * rows sit closer and cards are drawn larger. The board stays inside its
+ * viewport with a small gap from the status bar and screen edges.
  * Units are world coordinates (u across the table, v from the computer's rows
  * toward the player's rows).
  *

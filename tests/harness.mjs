@@ -56,7 +56,7 @@ export const injectItem = (page, id) =>
     gameApp.render();
   }, id);
 
-// 同时检查相机、可用区域和实际 Canvas 像素，避免仅容器变大而桌面仍有留白。
+// 同时检查栏位对齐、固定间隙、桌面边框和实际 Canvas 像素。
 export async function checkTableViewport(page) {
   const assert = (await import('node:assert/strict')).default;
   const result = await page.evaluate(async () => {
@@ -64,6 +64,21 @@ export async function checkTableViewport(page) {
     const mobile = (await import('/ui/device-mode.js')).isMobileLandscape();
     const rect = document.querySelector('.zwrap').getBoundingClientRect();
     const bar = document.querySelector('.game-topbar').getBoundingClientRect();
+    const figure = document.getElementById('fig');
+    const { P } = await import('/engine/camera.js');
+    const { tableSize } = await import('/game/scene-frame.js');
+    const { tableGeometry } = await import('/game/table-geometry.js');
+    const size = tableSize(figure.viewBox.baseVal, rect);
+    const points = tableGeometry(gameApp.state.tableStyle, size).B.map((point) => {
+      const [x, y] = P(...point);
+      return new DOMPoint(x, y).matrixTransform(figure.getScreenCTM());
+    });
+    const tableEdges = [
+      Math.min(...points.map((p) => p.x)) - rect.left,
+      rect.right - Math.max(...points.map((p) => p.x)),
+      Math.min(...points.map((p) => p.y)) - rect.top,
+      rect.bottom - Math.max(...points.map((p) => p.y)),
+    ];
     const canvas = document.getElementById('cpu-scene');
     const ctx = canvas.getContext('2d');
     const pixels = [0.02, 0.25, 0.5, 0.75, 0.98].flatMap((x) =>
@@ -81,17 +96,28 @@ export async function checkTableViewport(page) {
     });
     return {
       camera,
-      clearOfBar: mobile ? rect.left >= bar.right : rect.top >= bar.bottom,
-      used: mobile
-        ? (rect.width * rect.height) / ((innerWidth - bar.right) * innerHeight)
-        : (rect.width * rect.height) / (innerWidth * (innerHeight - bar.bottom)),
+      gap: mobile ? rect.left - bar.right : rect.top - bar.bottom,
+      expectedGap: Number.parseFloat(
+        getComputedStyle(document.body).getPropertyValue('--game-gap'),
+      ),
+      alignment: mobile
+        ? [rect.top - bar.top, rect.bottom - bar.bottom]
+        : [rect.left - bar.left, rect.right - bar.right],
+      tableEdges,
       pixels,
       hands,
     };
   });
   assert.deepEqual(result.camera, { pitch: 90, distance: 0 }, '统一垂直无透视视角');
-  assert.ok(result.clearOfBar, '牌桌避开顶栏或侧栏');
-  assert.ok(result.used > 0.94, '牌桌占满剩余页面');
+  assert.equal(result.gap, result.expectedGap, '牌桌与顶栏或侧栏保持固定间隙');
+  assert.ok(
+    result.alignment.every((delta) => Math.abs(delta) < 1),
+    '牌桌与顶栏或侧栏对齐',
+  );
+  assert.ok(
+    result.tableEdges.every((gap) => Math.abs(gap - 4) < 1),
+    '桌面四边保留留白且不裁切',
+  );
   assert.ok(
     result.pixels.every((alpha) => alpha > 240),
     '桌面材质覆盖画布边缘及中心',

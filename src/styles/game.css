@@ -1,4 +1,8 @@
 .game-page {
+  --game-edge: 16px;
+  --game-block-edge: max(10px, env(safe-area-inset-top), env(safe-area-inset-bottom));
+  --game-bar-height: 82px;
+  --game-gap: 12px;
   padding: 0;
   width: 100%;
   height: 100vh;
