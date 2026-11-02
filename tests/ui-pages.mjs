@@ -99,10 +99,17 @@ try {
   await page.locator('[data-scale="2"]').click();
   await page.locator('#close-settings').click();
   assert.deepEqual(await page.evaluate(() => gameApp.state.game.hands), hands);
-  await page.waitForFunction(() => document.getElementById('cpu-scene').width === innerWidth * 2);
+  // 牌桌不铺满视口，画布的像素尺寸按自身 CSS 尺寸乘以渲染倍率计算。
+  const sceneAt = (scale) =>
+    page.waitForFunction((value) => {
+      const canvas = document.getElementById('cpu-scene');
+      return canvas.width === Math.round(canvas.getBoundingClientRect().width * value);
+    }, scale);
+  await sceneAt(2);
   await page.locator('#open-settings').click();
   await page.locator('[data-scale="1"]').click();
   await page.locator('#close-settings').click();
+  await sceneAt(1);
   // Force a substantial balance transfer to inspect the actual sack easing in both directions.
   const bags = await page.evaluate(async () => {
     const { state } = gameApp;
