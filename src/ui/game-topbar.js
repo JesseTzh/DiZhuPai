@@ -98,16 +98,16 @@ export function mountGameTopbar(stage, menu, state) {
       label(ctx, '金币', 44, 95, 10);
       label(ctx, state.game.coins[0].toLocaleString('zh-CN'), 16, 124, 18, 800);
       const itemY = 142;
-      const step = Math.min(36, (height - itemY - 56) / Math.max(1, Math.ceil(owned.length / 2)));
+      const step = Math.min(32, (height - itemY - 56) / Math.max(1, Math.ceil(owned.length / 2)));
       for (const [i, item] of ITEMS.entries()) {
         const index = owned.indexOf(item),
           hit = items[i];
         hit.hidden = index < 0;
         if (index < 0) continue;
-        const x = 10 + (index % 2) * 36,
+        const x = 14 + (index % 2) * 32,
           y = itemY + Math.floor(index / 2) * step;
         drawIcon(ctx, item.id, x, y, 28);
-        place(hit, x - 2, y - 2, 34, step);
+        place(hit, x - 2, y - 2, 32, step);
         if (focused === item.id) {
           ctx.strokeStyle = '#41538f';
           ctx.lineWidth = 1.3;
@@ -132,7 +132,7 @@ export function mountGameTopbar(stage, menu, state) {
     place(menu, width - 59, mobile ? 9 : 16, 44, 44);
     const itemY = mobile ? 65 : 26;
     const itemX = mobile ? 20 : 330;
-    const step = Math.min(mobile ? 56 : 68, (width - itemX - 20) / Math.max(1, owned.length));
+    const step = Math.min(42, (width - itemX - (mobile ? 20 : 76)) / Math.max(1, owned.length));
     for (const [i, item] of ITEMS.entries()) {
       const index = owned.indexOf(item),
         hit = items[i];

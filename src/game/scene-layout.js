@@ -13,7 +13,7 @@ export const DESKTOP_LAYOUT = {
   // Rows 0 (player) and 1 (computer); bags, decks and hands all sit on these.
   rowV: [150, -174],
   handSpacing: 27,
-  handSpan: null,
+  handSpan: 620,
   handScale: 1.03,
   playScale: 0.94,
   playV: -32,
@@ -22,12 +22,13 @@ export const DESKTOP_LAYOUT = {
   selectedLift: 22,
   bagU: -350,
   deckU: 350,
-  // 道具沿桌面左侧排列，避开底部手牌和钱袋。
-  itemLayout: { u: -352, v: -80, step: 24, scale: 0.32 },
+  clearanceShift: 120,
+  // 道具从玩家左下桌沿向右摆放。
+  itemLayout: { insetU: 42, insetV: 16, step: 34, scale: 0.28 },
   // Keep cards and collectibles visible without extra camera padding.
   bounds: { u0: -396, u1: 396, v0: -236, v1: 236 },
   // Action pills are drawn at this fraction of their desktop size.
-  actionScale: 1,
+  actionScale: 0.85,
 };
 
 export const MOBILE_LAYOUT = {
@@ -38,7 +39,7 @@ export const MOBILE_LAYOUT = {
   // Wide enough to tap the exposed strip of an 18-card hand without covering it.
   handSpacing: 30,
   // Long hands (steals, late rounds) tighten up instead of growing over the sacks.
-  handSpan: 500,
+  handSpan: 540,
   handScale: 1.15,
   playScale: 1,
   playV: -32,
@@ -48,13 +49,11 @@ export const MOBILE_LAYOUT = {
   selectedLift: 10,
   bagU: -342,
   deckU: 342,
-  /* Toys line the free left edge between the two sacks, oldest at the player's
-   * end, instead of below the hand where they would eat vertical space. */
-  itemLayout: { u: -352, v: -78, step: 26, scale: 0.28 },
-  /* Straight-down frame around everything the player acts on: toy column
-   * (-366) to the decks on the right (372); center both axes and include the
-   * computer's card tops (-191) and the status line beneath the hand (208). */
-  bounds: { u0: -384, u1: 384, v0: -208, v1: 208 },
+  clearanceShift: 84,
+  // 道具沿玩家左下桌沿排列，为手牌保留整行空间。
+  itemLayout: { insetU: 38, insetV: 14, step: 32, scale: 0.25 },
+  // 取景包含两侧牌堆、手牌和玩家下桌沿的道具，四边保留留白。
+  bounds: { u0: -384, u1: 384, v0: -220, v1: 220 },
   // Action pills grow with the table but stay out of the card rows.
   actionScale: 0.8,
 };

@@ -18,10 +18,12 @@ import { selectedHandIndices } from './selection.js';
 // Layout and animation state only; no rendering calls.
 export const playerPalette = (key) => (key === 'tomato' ? 'cobalt' : key);
 const rowV = (layout, p) => layout.rowV[p];
-export const bagPosition = (p, layout = DESKTOP_LAYOUT) => world(layout.bagU, rowV(layout, p));
-export const deckPosition = (p, layout = DESKTOP_LAYOUT) => ({
+const clearedV = (layout, p, clearance) => rowV(layout, p) + (p === 0 ? -1 : 1) * clearance;
+export const bagPosition = (p, layout = DESKTOP_LAYOUT, clearance = 0) =>
+  world(layout.bagU, clearedV(layout, p, clearance));
+export const deckPosition = (p, layout = DESKTOP_LAYOUT, clearance = 0) => ({
   u: layout.deckU,
-  v: rowV(layout, p),
+  v: clearedV(layout, p, clearance),
 });
 export function handPose(p, index, count, layout = DESKTOP_LAYOUT) {
   const spacing = layout.handSpan
@@ -91,7 +93,7 @@ export function tableSize(view, viewport) {
   const unit = P(...world(1, v, -1))[0] - center;
   return { u: (Math.min(center, view.width - center) - inset) / unit, v };
 }
-export function sceneFrame(st, layout = DESKTOP_LAYOUT) {
+export function sceneFrame(st, layout = DESKTOP_LAYOUT, clearance = [0, 0]) {
   const { game, visual } = st;
   if (visual.home && !visual.entry) return { cards: [], bags: [], coins: [], labels: [] };
   const cards = [],
@@ -105,7 +107,7 @@ export function sceneFrame(st, layout = DESKTOP_LAYOUT) {
   for (const tr of [visual.transfer, visual.spill].filter(Boolean)) {
     const mouths = [0, 1].map((p) => {
       const m = sackModel(visual.bags[p]),
-        pos = bagPosition(p, layout),
+        pos = bagPosition(p, layout, clearance[p]),
         axis = m.axis(m.top);
       return { m, pos, at: pos.map((q, k) => q + 1.08 * (axis[k] - (k === 2 ? 0 : 48))) };
     });
@@ -139,7 +141,7 @@ export function sceneFrame(st, layout = DESKTOP_LAYOUT) {
     }
   }
   for (let p = 0; p < 2; p++) {
-    const pos = bagPosition(p, layout),
+    const pos = bagPosition(p, layout, clearance[p]),
       bag = visual.bags[p],
       palette = p === 0 ? ownPalette : 'tomato';
     bags.push({ pos, state: { ...bag, coins: [...bag.coins, ...pockets[p]] }, palette, player: p });
@@ -151,13 +153,13 @@ export function sceneFrame(st, layout = DESKTOP_LAYOUT) {
         label(
           `${delta > 0 ? '+' : ''}${delta}`,
           layout.bagU,
-          rowV(layout, p),
+          clearedV(layout, p, clearance[p]),
           100 + elapsed * 8,
           'coin-delta ' + (delta > 0 ? 'gain' : 'loss'),
         );
       }
     }
-    const deck = deckPosition(p, layout),
+    const deck = deckPosition(p, layout, clearance[p]),
       count = game.phase === 'ready' ? 54 : game.decks[p].length;
     if (count > 0) {
       const thickness = count * cardThickness;

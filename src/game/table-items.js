@@ -6,9 +6,12 @@ import { facing, tone, SH, SHADOW_LEN, SHADOW_K } from '../engine/shading.js';
 import { INK, SHADOW } from '../engine/palette.js';
 
 const cache = new Map();
-// Keep the little collection in the money bag's corner, clear of the hand and coin landing area.
-// A layout may move the whole collection (the phone mode stacks it along the free edge)
-// and resize it; the model is cached per placement.
+// 摆位由桌面实际尺寸计算，道具沿玩家左下桌沿横向排列。
+export function tableItemPlacement(layout, index, size) {
+  const { insetU, insetV, step, scale } = layout.itemLayout;
+  return { u: -size.u + insetU + index * step, v: size.v - insetV, scale };
+}
+
 export function tableItemModel(id, place = null) {
   const { u, v } = place || TOYS[id].table,
     scale = place?.scale || 0.25,
@@ -36,6 +39,8 @@ export function tableItemModel(id, place = null) {
       [0, 1, 2].map((axis) => (end ? Math.max : Math.min)(...points.map((p) => p[axis]))),
     );
   const model = { parts, points, box, at: world(u, v, 20) };
+  // 调整窗口会连续产生新摆位，只保留最近八组完整道具模型。
+  if (cache.size >= 56) cache.delete(cache.keys().next().value);
   cache.set(key, model);
   return model;
 }

@@ -29,10 +29,10 @@ SVG 字符串图元（`engine/stage3d.js`、`engine/primitives.js`）仍服务�
 入口是 `ui.render()`（`figure.js`），它调用 `renderScene(st, PALS[st.pal])`，最终到达 `cpu-renderer.js` 的 `draw(st, material)`：
 
 1. **相机与取景** — `aim()`：`GAME_CAMERA` 指定入场和对局采用 72° 浅俯视、2400 透视距离；首页使用 `setCameraPitch(90, 0)`。`fitScene` 将交互区域适配 SVG viewBox；容器避开桌面顶栏或手机侧栏，桌面模型随可用区域扩展，牌面保持原比例。
-2. **布局** — `sceneFrame(st)` 产出 `{ cards, bags, coins, labels }`。发牌、赖子翻面、收牌、出牌、入场坠落等动画全部在这里把「逻辑状态 + 时间」换算成位姿，渲染器不再插值。
+2. **布局** — `sceneFrame(st)` 产出 `{ cards, bags, coins, labels }`。发牌、赖子翻面、收牌、出牌、入场坠落等动画全部在这里把「逻辑状态 + 时间」换算成位姿，`row-clearance.js` 按手牌宽度计算钱袋与牌堆的避让量，以 320 毫秒缓动插值；`sceneFrame` 让模型、阴影、点击区和金币袋口使用同一组位置。
 3. **画布复位** — `canvas.begin()` 按 `renderPixelRatio()` 设置画布物理尺寸（乘渲染倍率，独立于 devicePixelRatio），清屏并写入 viewBox 变换。随后 `sprites.begin(view)`：`view` 由 `viewKey()`（俯仰、透视距离、原点、光照）与 `transformKey()`（画布尺寸、缩放、平移）拼成，任何一项变化都清空精灵。
 4. **按钮锚点** — 由手牌与出牌区的投影边缘求出按钮中线与间隙，结果按 `view` 与手牌数缓存。
-5. **桌面底层** — `paintTable`（`table-layer.js`）：桌面阴影、侧壁、桌面多边形与纹理线、厚木沿和桌面印记、道具模糊软阴影。整层作为一个全画布精灵保留，相机静止时每帧只是一次位图搬运。
+5. **桌面底层** — `paintTable`（`table-layer.js`）：桌面阴影、侧壁、桌面多边形与纹理线、厚木沿和桌面印记、道具模糊软阴影。道具根据桌面实际尺寸沿玩家左下桌沿横向摆放。整层作为一个全画布精灵保留，相机静止时每帧只是一次位图搬运。
 6. **收集部件** — `cardParts / bagParts / coinParts / itemParts`（`scene-parts.js`）。每个部件是 `{ at, key, extent, draw }`：`key` 写明除视图外决定像素的全部输入（牌：贴图、位姿、选中、余牌数；钱袋：形状键、位置、配色、每枚金币的模式与位姿；道具：id 与摆位），`null` 表示每帧都变。投影阴影轮廓与命中路径按 `key` 记忆，加入**阴影合批**与 overlay。
 7. **单次阴影冲洗** — `flushShadows(B)`：所有部件阴影是不透明平色，合到一个 `Path2D` 里做一次裁剪、一次填充。
 8. **画家排序** — `parts.sort(paintOrder)`：按部件中心的深度 `depthOf` 从后往前。分离盒 `sepOrder` 只在单个道具内部排序零件时使用。
@@ -72,7 +72,7 @@ SVG 字符串图元（`engine/stage3d.js`、`engine/primitives.js`）仍服务�
 | 部件精灵与投影记忆 | `sprite-cache.js` | 视图键变化，或部件一帧未出现 |
 | 按钮锚点 | `cpu-renderer.js` `anchorControls` | 视图键、手牌数或布局缩放变化 |
 | 桌面几何/纹理 | `table-geometry.js` | 按材质与桌面尺寸缓存，最多保留 24 个模型 |
-| 道具模型 | `table-items.js` | 按道具 id 与摆位常驻 |
+| 道具模型 | `table-items.js` | 按道具 id 与摆位缓存，最多保留 56 个模型 |
 | 钱袋蒙皮 | `model-canvas.js` `sackGeometry` | 键 `fillShow:squash:punchT` 变化（鼓瘪动画本身需要重建） |
 | 袋口底面与金币堆 | `model-canvas.js` `mouths`（WeakMap） | 随钱袋形状对象释放 |
 | 静止金币几何 | `model-canvas.js` `restCoins`（WeakMap） | 金币位姿改变即失效 |

@@ -7,7 +7,8 @@ import { cpuArt } from './cpu-art.js';
 import { sceneFrame, fitScene, handPose, tableSize } from './scene-frame.js';
 import { layoutFor, GAME_CAMERA } from './scene-layout.js';
 import { tableGeometry } from './table-geometry.js';
-import { tableItemModel } from './table-items.js';
+import { tableItemModel, tableItemPlacement } from './table-items.js';
+import { createRowClearance } from './row-clearance.js';
 import { world } from './table.js';
 import { paintTable } from './table-layer.js';
 import { cardParts, bagParts, coinParts, itemParts } from './scene-parts.js';
@@ -21,7 +22,8 @@ export async function createRenderer(art, svg, host) {
   const images = await cpuArt(),
     canvas = new ModelCanvas(svg),
     sprites = new SpriteCache(),
-    hover = createHover();
+    hover = createHover(),
+    rowMotion = createRowClearance();
   const layer = document.createElementNS(svg.namespaceURI, 'g');
   art.append(layer);
   let current,
@@ -115,20 +117,19 @@ export async function createRenderer(art, svg, host) {
       mobile = isMobileLandscape(),
       layout = layoutFor(mobile);
     const size = aim(st, layout);
-    const frame = sceneFrame(st, layout),
+    const clearance = rowMotion.sample(
+      home ? [0, 0] : st.game.hands.map((hand) => hand.length),
+      layout,
+      performance.now(),
+    );
+    const frame = sceneFrame(st, layout, clearance.values),
       table = tableGeometry(st.tableStyle, size);
     canvas.begin();
     const view = `${viewKey()}|${canvas.transformKey()}`;
     sprites.begin(view);
     anchorControls(st, layout, view);
     const items = (home ? [] : st.game.items).map((id, index) => {
-      const place = layout.itemLayout
-        ? {
-            u: layout.itemLayout.u,
-            v: layout.itemLayout.v + index * layout.itemLayout.step,
-            scale: layout.itemLayout.scale || 0.25,
-          }
-        : null;
+      const place = tableItemPlacement(layout, index, size);
       return { id, model: tableItemModel(id, place), key: `item|${id}|${JSON.stringify(place)}` };
     });
     sprites.draw(canvas, `table|${table.key}|${items.map((i) => i.key).join()}`, null, () =>
@@ -187,7 +188,7 @@ export async function createRenderer(art, svg, host) {
       patchSvg(layer, markup);
       layer._markup = markup;
     }
-    if (lift.moving) invalidate();
+    if (lift.moving || clearance.moving) invalidate();
   }
   svg.addEventListener('pointerover', setHover);
   svg.addEventListener('focusin', setHover);

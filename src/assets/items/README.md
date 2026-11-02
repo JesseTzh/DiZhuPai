@@ -34,7 +34,7 @@
 ## 已知联动（未参数化）
 
 - 赖子牌美术（`src/assets/cards/wild.js`）就是青蛙主题：frog 道具的 `rule` 是 `wildCard`；若新增 wild 类道具需同步该美术与 `game/wild-reveal.js`。
-- 桌面摆放区域固定在钱袋角落（`game/table-items.js`），新道具的 `table.u/v` 需挑选不与钱袋、出牌区重叠的空位。
+- 对局中的道具沿玩家左下桌沿横向摆放。`game/table-items.js` 根据桌面尺寸和 `scene-layout.js` 的边距、间隔计算位置；`table.u/v` 仅保留为独立模型的默认摆位。
 
 ## 新增一个道具
 

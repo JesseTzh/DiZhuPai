@@ -70,8 +70,6 @@ export function drawGear(ctx, x, y, size, focused) {
   ctx.save();
   ctx.translate(x + size / 2, y + size / 2);
   ctx.scale(size / 32, size / 32);
-  roundPanel(ctx, -22, -23, 44, 46, '#b98550', 7);
-  roundPanel(ctx, -21, -25, 42, 44, '#f0c58c', 6);
   const points =
     Array.from({ length: 32 }, (_, i) => {
       const a = -Math.PI / 2 + (i * Math.PI) / 16;
