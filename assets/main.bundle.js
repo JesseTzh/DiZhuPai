@@ -983,8 +983,8 @@
         deckU: 315,
         // Collectibles keep their authored corner below the player's hand.
         itemLayout: null,
-        // Whole tabletop plus the usual breathing room.
-        bounds: null,
+        // Keep cards and collectibles visible without extra camera padding.
+        bounds: { u0: -384, u1: 384, v0: -273, v1: 273 },
         // Action pills are drawn at this fraction of their desktop size.
         actionScale: 1
       };
@@ -1009,9 +1009,9 @@
          * end, instead of below the hand where they would eat vertical space. */
         itemLayout: { u: -352, v: -78, step: 26, scale: 0.28 },
         /* Straight-down frame around everything the player acts on: toy column
-         * (-366) to the decks on the right (372); the computer's card tops (-191) down
-         * to the player's hand and the status line beneath it (208). */
-        bounds: { u0: -384, u1: 378, v0: -198, v1: 208 },
+         * (-366) to the decks on the right (372); center both axes and include the
+         * computer's card tops (-191) and the status line beneath the hand (208). */
+        bounds: { u0: -384, u1: 384, v0: -208, v1: 208 },
         // Action pills grow with the table but stay out of the card rows.
         actionScale: 0.8
       };
@@ -1054,6 +1054,14 @@
     setOrigin((width - minX - maxX) / 2, originY);
     const view2 = `0 0 ${width} ${height}`;
     if (svg.getAttribute("viewBox") !== view2) svg.setAttribute("viewBox", view2);
+    return { width, height };
+  }
+  function tableSize(view2, viewport) {
+    const origin = P(...world(0, 0)), unit = P(...world(1, 1)), inset = 4 * view2.width / viewport.width;
+    return {
+      u: (view2.width / 2 - inset) / (unit[0] - origin[0]),
+      v: (view2.height / 2 - inset) / (unit[1] - origin[1])
+    };
   }
   function sceneFrame(st, layout = DESKTOP_LAYOUT) {
     const { game: game2, visual: visual2 } = st;
@@ -2451,10 +2459,9 @@
   });
 
   // src/game/table-geometry.js
-  function tableGeometry(style = "planks") {
-    const key = style;
+  function tableGeometry(style = "planks", { u: U = 365, v: V = 265 } = {}) {
+    const key = `${style}|${U}|${V}`;
     if (cache2.has(key)) return cache2.get(key);
-    const U = 365, V = 265;
     const marble = style === "marble", walnut = style === "walnut";
     const material = marble ? { l: "#dfe8de", m: "#b4c9bc", d: "#819c90" } : walnut ? { l: "#ae8055", m: "#92623e", d: "#64432e" } : { l: "#d2af7e", m: "#b58b5e", d: "#886849" };
     const outline = rrUV(-U, -V, U, V, marble ? 32 : walnut ? 22 : 12, 8);
@@ -2598,7 +2605,8 @@
             );
           }
     }
-    const model2 = { A, B, outline, material, polygons, lines };
+    const model2 = { A, B, outline, material, polygons, lines, key };
+    if (cache2.size >= 24) cache2.delete(cache2.keys().next().value);
     cache2.set(key, model2);
     return model2;
   }
@@ -3919,7 +3927,7 @@
     art.append(layer);
     let current, disposed = false, fallback = 0, anchors = null;
     svg.classList.add("cpu-active");
-    let stageEl, topbarEl, wbEl;
+    let wbEl;
     const invalidate = () => {
       if (disposed) return;
       if (host?.invalidate) return host.invalidate();
@@ -3938,20 +3946,15 @@
     const focusOut = (event) => {
       updateHover(event.relatedTarget?.closest?.("[data-card]")?.dataset.handIndex ?? null);
     };
-    function aim(st, layout, mobile) {
+    function aim(st, layout) {
       const entry = st.visual.entry;
       const progress = entry ? Math.min(1, Math.max(0, (entry.time - 0.16) / 0.56)) : 1;
       const home = st.visual.home && !entry;
-      setCameraPitch(
-        mobile ? 90 : entry?.pitch ?? (home ? 90 : 68),
-        mobile || home || progress === 0 ? 0 : 1800 / progress
-      );
+      setCameraPitch(90, 0);
       canvas.size = { width: svg.clientWidth, height: svg.clientHeight };
-      stageEl ||= svg.closest(".stage");
-      topbarEl ||= stageEl?.querySelector(".game-topbar");
       let framing = {};
-      if (!home && mobile) {
-        const t = entry ? progress : 1, wide = { u0: -372, u1: 372, v0: -273, v1: 273 }, tight = layout.bounds, mix2 = (a, b) => a + (b - a) * t;
+      if (!home) {
+        const t2 = entry ? progress : 1, wide = { u0: -372, u1: 372, v0: -273, v1: 273 }, tight = layout.bounds, mix2 = (a, b) => a + (b - a) * t2;
         framing = {
           zoom: 1,
           bounds: {
@@ -3960,19 +3963,15 @@
             v0: mix2(wide.v0, tight.v0),
             v1: mix2(wide.v1, tight.v1)
           },
-          padX: 45 * (1 - t),
-          padY: 55 * (1 - t),
-          tall: 82 * (1 - t)
-        };
-      } else if (!home && topbarEl) {
-        const { A, B } = tableGeometry(st.tableStyle);
-        framing = {
-          zoom: 1.02,
-          surface: [...A, ...B],
-          centerY: (topbarEl.offsetTop + topbarEl.offsetHeight + stageEl.clientHeight) / 2 - svg.parentElement.offsetTop
+          padX: 45 * (1 - t2),
+          padY: 55 * (1 - t2),
+          tall: 82 * (1 - t2)
         };
       }
-      fitScene(svg, canvas.size, framing);
+      const view2 = fitScene(svg, canvas.size, framing);
+      if (home) return void 0;
+      const size = tableSize(view2, canvas.size), t = entry ? progress : 1;
+      return { u: 365 + (size.u - 365) * t, v: 265 + (size.v - 265) * t };
     }
     function anchorControls(st, layout, view2) {
       const handCount = st.game.hands[0].length || 18, key = `${view2}|${handCount}|${layout.handScale}|${layout.playScale}`;
@@ -3997,8 +3996,8 @@
       if (disposed) return;
       current = [st, material];
       const home = st.visual.home && !st.visual.entry, mobile = isMobileLandscape(), layout = layoutFor(mobile);
-      aim(st, layout, mobile);
-      const frame = sceneFrame(st, layout), table = tableGeometry(st.tableStyle);
+      const size = aim(st, layout);
+      const frame = sceneFrame(st, layout), table = tableGeometry(st.tableStyle, size);
       canvas.begin();
       const view2 = `${viewKey()}|${canvas.transformKey()}`;
       sprites.begin(view2);
@@ -4013,7 +4012,7 @@
       });
       sprites.draw(
         canvas,
-        `table|${st.tableStyle}|${items.map((i) => i.key).join()}`,
+        `table|${table.key}|${items.map((i) => i.key).join()}`,
         null,
         () => paintTable(
           canvas,
@@ -4530,7 +4529,28 @@
 
   // src/game/state.js
   init_selection();
-  var PASS_COST = 5;
+
+  // src/game/economy.js
+  init_define_GAME_SOUNDS();
+  init_rules();
+  var INITIAL_COINS = 500;
+  var coinBagCount = (balance2) => Math.min(40, Math.max(0, balance2 / 25));
+  var cardPoints = (id) => ({ 16: 18, 17: 20 })[rankOf(id)] ?? rankOf(id);
+  var playPoints = (cards2) => cards2.reduce((sum, id) => sum + cardPoints(id), 0);
+  function passCost(game2) {
+    if (!game2.target) return 0;
+    const points = [null, null];
+    points[game2.target.player] = playPoints(game2.target.cards);
+    for (let i = game2.history.length - 1; i >= 0; i--) {
+      const entry = game2.history[i];
+      if (entry.type !== "play") break;
+      if (points[entry.player] === null) points[entry.player] = playPoints(entry.cards);
+      if (points.every((value) => value !== null)) break;
+    }
+    return Math.abs((points[0] ?? 0) - (points[1] ?? 0));
+  }
+
+  // src/game/state.js
   var STAGE_COUNT = 3;
   var ROUNDS_PER_STAGE = 3;
   var HAND_SIZE = 18;
@@ -4546,7 +4566,7 @@
     stealUsed: false,
     hands: [[], []],
     decks: [[], []],
-    coins: [100, 100],
+    coins: [INITIAL_COINS, Infinity],
     wins: [0, 0],
     round: 0,
     stage: 1,
@@ -4559,10 +4579,11 @@
     matchWinner: null,
     matchOver: false,
     message: "地主牌",
-    history: []
+    history: [],
+    legacyHistoryLength: 0
   });
   function finishOnBankruptcy(game2, player) {
-    if (game2.coins[player] !== 0) return false;
+    if (player !== 0 || game2.coins[player] !== 0) return false;
     const winner = 1 - player;
     game2.phase = "over";
     game2.winner = winner;
@@ -4609,6 +4630,7 @@
     game2.selected = [];
     game2.winner = null;
     game2.history = [];
+    game2.legacyHistoryLength = 0;
     game2.message = "正在发牌";
     return true;
   }
@@ -4655,7 +4677,7 @@
     if (!game2.target || game2.target.player === p) return { error: "新一轮必须出牌" };
     const free = p === 0 && hasItemRule(game2, "freePass") && !game2.freePassUsed;
     if (free) game2.freePassUsed = true;
-    const amount = free ? 0 : Math.min(PASS_COST, game2.coins[p]);
+    const amount = free ? 0 : Math.min(passCost(game2), game2.coins[p]);
     game2.coins[p] -= amount;
     game2.coins[1 - p] += amount;
     game2.last = { type: "pass", player: p, amount };
@@ -4920,7 +4942,7 @@
   init_table();
   init_scene_frame();
   init_wild_reveal();
-  function makeVisual() {
+  function makeVisual(game2 = null) {
     return {
       time: 0,
       dealTime: 0,
@@ -4929,7 +4951,14 @@
       transfer: null,
       spill: null,
       steal: null,
-      bags: [coinState(), coinState()]
+      bags: [0, 1].map((player) => {
+        const bag = coinState();
+        if (game2) {
+          bag.count = coinBagCount(game2.coins[player]);
+          bag.fillShow = bag.count / 40;
+        }
+        return bag;
+      })
     };
   }
   function createGameRenderer(art, svg, host) {
@@ -4943,7 +4972,7 @@
     for (let p = 0; p < 2; p++) {
       const tr = v.transfer;
       let balance2 = st.game.coins[p];
-      if (tr?.before) {
+      if (tr?.before && Number.isFinite(balance2)) {
         const elapsed = v.time - tr.start;
         const progress = Math.max(
           0,
@@ -4956,7 +4985,7 @@
         if (p !== tr.from && elapsed > TRANSFER_COLLECT_AT + 0.6 && elapsed < TRANSFER_DURATION - 0.1)
           v.bags[p].squash = 0.055;
       }
-      v.bags[p].count = Math.min(40, Math.max(0, balance2 / 5));
+      v.bags[p].count = coinBagCount(balance2);
       active = coinStep(v.bags[p], dt) || active;
     }
     if (v.transfer) {
@@ -4984,7 +5013,7 @@
     "./assets/sound/hover.mp3",
     "./assets/sound/win.mp3"
   ];
-  var MUSIC_URL = "./assets/sound/theme.m4a";
+  var MUSIC_URLS = ["./assets/sound/theme-1.m4a", "./assets/sound/theme-2.m4a"];
   var MUSIC_LEVEL = 0.6;
   function createSounds() {
     const tracks = urls.map((url) => {
@@ -4993,11 +5022,14 @@
       audio2.volume = 0.35;
       return audio2;
     });
-    const music = new Audio(MUSIC_URL);
-    music.loop = true;
-    music.preload = "none";
-    music.volume = 0.35 * MUSIC_LEVEL;
-    let muted = false, musicMuted = false, dealing = false, musicWanted = false, waitingGesture = false;
+    const musicTracks = MUSIC_URLS.map((url) => {
+      const track = new Audio(url);
+      track.preload = "none";
+      track.volume = 0.35 * MUSIC_LEVEL;
+      return track;
+    });
+    let musicIndex = 0, muted = false, musicMuted = false, dealing = false, musicWanted = false, waitingGesture = false;
+    const currentMusic = () => musicTracks[musicIndex];
     const play2 = (index) => {
       if (muted || document.hidden) return;
       tracks[index].currentTime = 0;
@@ -5030,18 +5062,27 @@
     };
     const attemptMusic = () => {
       if (!musicWanted || musicMuted || document.hidden) return;
-      music.play().catch(() => {
+      currentMusic().play().catch(() => {
         if (musicWanted && !musicMuted && !document.hidden) retryMusicOnGesture();
       });
     };
+    musicTracks.forEach((track, index) => {
+      track.addEventListener("ended", () => {
+        if (index !== musicIndex || !musicWanted || musicMuted || document.hidden) return;
+        musicIndex = (musicIndex + 1) % musicTracks.length;
+        currentMusic().preload = "auto";
+        currentMusic().currentTime = 0;
+        attemptMusic();
+      });
+    });
     const startMusic = () => {
       musicWanted = true;
-      music.preload = "auto";
+      currentMusic().preload = "auto";
       attemptMusic();
     };
     const stopMusic = () => {
       musicWanted = false;
-      music.pause();
+      currentMusic().pause();
     };
     if (tracks[SOUND.hover]) {
       tracks[SOUND.hover].preload = "auto";
@@ -5060,7 +5101,7 @@
     };
     const suspend = () => {
       tracks.forEach((audio2) => audio2.pause());
-      music.pause();
+      musicTracks.forEach((audio2) => audio2.pause());
     };
     const resume = () => {
       if (dealing && !muted && !document.hidden) tracks[SOUND.deal].play().catch(() => {
@@ -5078,13 +5119,18 @@
     addEventListener("pageshow", resume);
     return {
       tracks,
-      music,
+      musicTracks,
+      get music() {
+        return currentMusic();
+      },
       setVolume(value) {
         const volume = Math.max(0, Math.min(1, value));
         tracks.forEach((track) => {
           track.volume = volume;
         });
-        music.volume = volume * MUSIC_LEVEL;
+        musicTracks.forEach((track) => {
+          track.volume = volume * MUSIC_LEVEL;
+        });
       },
       play: play2,
       hover,
@@ -5099,7 +5145,7 @@
       },
       muteMusic(value) {
         musicMuted = value;
-        if (musicMuted) music.pause();
+        if (musicMuted) currentMusic().pause();
         else attemptMusic();
       },
       get musicMuted() {
@@ -5236,7 +5282,7 @@
 
   // src/ui/build-version.js
   init_define_GAME_SOUNDS();
-  var BUILD_VERSION = true ? "Version:261029-0945-e6bc8f3-prod" : "Version:dev-test";
+  var BUILD_VERSION = true ? "Version:261102-1337-1364cf6-prod" : "Version:dev-test";
   function mountBuildVersion(container) {
     const canvas = document.createElement("canvas");
     canvas.className = "settings-version";
@@ -7365,7 +7411,7 @@
       tableControls.sync(!inShop && isGamePage2() && !state2.shopTransition);
       const active = controller2.canAct(), move = classify(game2.selected, ruleOptions(game2), game2.target?.move), valid = beats(move, game2.target?.move, ruleOptions(game2));
       buttons[0].parentElement.hidden = !["ready", "over"].includes(game2.phase) || state2.locked;
-      buttons[0].textContent = game2.phase === "ready" ? "开始发牌" : game2.matchOver ? "新一场 · 100 金币" : game2.substage === ROUNDS_PER_STAGE ? `进入第 ${game2.stage + 1} 大关` : `下一小关 · ${game2.stage}-${game2.substage + 1}`;
+      buttons[0].textContent = game2.phase === "ready" ? "开始发牌" : game2.matchOver ? "新一场 · 500 金币" : game2.substage === ROUNDS_PER_STAGE ? `进入第 ${game2.stage + 1} 大关` : `下一小关 · ${game2.stage}-${game2.substage + 1}`;
       buttons.slice(1).forEach((b) => {
         b.parentElement.hidden = game2.phase !== "playing" && game2.phase !== "dealing";
         b.disabled = !active;
@@ -7385,7 +7431,7 @@
       if (!result.hidden) {
         const winner = game2.matchOver ? game2.matchWinner : game2.winner;
         const next = game2.substage === ROUNDS_PER_STAGE ? "本大关完成，下一大关换桌并重新洗牌。" : `下一小关继续从余牌发出18张，不重新洗牌。`;
-        result.innerHTML = `<span class="eyebrow">${game2.matchOver ? "本场结束" : `第 ${game2.stage}-${game2.substage} 小关结束`}</span><strong>${winner === 0 ? "你赢了！" : "电脑获胜"}</strong><span>${game2.matchOver ? game2.message : next}</span><span>胜场 ${game2.wins[0]} : ${game2.wins[1]}</span><div>你 ${game2.coins[0]} <small>金币</small><em>/</em>电脑 ${game2.coins[1]} <small>金币</small></div>`;
+        result.innerHTML = `<span class="eyebrow">${game2.matchOver ? "本场结束" : `第 ${game2.stage}-${game2.substage} 小关结束`}</span><strong>${winner === 0 ? "你赢了！" : "电脑获胜"}</strong><span>${game2.matchOver ? game2.message : next}</span><span>胜场 ${game2.wins[0]} : ${game2.wins[1]}</span><div>你 ${game2.coins[0]} <small>金币</small><em>/</em>电脑 无限 <small>金币</small></div>`;
       }
     }
     return {
@@ -7565,7 +7611,7 @@
   init_selection();
   init_table();
   var SAVE_KEY = "dizhupai-save";
-  var SAVE_VERSION = 1;
+  var SAVE_VERSION = 2;
   var MAX_SAVE_SIZE = 256 * 1024;
   var palettes2 = ["mustard", "tomato", "mint", "cobalt", "blush"];
   var integer = (n, min, max) => Number.isInteger(n) && n >= min && n <= max;
@@ -7585,7 +7631,7 @@
       throw new Error("无法读取存档，请选择有效的 JSON 文件");
     }
     requireValid(data && data.format === "dizhupai");
-    if (data.version !== SAVE_VERSION) throw new Error("不支持此存档版本");
+    if (![1, SAVE_VERSION].includes(data.version)) throw new Error("不支持此存档版本");
     requireValid(typeof data.savedAt === "string" && Number.isFinite(Date.parse(data.savedAt)));
     requireValid(TABLES.some((table) => table.id === data.tableStyle));
     requireValid(TABLES.some((table) => table.id === data.firstTable));
@@ -7598,7 +7644,10 @@
     requireValid(
       pair2(g.hands, (hand2) => loose(hand2, HAND_SIZE * 2)) && pair2(g.decks, (deck) => cards(deck))
     );
-    requireValid(pair2(g.coins, (n) => integer(n, 0, 200)) && pair2(g.wins, (n) => integer(n, 0, 9)));
+    const legacy = data.version === 1;
+    requireValid(
+      Array.isArray(g.coins) && g.coins.length === 2 && integer(g.coins[0], 0, legacy ? 200 : Number.MAX_SAFE_INTEGER) && (legacy ? integer(g.coins[1], 0, 200) : g.coins[1] === "unlimited") && pair2(g.wins, (n) => integer(n, 0, 9))
+    );
     requireValid(
       Array.isArray(g.items) && g.items.length <= ITEMS.length && new Set(g.items).size === g.items.length
     );
@@ -7607,7 +7656,7 @@
       g.seed == null || typeof g.seed === "string" && g.seed.length <= SEED_MAX_LENGTH && g.seed.trim() !== ""
     );
     requireValid(
-      g.coins[0] + g.coins[1] === 200 - g.items.reduce((sum, id) => sum + ITEMS.find((item) => item.id === id).price, 0)
+      !legacy || g.coins[0] + g.coins[1] === 200 - g.items.reduce((sum, id) => sum + ITEMS.find((item) => item.id === id).price, 0)
     );
     requireValid(g.wildCard === null || hasItemRule(g, "wildCard") && integer(g.wildCard, 0, 53));
     requireValid(
@@ -7623,10 +7672,12 @@
     requireValid(g.matchOver === (g.matchWinner !== null));
     requireValid(loose(g.selected, HAND_SIZE * 2) && subtractCards(g.hands[0], g.selected) !== null);
     requireValid(Array.isArray(g.history) && g.history.length <= HAND_SIZE * 4);
+    const legacyHistoryLength = legacy ? g.history.length : g.legacyHistoryLength ?? 0;
+    requireValid(integer(legacyHistoryLength, 0, g.history.length));
     let target = null, last = null, turn = (g.round - 1) % 2;
     const played = [[], []];
     let stolen = [];
-    for (const entry of g.history) {
+    for (const [index, entry] of g.history.entries()) {
       requireValid(entry && entry.player === turn);
       if (entry.type === "play") {
         requireValid(loose(entry.cards, HAND_SIZE * 2) && entry.cards.length > 0);
@@ -7646,7 +7697,11 @@
         continue;
       } else {
         requireValid(
-          entry.type === "pass" && target && target.player !== turn && integer(entry.amount, 0, 5)
+          entry.type === "pass" && target && target.player !== turn && integer(
+            entry.amount,
+            0,
+            index < legacyHistoryLength ? 5 : passCost({ target, history: g.history.slice(0, index) })
+          )
         );
         last = { type: "pass", player: turn, amount: entry.amount };
         target = null;
@@ -7677,8 +7732,10 @@
     }
     const game2 = Object.fromEntries(Object.keys(createGame()).map((key) => [key, g[key]]));
     game2.freePassUsed = g.history.some(
-      (entry) => entry.type === "pass" && entry.player === 0 && entry.amount === 0
+      (entry) => entry.type === "pass" && entry.player === 0 && hasItemRule(g, "freePass")
     );
+    game2.coins = [g.coins[0], Infinity];
+    game2.legacyHistoryLength = legacyHistoryLength;
     game2.stealUsed = g.history.some((entry) => entry.type === "steal");
     game2.seed = g.seed ?? null;
     game2.stamp = g.stamp ?? null;
@@ -7687,7 +7744,7 @@
     finishDeal(game2);
     if (game2.phase === "over" && !game2.matchOver) game2.phase = "shop";
     game2.message = game2.phase === "shop" ? "逛逛小店，为下一局添件道具" : game2.phase === "over" ? game2.matchWinner === 0 ? "你赢得了整场" : "电脑赢得了整场" : game2.turn === 0 ? "轮到你出牌" : "电脑思考中";
-    return { ...data, game: game2 };
+    return { ...data, version: SAVE_VERSION, game: game2 };
   }
   function serializeSave(game2, { tableStyle, firstTable, palette }, now = /* @__PURE__ */ new Date()) {
     return JSON.stringify(
@@ -7698,7 +7755,10 @@
         tableStyle,
         firstTable,
         palette,
-        game: Object.fromEntries(Object.keys(createGame()).map((key) => [key, game2[key]]))
+        game: {
+          ...Object.fromEntries(Object.keys(createGame()).map((key) => [key, game2[key]])),
+          coins: [game2.coins[0], "unlimited"]
+        }
       },
       null,
       2
@@ -7885,7 +7945,7 @@
       },
       import(index, save) {
         if (index !== 0) throw new Error("仅支持一个存档");
-        storage.setItem(SLOT_KEYS[index], JSON.stringify(save));
+        storage.setItem(SLOT_KEYS[index], serializeSave(save.game, save, new Date(save.savedAt)));
         select(index);
       },
       delete(index) {
@@ -7936,11 +7996,7 @@
       return isGamePage2() && game2.phase === "playing" && game2.turn === 0 && !state2.locked;
     }
     function resetVisual() {
-      Object.assign(visual2, makeVisual(), { dealTime: DEAL_DURATION });
-      visual2.bags.forEach((bag, p) => {
-        bag.count = Math.min(40, game2.coins[p] / 5);
-        bag.fillShow = bag.count / 40;
-      });
+      Object.assign(visual2, makeVisual(game2), { dealTime: DEAL_DURATION });
     }
     function restoreProgress(save) {
       epoch++;
@@ -8781,7 +8837,6 @@
       const update = (time) => {
         const t = ease4((time - 0.16) / 0.56);
         state2.visual.entry.time = time;
-        state2.visual.entry.pitch = 90 - 22 * t;
         wrap.style.transform = `translate(${tx * (1 - t)}px,${ty * (1 - t)}px) scale(${sx + (1 - sx) * t},${sy + (1 - sy) * t})`;
       };
       update(0);
@@ -8929,12 +8984,8 @@
   var session = createSaveSession(localStorage);
   var saved = session.initialSave;
   var game = saved?.game || createGame();
-  var visual = makeVisual();
+  var visual = makeVisual(game);
   visual.dealTime = game.round ? DEAL_DURATION : 0;
-  visual.bags.forEach((bag, player) => {
-    bag.count = Math.min(40, game.coins[player] / 5);
-    bag.fillShow = bag.count / 40;
-  });
   var state = {
     game,
     visual,
@@ -8972,7 +9023,7 @@
     buttons: [
       { label: "开始发牌", onClick: () => controller.start() },
       { label: "出牌", onClick: () => controller.playerPlay() },
-      { label: `过牌 · ${PASS_COST} 金币`, onClick: () => controller.playerPass() },
+      { label: "过牌", onClick: () => controller.playerPass() },
       { label: "收牌", onClick: () => controller.playerSteal() }
     ]
   });

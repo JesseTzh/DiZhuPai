@@ -591,6 +591,10 @@ html.zoomed body {
 }
 
 .game-page {
+  --game-edge: 16px;
+  --game-block-edge: max(10px, env(safe-area-inset-top), env(safe-area-inset-bottom));
+  --game-bar-height: 82px;
+  --game-gap: 12px;
   padding: 0;
   width: 100%;
   height: 100vh;
@@ -695,7 +699,7 @@ html:has(.game-page) {
 }
 .game-page .turn-bar {
   position: absolute;
-  bottom: 76px;
+  bottom: max(6px, env(safe-area-inset-bottom));
   left: 12px;
   right: 12px;
   display: flex;
@@ -923,9 +927,6 @@ a {
   }
   .game-page .actions.game-actions {
     inset: 0;
-  }
-  .game-page .turn-bar {
-    bottom: 62px;
   }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -1386,10 +1387,10 @@ a {
 .game-topbar {
   position: absolute;
   z-index: 6;
-  top: max(10px, env(safe-area-inset-top));
-  left: 16px;
-  right: 16px;
-  height: 82px;
+  top: var(--game-block-edge);
+  left: var(--game-edge);
+  right: var(--game-edge);
+  height: var(--game-bar-height);
   pointer-events: none;
   will-change: transform;
 }
@@ -1419,20 +1420,19 @@ a {
 }
 /* The viewport is identical before, during and after entry, so the table never reframes. */
 .game-page .stage .zwrap {
-  top: 98px;
-  bottom: 16px;
+  top: calc(var(--game-block-edge) + var(--game-bar-height) + var(--game-gap));
+  bottom: var(--game-block-edge);
+  left: var(--game-edge);
+  right: var(--game-edge);
+  width: auto;
 }
 /* 窄桌面窗口:状态栏改成横向两行。触屏横屏是竖排侧栏(styles/mobile.css),
    由指针能力区分,避免窄屏手机同时命中两套规则。 */
 @media (max-width: 811px) and (hover: hover) and (pointer: fine) {
-  .game-topbar {
-    left: 8px;
-    right: 8px;
-    top: max(6px, env(safe-area-inset-top));
-    height: 116px;
-  }
-  .game-page .stage .zwrap {
-    top: 134px;
+  .game-page {
+    --game-edge: 8px;
+    --game-block-edge: max(6px, env(safe-area-inset-top), env(safe-area-inset-bottom));
+    --game-bar-height: 116px;
   }
 }
 
@@ -2306,22 +2306,24 @@ button:focus-visible,
 @media (hover: none) and (pointer: coarse) and (orientation: landscape) {
   .game-page {
     height: 100dvh;
+    --game-block-edge: max(6px, env(safe-area-inset-top), env(safe-area-inset-bottom));
+    --game-gap: 10px;
     --mobile-sidebar-left: max(6px, env(safe-area-inset-left));
-    --mobile-table-left: calc(var(--mobile-sidebar-left) + 100px);
+    --mobile-table-left: calc(var(--mobile-sidebar-left) + 94px + var(--game-gap));
   }
   .game-topbar {
-    top: max(6px, env(safe-area-inset-top));
-    bottom: max(6px, env(safe-area-inset-bottom));
+    top: var(--game-block-edge);
+    bottom: var(--game-block-edge);
     left: var(--mobile-sidebar-left);
     right: auto;
     width: 94px;
     height: auto;
   }
   .game-page .stage .zwrap {
-    top: max(4px, env(safe-area-inset-top));
-    bottom: max(4px, env(safe-area-inset-bottom));
+    top: var(--game-block-edge);
+    bottom: var(--game-block-edge);
     left: var(--mobile-table-left);
-    right: max(4px, env(safe-area-inset-right));
+    right: max(6px, env(safe-area-inset-right));
     width: auto;
   }
   .game-page .turn-bar {
