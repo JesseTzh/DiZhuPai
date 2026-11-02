@@ -4,13 +4,14 @@ import { createGame, deal } from '../src/game/state.js';
 import { makeVisual } from '../src/game/scene.js';
 import { sceneFrame } from '../src/game/scene-frame.js';
 import { ModelCanvas } from '../src/game/model-canvas.js';
+import { GAME_CAMERA } from '../src/game/scene-layout.js';
 import { cardThickness } from '../src/cards/constants.js';
 const state = () => ({ game: createGame(), visual: makeVisual(), pal: 'cobalt', cardNames: [] });
 test('home draws only the shared table until entry props land', () => {
   const st = state();
   st.visual.home = true;
   assert.deepEqual(sceneFrame(st), { cards: [], bags: [], coins: [], labels: [] });
-  st.visual.entry = { time: 0, pitch: 90 };
+  st.visual.entry = { time: 0, pitch: GAME_CAMERA.pitch };
   assert.equal(sceneFrame(st).cards.length, 0);
   st.visual.entry.time = 1.3;
   assert.equal(sceneFrame(st).cards.filter((card) => card.options.deckCount).length, 2);

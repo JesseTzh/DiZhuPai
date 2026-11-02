@@ -5,7 +5,7 @@ import { SpriteCache } from '../engine/sprite-cache.js';
 import { patchSvg } from '../engine/svg-dom.js';
 import { cpuArt } from './cpu-art.js';
 import { sceneFrame, fitScene, handPose, tableSize } from './scene-frame.js';
-import { layoutFor } from './scene-layout.js';
+import { layoutFor, GAME_CAMERA } from './scene-layout.js';
 import { tableGeometry } from './table-geometry.js';
 import { tableItemModel } from './table-items.js';
 import { world } from './table.js';
@@ -49,12 +49,12 @@ export async function createRenderer(art, svg, host) {
   const focusOut = (event) => {
     updateHover(event.relatedTarget?.closest?.('[data-card]')?.dataset.handIndex ?? null);
   };
-  // Fit the playable area with the same orthographic overhead camera on all devices.
+  // The home keeps its authored camera; gameplay shares one shallow perspective.
   function aim(st, layout) {
     const entry = st.visual.entry;
     const progress = entry ? Math.min(1, Math.max(0, (entry.time - 0.16) / 0.56)) : 1;
     const home = st.visual.home && !entry;
-    setCameraPitch(90, 0);
+    setCameraPitch(home ? 90 : GAME_CAMERA.pitch, home ? 0 : GAME_CAMERA.distance);
     // CSS transforms must not change the viewport or raster resolution.
     canvas.size = { width: svg.clientWidth, height: svg.clientHeight };
     let framing = {};
@@ -91,7 +91,7 @@ export async function createRenderer(art, svg, host) {
       key = `${view}|${handCount}|${layout.handScale}|${layout.playScale}`;
     if (anchors?.key !== key) {
       const hand = canvas.cardGeometry(handPose(0, handCount - 1, handCount, layout)),
-        played = canvas.cardGeometry({ u: 0, v: 0, z: 6, scale: layout.playScale });
+        played = canvas.cardGeometry({ u: 0, v: layout.playV, z: 6, scale: layout.playScale });
       const handTop = Math.min(...[...hand.A, ...hand.B].map((point) => P(...point)[1])),
         playedBottom = Math.max(...[...played.A, ...played.B].map((point) => P(...point)[1]));
       anchors = {
@@ -151,11 +151,37 @@ export async function createRenderer(art, svg, host) {
     scene.hits.sort(paintOrder);
     for (const part of scene.parts) sprites.draw(canvas, part.key, part.extent, part.draw);
     sprites.end();
+    for (const label of frame.labels) {
+      const [x, y] = P(...world(label.u, label.v, label.z));
+      const ctx = canvas.ctx;
+      ctx.save();
+      const delta = label.cls.includes('coin-delta');
+      ctx.fillStyle = delta ? (label.cls.includes('gain') ? '#347452' : '#ba4835') : '#3d2b1c';
+      ctx.textAlign = 'center';
+      ctx.font = `700 ${delta ? 27 : 11}px 'PingFang SC', sans-serif`;
+      if (delta) {
+        ctx.strokeStyle = '#fff0cd';
+        ctx.lineWidth = 3;
+        ctx.strokeText(label.text, x, y);
+      }
+      ctx.fillText(label.text, x, y);
+      if (label.cls === 'scene-label') {
+        const half = ctx.measureText(label.text).width / 2 + 12;
+        ctx.strokeStyle = '#a27b49';
+        ctx.lineWidth = 0.65;
+        for (const side of [-1, 1]) {
+          ctx.beginPath();
+          ctx.moveTo(x + side * half, y - 4);
+          ctx.lineTo(x + side * (half + 24), y - 4);
+          ctx.stroke();
+        }
+      }
+      ctx.restore();
+    }
     canvas.finish(+((wbEl ||= document.getElementById('wb'))?.value ?? 2.4));
     const overlay = scene.overlay;
     for (const target of scene.hits) overlay.push(target.markup);
-    for (const label of frame.labels)
-      overlay.push(labelMarkup(label, P(...world(label.u, label.v, label.z))));
+    for (const label of frame.labels) overlay.push(labelMarkup(label));
     const markup = overlay.join('');
     if (markup !== layer._markup) {
       patchSvg(layer, markup);

@@ -124,8 +124,7 @@ export function mountGameTopbar(stage, menu, state) {
     const coinX = mobile ? 113 : 168;
     const stageIcon = stageAppearance(state.game.stage);
     drawIcon(ctx, stageIcon.icon, 14, statY, 40);
-    label(ctx, '关数', 59, statY + 11, 10);
-    label(ctx, `${state.game.stage}-${state.game.substage}`, 59, statY + 35, 23, 800);
+    label(ctx, `${state.game.stage}-${state.game.substage}`, 59, statY + 27, 23, 800);
     drawIcon(ctx, 'coins', coinX, statY, 40);
     label(ctx, '当前金币', coinX + 45, statY + 11, 10);
     label(ctx, state.game.coins[0].toLocaleString('zh-CN'), coinX + 45, statY + 35, 23, 800);

@@ -1,3 +1,4 @@
+import { paintTableOrnament } from './table-ornament.js';
 import { facing, tone } from '../engine/shading.js';
 import { norm } from '../engine/math.js';
 import { INK } from '../engine/palette.js';
@@ -19,5 +20,6 @@ export function paintTable(canvas, table, items) {
   for (const { points, color } of table.polygons) canvas.polygon(points, color);
   for (const { points, color, width, closed } of table.lines)
     canvas.line(points, color, width, closed);
+  paintTableOrnament(canvas, table);
   for (const model of items) drawTableItemShadow(canvas, model, B);
 }

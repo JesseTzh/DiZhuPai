@@ -1,3 +1,4 @@
+import { GAME_CAMERA } from '../game/scene-layout.js';
 import { P } from '../engine/camera.js';
 import { world } from '../game/table.js';
 
@@ -129,7 +130,7 @@ export function mountGameEntry({ home, state, ui, onComplete }) {
     // Measured against the home framing: the first entry frame reproduces it
     // exactly (both layouts interpolate from the same wide frame).
     const { sx, sy, tx, ty } = homeTransform();
-    state.visual.entry = { time: 0, pitch: 90 };
+    state.visual.entry = { time: 0, pitch: GAME_CAMERA.pitch };
     home.inert = true;
     document.body.classList.add('game-entering');
     wrap.style.transformOrigin = '0 0';

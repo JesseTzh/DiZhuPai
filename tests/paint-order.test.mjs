@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { setCameraPitch, paintOrder } from '../src/engine/camera.js';
 import { cardOutline, cardW, cardThickness } from '../src/cards/constants.js';
+import { DESKTOP_LAYOUT, GAME_CAMERA } from '../src/game/scene-layout.js';
 import { handPose } from '../src/game/scene-frame.js';
 
 // Mirror of the pure half of ModelCanvas.cardGeometry (model-canvas.js) plus the bounds helper
@@ -36,8 +37,8 @@ function tableParts({ n0, n1, d0 = 25, d1 = 25, nPlayed = 7 }) {
   const deckPose = (p) => {
     const thickness = (p === 0 ? d0 : d1) * cardThickness;
     return {
-      u: 315,
-      v: p === 0 ? 180 : -165,
+      u: DESKTOP_LAYOUT.deckU,
+      v: DESKTOP_LAYOUT.rowV[p],
       z: 1 + (thickness * 0.82) / 2,
       thickness,
       scale: 0.82,
@@ -64,7 +65,7 @@ const inIndexOrder = (tags, prefix) => {
 };
 
 test('game camera pitch keeps paintOrder a pure stacking order for flat cards', () => {
-  setCameraPitch(68, 1800);
+  setCameraPitch(GAME_CAMERA.pitch, GAME_CAMERA.distance);
   // Seed 78ke7yi8 regression: the computer's 8910JQKA straight rendered with the 9 covered from
   // both sides — the old pairwise comparator (sepOrder || depth) is not transitive and the sort
   // scrambled the row whenever the hands held 14 and 6 cards.
@@ -75,7 +76,7 @@ test('game camera pitch keeps paintOrder a pure stacking order for flat cards', 
 });
 
 test('every hand size and straight length paints the played row without both-side covers', () => {
-  setCameraPitch(68, 1800);
+  setCameraPitch(GAME_CAMERA.pitch, GAME_CAMERA.distance);
   for (let n0 = 0; n0 <= 20; n0++)
     for (let n1 = 0; n1 <= 20; n1++)
       for (const d0 of [0, 25])

@@ -12,7 +12,7 @@
 | 布局描述 | `src/game/scene-frame.js` | 纯数据：每张牌/钱袋/金币/标签的位姿，不含任何绘制调用 |
 | 部件收集 | `src/game/scene-parts.js` | 把布局变成带缓存键的画家部件，并累积阴影与命中区域 |
 | 桌面底层 | `src/game/table-layer.js` | 桌面阴影、侧壁、桌面、纹理与道具软阴影 |
-| 交互标注 | `src/game/scene-overlay.js` | 命中环、余牌数、赖子、钱袋、道具、标签的 SVG 片段 |
+| 交互标注 | `src/game/scene-overlay.js` | 命中环、余牌数、赖子、钱袋、道具的 SVG 语义片段 |
 | 悬停 | `src/game/hover.js` | 手牌悬停进度：按时间戳求值（80ms 进 / 50ms 出） |
 | 精灵缓存 | `src/engine/sprite-cache.js` | 保留连续两帧不变的部件位图，并按键缓存投影结果 |
 | 画布基类 | `src/engine/cpu-canvas.js` | 投影、路径、多边形、阴影、贴图、纸纹等图元 |
@@ -28,19 +28,21 @@ SVG 字符串图元（`engine/stage3d.js`、`engine/primitives.js`）仍服务�
 
 入口是 `ui.render()`（`figure.js`），它调用 `renderScene(st, PALS[st.pal])`，最终到达 `cpu-renderer.js` 的 `draw(st, material)`：
 
-1. **相机与取景** — `aim()`：`setCameraPitch(90, 0)`，首页、入场和对局统一采用垂直无透视视角。`fitScene` 将交互区域适配 SVG viewBox；容器避开桌面顶栏或手机侧栏，桌面模型随可用区域扩展，牌面保持原比例。
+1. **相机与取景** — `aim()`：`GAME_CAMERA` 指定入场和对局采用 72° 浅俯视、2400 透视距离；首页使用 `setCameraPitch(90, 0)`。`fitScene` 将交互区域适配 SVG viewBox；容器避开桌面顶栏或手机侧栏，桌面模型随可用区域扩展，牌面保持原比例。
 2. **布局** — `sceneFrame(st)` 产出 `{ cards, bags, coins, labels }`。发牌、赖子翻面、收牌、出牌、入场坠落等动画全部在这里把「逻辑状态 + 时间」换算成位姿，渲染器不再插值。
 3. **画布复位** — `canvas.begin()` 按 `renderPixelRatio()` 设置画布物理尺寸（乘渲染倍率，独立于 devicePixelRatio），清屏并写入 viewBox 变换。随后 `sprites.begin(view)`：`view` 由 `viewKey()`（俯仰、透视距离、原点、光照）与 `transformKey()`（画布尺寸、缩放、平移）拼成，任何一项变化都清空精灵。
 4. **按钮锚点** — 由手牌与出牌区的投影边缘求出按钮中线与间隙，结果按 `view` 与手牌数缓存。
-5. **桌面底层** — `paintTable`（`table-layer.js`）：桌面阴影、侧壁、桌面多边形与纹理线、道具模糊软阴影。整层作为一个全画布精灵保留，相机静止时每帧只是一次位图搬运。
+5. **桌面底层** — `paintTable`（`table-layer.js`）：桌面阴影、侧壁、桌面多边形与纹理线、厚木沿和桌面印记、道具模糊软阴影。整层作为一个全画布精灵保留，相机静止时每帧只是一次位图搬运。
 6. **收集部件** — `cardParts / bagParts / coinParts / itemParts`（`scene-parts.js`）。每个部件是 `{ at, key, extent, draw }`：`key` 写明除视图外决定像素的全部输入（牌：贴图、位姿、选中、余牌数；钱袋：形状键、位置、配色、每枚金币的模式与位姿；道具：id 与摆位），`null` 表示每帧都变。投影阴影轮廓与命中路径按 `key` 记忆，加入**阴影合批**与 overlay。
 7. **单次阴影冲洗** — `flushShadows(B)`：所有部件阴影是不透明平色，合到一个 `Path2D` 里做一次裁剪、一次填充。
 8. **画家排序** — `parts.sort(paintOrder)`：按部件中心的深度 `depthOf` 从后往前。分离盒 `sepOrder` 只在单个道具内部排序零件时使用。
 9. **绘制部件** — `sprites.draw(canvas, key, extent, draw)`：键已有精灵则按整数像素偏移搬运；上一帧直接画过同一键则先画进精灵再搬运；否则直接画。部件本身：`canvas.card`（轮廓壳 + 贴图 + 描边）、`canvas.sack`（三层蒙皮 + 织纹 + 袋口金币）、`canvas.coin`（侧面按法线着色 + 端面贴图）、道具多面体。
-10. **纸纹** — `canvas.finish(grain)` 用预生成的 64×64 噪声图案以 `source-atop` 叠一层纸面颗粒（始终画在主画布上，不进精灵）。
-11. **交互外壳** — overlay 字符串与上一帧相同则跳过，否则 `patchSvg` 做属性级增量补丁（命中环、余牌数、标签、`data-hover` 进度）。
+10. **标签与纸纹** — 出牌信息和金币增减文字绘制在主 Canvas 上。 `canvas.finish(grain)` 用预生成的 64×64 噪声图案以 `source-atop` 叠一层纸面颗粒（始终画在主画布上，不进精灵）。
+11. **交互外壳** — overlay 字符串与上一帧相同则跳过，否则 `patchSvg` 做属性级增量补丁（命中环、余牌数、`data-hover` 进度）。
 
 静止场景不重绘：`ui.invalidate()` 只请求下一帧画一次，`ui.animate(step)` 驱动连续动画并在所有步骤结束后停表。渲染器创建时拿到 `figure` 的 `ui` 作为宿主：悬停、窗口缩放、渲染设置与纸纹滑杆都只调用 `host.invalidate()`，不再另开 rAF 循环，因此悬停与其他动画同时进行时每帧只画一次。悬停进度是时间的函数（`hover.js`），绘制时按当前时间取值，仍在移动则再请求一帧。
+
+对局的外景由 `ui/courtyard-art.js` 在独立 Canvas 上绘制，包含天空、树干、枝叶和落叶。`game/table-ornament.js` 将木沿和印记绘制到桌面缓存。云纹和操作按钮由 `ui/game-view.js` 绘制。它们均由路径生成，不读取参考图或切图素材。
 
 ## 精灵缓存
 

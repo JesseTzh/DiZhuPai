@@ -70,6 +70,8 @@ export function drawGear(ctx, x, y, size, focused) {
   ctx.save();
   ctx.translate(x + size / 2, y + size / 2);
   ctx.scale(size / 32, size / 32);
+  roundPanel(ctx, -22, -23, 44, 46, '#b98550', 7);
+  roundPanel(ctx, -21, -25, 42, 44, '#f0c58c', 6);
   const points =
     Array.from({ length: 32 }, (_, i) => {
       const a = -Math.PI / 2 + (i * Math.PI) / 16;
@@ -80,9 +82,9 @@ export function drawGear(ctx, x, y, size, focused) {
   ctx.translate(1.5, 2);
   shape(ctx, points, SHADOW, null);
   ctx.restore();
-  shape(ctx, points, focused ? '#c5edcc' : '#93d3b0', INK, 1.7);
+  shape(ctx, points, focused ? '#fff3d7' : '#fff0cb', INK, 1.7);
   shape(ctx, 'M-6.3 0a6.3 6.3 0 1 0 12.6 0a6.3 6.3 0 1 0-12.6 0', '#fff4d6');
-  shape(ctx, 'M-2.5 0a2.5 2.5 0 1 0 5 0a2.5 2.5 0 1 0-5 0', '#93d3b0');
+  shape(ctx, 'M-2.5 0a2.5 2.5 0 1 0 5 0a2.5 2.5 0 1 0-5 0', '#b58a55');
   ctx.restore();
 }
 
@@ -111,14 +113,14 @@ export function drawBoard(ctx, width, height, style, stage = 1) {
   ctx.translate(3, 3);
   ctx.save();
   ctx.translate(4, 7);
-  roundPanel(ctx, 0, 0, w, h, SHADOW, 10);
+  roundPanel(ctx, 0, 0, w, h, '#735a40', 10);
   ctx.restore();
   roundPanel(ctx, 0, 5, w, h, material.d, 10);
   roundPanel(ctx, 0, 0, w, h, material.l, 10);
   ctx.beginPath();
   ctx.roundRect(0, 0, w, h, 10);
   ctx.clip();
-  const stageAccent = ['#5a82c6', '#bd6b46', '#8a6bb5'][Math.max(0, Math.min(2, stage - 1))];
+  const stageAccent = ['#b78349', '#bd6b46', '#8a6bb5'][Math.max(0, Math.min(2, stage - 1))];
   ctx.beginPath();
   ctx.roundRect(8, 4, w - 16, h - 8, 7);
   ctx.strokeStyle = stageAccent;
@@ -134,7 +136,7 @@ export function drawBoard(ctx, width, height, style, stage = 1) {
   // carries a few of the longest marks so the surface reads as wood instead of noise.
   const stride = stage === 2 ? 4 : stage >= 3 ? 5 : 3;
   const sparseLines = lines.filter(
-    (line, index) => line.closed || index < 5 || index % stride === 0,
+    (line, index) => line.closed || (index > 7 && index % stride === 0),
   );
   for (const line of sparseLines) {
     ctx.beginPath();

@@ -74,16 +74,22 @@ export function fitScene(
   return { width, height };
 }
 
-// 桌面边缘在画布内保留 4px，确保窄屏也能完整显示边框。
-// 牌面保留世界尺寸，不随桌面的宽高比拉伸。
+// 透视桌面在画布内保留边框。用投影求尺寸，避免近端放大后裁掉桌沿。
 export function tableSize(view, viewport) {
-  const origin = P(...world(0, 0)),
-    unit = P(...world(1, 1)),
-    inset = (4 * view.width) / viewport.width;
-  return {
-    u: (view.width / 2 - inset) / (unit[0] - origin[0]),
-    v: (view.height / 2 - inset) / (unit[1] - origin[1]),
-  };
+  const inset = (7 * view.width) / viewport.width;
+  let low = 0,
+    high = 1600;
+  for (let i = 0; i < 40; i++) {
+    const v = (low + high) / 2;
+    const top = P(...world(0, -v, -1))[1];
+    const bottom = P(...world(0, v, -1))[1];
+    if (top >= inset && bottom <= view.height - inset) low = v;
+    else high = v;
+  }
+  const v = low;
+  const center = P(...world(0, v, -1))[0];
+  const unit = P(...world(1, v, -1))[0] - center;
+  return { u: (Math.min(center, view.width - center) - inset) / unit, v };
 }
 export function sceneFrame(st, layout = DESKTOP_LAYOUT) {
   const { game, visual } = st;
@@ -250,7 +256,7 @@ export function sceneFrame(st, layout = DESKTOP_LAYOUT) {
         id,
         {
           u: visual.steal.from[i] + (to.u - visual.steal.from[i]) * e,
-          v: to.v * e,
+          v: layout.playV + (to.v - layout.playV) * e,
           z: 6 + (to.z - 6) * e + Math.sin(t * Math.PI) * 30,
           scale: layout.handScale,
           flip: 0,
@@ -272,7 +278,12 @@ export function sceneFrame(st, layout = DESKTOP_LAYOUT) {
       const t = Math.min(1, visual.playTime / 0.36),
         e = t * t * (3 - 2 * t),
         from = visual.playFrom?.[i];
-      let pose = { u: (i - (n - 1) / 2) * gap, v: 0, z: 6 + i * 0.1, scale: layout.playScale };
+      let pose = {
+        u: (i - (n - 1) / 2) * gap,
+        v: layout.playV,
+        z: 6 + i * 0.1,
+        scale: layout.playScale,
+      };
       if (from && t < 1)
         pose = {
           ...pose,
@@ -289,7 +300,7 @@ export function sceneFrame(st, layout = DESKTOP_LAYOUT) {
           lastPlay.player === 0 && game.stamp?.card === played[i] ? game.stamp.card + 1 : null,
       });
     }
-    label(`${lastPlay.player === 0 ? '你' : '电脑'} · ${lastPlay.move.name}`, 0, -63);
+    label(`${lastPlay.player === 0 ? '你' : '电脑'} · ${lastPlay.move.name}`, 0, layout.playV - 63);
   }
   const entry = visual.entry;
   if (entry) {

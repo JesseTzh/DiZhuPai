@@ -31,16 +31,16 @@ try {
     await page.locator('#enter-game').click();
     await page.waitForFunction(() => gameApp.state.visual.entry?.time > 0.2);
     const entry = await page.evaluate(() => ({ ...gameApp.state.visual.entry }));
-    assert.equal(entry.pitch, 90, '入场全程保持垂直俯视');
+    assert.equal(entry.pitch, 72, '入场使用参考图浅俯视');
     assert.deepEqual(
       await page.evaluate(async () => (await import('/engine/camera.js')).cameraView()),
-      { pitch: 90, distance: 0 },
+      { pitch: 72, distance: 2400 },
     );
     assert.equal(await page.evaluate(() => gameApp.state.game.round), 0);
     assert.equal(await page.locator('.money-bag').count(), 0);
     await page.waitForFunction(() => gameApp.state.visual.entry?.time > 1.0);
     assert.equal(await page.locator('.money-bag').count(), 2);
-    assert.equal(await page.evaluate(() => gameApp.state.visual.entry.pitch), 90);
+    assert.equal(await page.evaluate(() => gameApp.state.visual.entry.pitch), 72);
     await page.screenshot({ path: `/tmp/entry-${viewport.width}-landing.png` });
     await page.waitForFunction(() => gameApp.state.game.phase === 'playing');
     assert.equal(await page.evaluate(() => gameApp.state.game.round), 1);
@@ -64,7 +64,7 @@ try {
     assert.equal(await page.locator('#camera-pitch, .camera-controls').count(), 0);
     assert.equal(
       await page.evaluate(async () => (await import('/engine/camera.js')).cameraView().pitch),
-      90,
+      72,
     );
     await page.locator('#open-settings').click();
     await page.screenshot({ path: `/tmp/settings-${viewport.width}.png` });
@@ -83,7 +83,7 @@ try {
   }
   assert.deepEqual(errors, []);
   console.log(
-    'Entry sequence, 90° pitch, delayed props, first deal, resume and reduced motion passed on desktop and mobile.',
+    'Entry sequence, 72° pitch, delayed props, first deal, resume and reduced motion passed on desktop and mobile.',
   );
 } finally {
   await browser.close();

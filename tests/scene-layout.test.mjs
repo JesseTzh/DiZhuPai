@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { DESKTOP_LAYOUT, MOBILE_LAYOUT, layoutFor } from '../src/game/scene-layout.js';
+import { DESKTOP_LAYOUT, MOBILE_LAYOUT, GAME_CAMERA, layoutFor } from '../src/game/scene-layout.js';
 import { handPose, fitScene, tableSize } from '../src/game/scene-frame.js';
 import { P, setCameraPitch } from '../src/engine/camera.js';
 import { tableGeometry } from '../src/game/table-geometry.js';
@@ -9,18 +9,19 @@ import { tableItemModel } from '../src/game/table-items.js';
 import { ITEMS } from '../src/game/items.js';
 
 // Each mode keeps its own card geometry and centered framing contract.
-test('each mode retains its card layout and uses a centered overhead frame', () => {
-  assert.deepEqual(DESKTOP_LAYOUT.rowV, [180, -165]);
-  assert.equal(DESKTOP_LAYOUT.handSpacing, 24);
-  assert.equal(DESKTOP_LAYOUT.handScale, 0.86);
+test('each mode retains its card layout and uses a shallow perspective frame', () => {
+  assert.deepEqual(DESKTOP_LAYOUT.rowV, [150, -174]);
+  assert.equal(DESKTOP_LAYOUT.handSpacing, 27);
+  assert.equal(DESKTOP_LAYOUT.handScale, 1.03);
   assert.equal(DESKTOP_LAYOUT.selectedLift, 22);
-  assert.equal(DESKTOP_LAYOUT.bagU, -315);
-  assert.equal(DESKTOP_LAYOUT.deckU, 315);
-  assert.equal(DESKTOP_LAYOUT.itemLayout, null);
+  assert.equal(DESKTOP_LAYOUT.bagU, -350);
+  assert.equal(DESKTOP_LAYOUT.deckU, 350);
+  assert.deepEqual(DESKTOP_LAYOUT.itemLayout, { u: -352, v: -80, step: 24, scale: 0.32 });
   for (const { bounds } of [DESKTOP_LAYOUT, MOBILE_LAYOUT]) {
     assert.equal(bounds.u0, -bounds.u1);
     assert.equal(bounds.v0, -bounds.v1);
   }
+  assert.deepEqual(GAME_CAMERA, { pitch: 72, distance: 2400 });
   assert.equal(layoutFor(false), DESKTOP_LAYOUT);
   assert.equal(layoutFor(true), MOBILE_LAYOUT);
   assert.notEqual(MOBILE_LAYOUT, DESKTOP_LAYOUT);
@@ -69,7 +70,7 @@ test('the phone frame fits tighter than the desktop frame on a 19.5:9 viewport',
 
 test('all table finishes retain a visible border in wide and tall viewports', () => {
   const svg = { getAttribute() {}, setAttribute() {} };
-  setCameraPitch(90, 0);
+  setCameraPitch(GAME_CAMERA.pitch, GAME_CAMERA.distance);
   for (const layout of [DESKTOP_LAYOUT, MOBILE_LAYOUT]) {
     for (const viewport of [
       { width: 1916, height: 978 },
@@ -91,14 +92,17 @@ test('all table finishes retain a visible border in wide and tall viewports', ()
           Math.min(...ys),
           viewport.height - Math.max(...ys),
         ]) {
-          assert.ok(Math.abs(gap - 4) < 1e-6, `桌面边框完整显示，留白为 ${gap}px`);
+          assert.ok(gap >= 6.99, `透视桌面边框完整显示，留白为 ${gap}px`);
         }
         assert.equal(tableGeometry(style, size), table, '相同尺寸复用桌面模型');
       }
       const left = P(...world(-100, -100)),
         right = P(...world(100, -100)),
         bottom = P(...world(-100, 100));
-      assert.ok(Math.abs(right[0] - left[0] - (bottom[1] - left[1])) < 1e-9);
+      assert.ok(right[0] > left[0] && bottom[1] > left[1]);
+      const farWidth = P(...world(100, -100))[0] - P(...world(-100, -100))[0];
+      const nearWidth = P(...world(100, 100))[0] - P(...world(-100, 100))[0];
+      assert.ok(nearWidth > farWidth, '近端桌沿按透视放大');
     }
   }
   assert.notEqual(tableGeometry('planks'), tableGeometry('planks', { u: 600, v: 300 }));

@@ -59,6 +59,16 @@ try {
     assert.equal(await page.locator('.hand-card').count(), 18, `${label}:整手牌`);
     assert.ok(await page.locator('#play-cards').isVisible(), `${label}:出牌按钮`);
     await checkTableViewport(page);
+    assert.ok(await page.locator('#courtyard-canvas').isVisible(), `${label}:路径背景`);
+    assert.equal(await page.locator('.stage img').count(), 0, `${label}:场景不使用切图`);
+    const actionGap = await page.evaluate(() => {
+      const cards = [...document.querySelectorAll('.hand-card')].map((el) =>
+        el.getBoundingClientRect(),
+      );
+      const bottom = document.getElementById('play-cards').getBoundingClientRect().bottom;
+      return Math.min(...cards.map((r) => r.top)) - bottom;
+    });
+    assert.ok(actionGap >= 0, `${label}:操作按钮不遮挡手牌`);
     await page.locator('.hand-card').nth(9).dispatchEvent('pointerdown', { button: 0 });
     assert.equal(await page.evaluate(() => gameApp.state.game.selected.length), 1);
     // 点左上角空白处撤销选牌:任何视口下都不与牌面、顶栏命中区重叠。

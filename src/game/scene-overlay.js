@@ -1,5 +1,3 @@
-import { INK } from '../engine/palette.js';
-
 // SVG interaction shell above the Canvas scene: hit areas, labels and test hooks.
 // Each builder returns markup for one part; `ring` is a projected path string.
 export const deckMarkup = ({ player, deckCount }, thickness, ring) =>
@@ -17,5 +15,6 @@ export const bagMarkup = (player, palette, fill, hit) =>
 export const itemMarkup = (item, hit) =>
   `<g class="table-item" id="table-item-${item.id}" data-item="${item.id}" role="img" tabindex="0" aria-label="${item.name}：${item.effect}" aria-describedby="item-tooltip"><path d="${hit}" fill="transparent" pointer-events="all"/></g>`;
 
-export const labelMarkup = ({ text, cls }, [x, y]) =>
-  `<text class="${cls}" x="${x}" y="${y}" text-anchor="middle" fill="${INK}" font-size="12" font-weight="600">${text}</text>`;
+// 文字像素由 Canvas 绘制，这里保留读屏语义。
+export const labelMarkup = ({ text, cls }) =>
+  `<g class="${cls}" role="img" aria-label="${text}" pointer-events="none"></g>`;

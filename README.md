@@ -16,7 +16,7 @@
 ## 基本技术架构
 
 - **前端**：原生 JavaScript（ES Modules）、HTML 与 CSS。
-- **渲染**：Canvas 2D 绘制场景和动画，SVG 承载文字、键盘焦点与选牌交互区域。
+- **渲染**：Canvas 2D 绘制场景和动画，对局文字也由 Canvas 绘制；SVG 承载语义标注、键盘焦点与选牌交互区域。
 - **模块**：`app/` 管理对局调度、导航与存档；`ui/` 管理页面和交互；`game/` 实现规则与状态；`engine/` 提供通用渲染能力；`cards/`、`coins/`、`shop/` 实现卡牌、金币与商店模型。
 - **存储与构建**：浏览器 localStorage 保存进度，支持 JSON 导入导出；使用 esbuild 构建静态页面，通过 GitHub Pages / Nginx / Docker 部署。
 

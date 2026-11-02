@@ -86,9 +86,9 @@ try {
   assert.ok(await page.locator('.game-topbar').isVisible());
   assert.equal(await page.locator('.hand-card').count(), 18);
   await checkMobileLayout();
-  // 手机端相机垂直俯视牌桌,手牌比桌面端大一档,整行仍在牌桌内、不压到屏幕底边。
+  // 手机端相机浅俯视牌桌,手牌比桌面端大一档,整行仍在牌桌内、不压到屏幕底边。
   const camera = await page.evaluate(async () => (await import('/engine/camera.js')).cameraView());
-  assert.deepEqual(camera, { pitch: 90, distance: 0 }, '手机端相机正对桌面');
+  assert.deepEqual(camera, { pitch: 72, distance: 2400 }, '手机端沿用浅俯视透视');
   const handRow = await page.evaluate(() => {
     const cards = [...document.querySelectorAll('.hand-card')].map((el) =>
       el.getBoundingClientRect(),

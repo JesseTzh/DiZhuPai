@@ -1,4 +1,4 @@
-/* Per-mode table geometry. Both modes look straight down.
+/* Per-mode table geometry, viewed from a shallow overhead angle.
  * The phone mode frames only the area that matters:
  * rows sit closer and cards are drawn larger. The board stays inside its
  * viewport with a small gap from the status bar and screen edges.
@@ -7,22 +7,25 @@
  *
  * Every consumer (scene, renderer, controller) picks one layout up front, so
  * tuning one mode keeps the other mode's card geometry independent. */
+export const GAME_CAMERA = { pitch: 72, distance: 2400 };
+
 export const DESKTOP_LAYOUT = {
   // Rows 0 (player) and 1 (computer); bags, decks and hands all sit on these.
-  rowV: [180, -165],
-  handSpacing: 24,
+  rowV: [150, -174],
+  handSpacing: 27,
   handSpan: null,
-  handScale: 0.86,
-  playScale: 0.86,
+  handScale: 1.03,
+  playScale: 0.94,
+  playV: -32,
   playGap: 42,
   deckScale: 0.82,
   selectedLift: 22,
-  bagU: -315,
-  deckU: 315,
-  // Collectibles keep their authored corner below the player's hand.
-  itemLayout: null,
+  bagU: -350,
+  deckU: 350,
+  // 道具沿桌面左侧排列，避开底部手牌和钱袋。
+  itemLayout: { u: -352, v: -80, step: 24, scale: 0.32 },
   // Keep cards and collectibles visible without extra camera padding.
-  bounds: { u0: -384, u1: 384, v0: -273, v1: 273 },
+  bounds: { u0: -396, u1: 396, v0: -236, v1: 236 },
   // Action pills are drawn at this fraction of their desktop size.
   actionScale: 1,
 };
@@ -38,6 +41,7 @@ export const MOBILE_LAYOUT = {
   handSpan: 500,
   handScale: 1.15,
   playScale: 1,
+  playV: -32,
   playGap: 42,
   deckScale: 0.95,
   // A small lift keeps the raised card clear of the action pills.

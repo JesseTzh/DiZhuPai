@@ -11,7 +11,7 @@ export function tableGeometry(style = 'planks', { u: U = 365, v: V = 265 } = {})
     ? { l: '#dfe8de', m: '#b4c9bc', d: '#819c90' }
     : walnut
       ? { l: '#ae8055', m: '#92623e', d: '#64432e' }
-      : { l: '#d2af7e', m: '#b58b5e', d: '#886849' };
+      : { l: '#efbf7f', m: '#d69d60', d: '#a77748' };
   const outline = rrUV(-U, -V, U, V, marble ? 32 : walnut ? 22 : 12, 8);
   const A = outline.map(([u, v]) => world(u, v, -19));
   const B = outline.map(([u, v]) => world(u, v, -1));
@@ -23,7 +23,7 @@ export function tableGeometry(style = 'planks', { u: U = 365, v: V = 265 } = {})
     lines.push({ points: uv.map(([u, v]) => world(u, v, z)), color, width, closed });
   if (!marble) {
     // Individual boards and restrained long grain strokes; deterministic, never random per frame.
-    const strips = walnut ? 5 : 6;
+    const strips = walnut ? 6 : 8;
     for (let j = 1; j < strips; j++) {
       const v = -V + (2 * V * j) / strips;
       line(
@@ -35,16 +35,16 @@ export function tableGeometry(style = 'planks', { u: U = 365, v: V = 265 } = {})
         walnut ? 0.65 : 1.5,
       );
     }
-    for (let j = 0; j < 18; j++) {
-      const v = -V + 26 + j * ((2 * V - 52) / 18);
-      const x = -U + 26 + ((j * 79) % 160),
-        length = 80 + ((j * 61) % 220);
+    for (let j = 0; j < 64; j++) {
+      const v = -V + 26 + j * ((2 * V - 52) / 64);
+      const length = 35 + ((j * 61) % 180),
+        x = -U + 20 + ((j * 173) % Math.max(1, 2 * U - length - 40));
       line(
         Array.from({ length: 13 }, (_, k) => [
           x + (k * length) / 12,
           v + Math.sin(k * 0.6 + j) * (walnut ? 2 : 3),
         ]),
-        walnut ? '#93673f' : '#a07b51',
+        walnut ? '#93673f' : '#d59e63',
         0.65,
       );
     }

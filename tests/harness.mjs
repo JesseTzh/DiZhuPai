@@ -81,7 +81,7 @@ export async function checkTableViewport(page) {
     ];
     const canvas = document.getElementById('cpu-scene');
     const ctx = canvas.getContext('2d');
-    const pixels = [0.02, 0.25, 0.5, 0.75, 0.98].flatMap((x) =>
+    const pixels = [0.1, 0.25, 0.5, 0.75, 0.9].flatMap((x) =>
       [0.06, 0.25, 0.5, 0.75, 0.94].map(
         (y) =>
           ctx.getImageData(Math.floor(x * canvas.width), Math.floor(y * canvas.height), 1, 1)
@@ -108,19 +108,19 @@ export async function checkTableViewport(page) {
       hands,
     };
   });
-  assert.deepEqual(result.camera, { pitch: 90, distance: 0 }, '统一垂直无透视视角');
+  assert.deepEqual(result.camera, { pitch: 72, distance: 2400 }, '统一浅俯视透视视角');
   assert.equal(result.gap, result.expectedGap, '牌桌与顶栏或侧栏保持固定间隙');
   assert.ok(
     result.alignment.every((delta) => Math.abs(delta) < 1),
     '牌桌与顶栏或侧栏对齐',
   );
   assert.ok(
-    result.tableEdges.every((gap) => Math.abs(gap - 4) < 1),
-    '桌面四边保留留白且不裁切',
+    result.tableEdges.every((gap) => gap >= 6),
+    '透视桌面四边保留留白且不裁切',
   );
   assert.ok(
     result.pixels.every((alpha) => alpha > 240),
-    '桌面材质覆盖画布边缘及中心',
+    '桌面材质覆盖透视桌面内部',
   );
   assert.ok(result.hands.every(Boolean), '手牌完整保留在牌桌内');
 }

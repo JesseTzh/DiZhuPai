@@ -5,11 +5,13 @@ import { mountShop } from '../shop/view.js';
 import { mountTableControls } from './table-controls.js';
 import { mountGameTopbar } from './game-topbar.js';
 import { isMobileLandscape } from './device-mode.js';
+import { mountCourtyard, drawCloud } from './courtyard-art.js';
 import { layoutFor } from '../game/scene-layout.js';
 
 export function mountGameView({ state, ui, actions: controller, isGamePage }) {
   const { game } = state;
   const stage = document.querySelector('.stage');
+  mountCourtyard(stage);
   const menu = document.createElement('button');
   menu.id = 'open-settings';
   menu.className = 'table-settings-button';
@@ -38,9 +40,13 @@ export function mountGameView({ state, ui, actions: controller, isGamePage }) {
     actionCtx.setTransform(ratio, 0, 0, ratio, 0, 0);
     actionCtx.clearRect(0, 0, w, h);
     if (!['playing', 'dealing'].includes(game.phase)) return;
+    const cloudScale = Math.min(w / 1672, h / 941);
+    drawCloud(actionCtx, 4, h * 0.5, cloudScale * 0.9);
+    drawCloud(actionCtx, w - 4, h * 0.51, cloudScale * 0.9, -1);
     const mobile = isMobileLandscape();
     const layout = layoutFor(mobile);
-    const scale = layout.actionScale;
+    const scale =
+      layout.actionScale * (mobile ? 1 : Math.max(0.8, Math.min(1.65, w / 1015, h / 570)));
     const viewport = figure.parentElement;
     const left = mobile ? viewport.offsetLeft : 0;
     const availableWidth = mobile ? viewport.clientWidth : w;
@@ -54,7 +60,7 @@ export function mountGameView({ state, ui, actions: controller, isGamePage }) {
     );
     const contentTop = viewport.offsetTop + (viewport.clientHeight - box.height * viewScale) / 2;
     const center = Number(figure.dataset.actionCenter);
-    const rowGap = Number(figure.dataset.actionGap) * viewScale;
+    const rowGap = Number(figure.dataset.actionGap);
     const handTop = contentTop + (center + rowGap / 2) * viewScale;
     const actionY = figure.dataset.actionCenter
       ? // Never sit on the hand: where the gap between the played row and the hand
@@ -82,12 +88,12 @@ export function mountGameView({ state, ui, actions: controller, isGamePage }) {
         actionCtx.lineTo(x, y + cut);
         actionCtx.closePath();
       };
-      actionCtx.fillStyle = '#41538f';
+      actionCtx.fillStyle = '#91633d';
       actionCtx.translate(3, 5);
       path();
       actionCtx.fill();
       actionCtx.translate(-3, -5);
-      actionCtx.fillStyle = disabled ? '#d9d1c0' : fill;
+      actionCtx.fillStyle = disabled ? '#d4c5ab' : fill;
       path();
       actionCtx.fill();
       actionCtx.strokeStyle = '#231e16';
@@ -115,6 +121,9 @@ export function mountGameView({ state, ui, actions: controller, isGamePage }) {
         actionCtx.moveTo(x + 16, y + 14);
         actionCtx.lineTo(x + 16, y + 29);
         actionCtx.lineTo(x + 25, y + 21.5);
+        actionCtx.closePath();
+        actionCtx.fillStyle = disabled ? '#9f937f' : '#61472d';
+        actionCtx.fill();
       } else if (icon === 'steal') {
         actionCtx.arc(x + 19, y + 21, 7, Math.PI * 0.6, Math.PI * 1.9);
         actionCtx.moveTo(x + 13.5, y + 15.5);
@@ -157,7 +166,7 @@ export function mountGameView({ state, ui, actions: controller, isGamePage }) {
       });
       cursor += stealW + gap;
     }
-    draw(cursor, passW, '#fff4d6', '过牌', 'pass', buttons[2]?.disabled, hoveredAction === 'pass');
+    draw(cursor, passW, '#fff0cd', '过牌', 'pass', buttons[2]?.disabled, hoveredAction === 'pass');
     Object.assign(buttons[2].style, {
       left: `${left + cursor * scale}px`,
       top: `${hitY}px`,
@@ -165,7 +174,7 @@ export function mountGameView({ state, ui, actions: controller, isGamePage }) {
       height: `${52 * scale}px`,
     });
     cursor += passW + gap;
-    draw(cursor, playW, '#93d3b0', '出牌', 'play', buttons[1]?.disabled, hoveredAction === 'play');
+    draw(cursor, playW, '#ffedc8', '出牌', 'play', buttons[1]?.disabled, hoveredAction === 'play');
     Object.assign(buttons[1].style, {
       left: `${left + cursor * scale}px`,
       top: `${hitY}px`,

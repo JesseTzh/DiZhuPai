@@ -86,7 +86,7 @@ try {
   assert.equal(await page.locator('#camera-pitch, .camera-controls').count(), 0);
   assert.equal(
     await page.evaluate(async () => (await import('/engine/camera.js')).cameraView().pitch),
-    90,
+    72,
   );
   await page.screenshot({ path: 'test-results/shop-items-in-play.png' });
   assert.equal(await page.locator('.wild-card-model').count(), 1);
