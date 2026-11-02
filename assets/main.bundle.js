@@ -965,26 +965,28 @@
   });
 
   // src/game/scene-layout.js
-  var DESKTOP_LAYOUT, MOBILE_LAYOUT, layoutFor;
+  var GAME_CAMERA, DESKTOP_LAYOUT, MOBILE_LAYOUT, layoutFor;
   var init_scene_layout = __esm({
     "src/game/scene-layout.js"() {
       init_define_GAME_SOUNDS();
+      GAME_CAMERA = { pitch: 72, distance: 2400 };
       DESKTOP_LAYOUT = {
         // Rows 0 (player) and 1 (computer); bags, decks and hands all sit on these.
-        rowV: [180, -165],
-        handSpacing: 24,
+        rowV: [150, -174],
+        handSpacing: 27,
         handSpan: null,
-        handScale: 0.86,
-        playScale: 0.86,
+        handScale: 1.03,
+        playScale: 0.94,
+        playV: -32,
         playGap: 42,
         deckScale: 0.82,
         selectedLift: 22,
-        bagU: -315,
-        deckU: 315,
-        // Collectibles keep their authored corner below the player's hand.
-        itemLayout: null,
+        bagU: -350,
+        deckU: 350,
+        // 道具沿桌面左侧排列，避开底部手牌和钱袋。
+        itemLayout: { u: -352, v: -80, step: 24, scale: 0.32 },
         // Keep cards and collectibles visible without extra camera padding.
-        bounds: { u0: -384, u1: 384, v0: -273, v1: 273 },
+        bounds: { u0: -396, u1: 396, v0: -236, v1: 236 },
         // Action pills are drawn at this fraction of their desktop size.
         actionScale: 1
       };
@@ -999,6 +1001,7 @@
         handSpan: 500,
         handScale: 1.15,
         playScale: 1,
+        playV: -32,
         playGap: 42,
         deckScale: 0.95,
         // A small lift keeps the raised card clear of the action pills.
@@ -1057,11 +1060,19 @@
     return { width, height };
   }
   function tableSize(view2, viewport) {
-    const origin = P(...world(0, 0)), unit = P(...world(1, 1)), inset = 4 * view2.width / viewport.width;
-    return {
-      u: (view2.width / 2 - inset) / (unit[0] - origin[0]),
-      v: (view2.height / 2 - inset) / (unit[1] - origin[1])
-    };
+    const inset = 7 * view2.width / viewport.width;
+    let low = 0, high = 1600;
+    for (let i = 0; i < 40; i++) {
+      const v2 = (low + high) / 2;
+      const top = P(...world(0, -v2, -1))[1];
+      const bottom = P(...world(0, v2, -1))[1];
+      if (top >= inset && bottom <= view2.height - inset) low = v2;
+      else high = v2;
+    }
+    const v = low;
+    const center2 = P(...world(0, v, -1))[0];
+    const unit = P(...world(1, v, -1))[0] - center2;
+    return { u: (Math.min(center2, view2.width - center2) - inset) / unit, v };
   }
   function sceneFrame(st, layout = DESKTOP_LAYOUT) {
     const { game: game2, visual: visual2 } = st;
@@ -1195,7 +1206,7 @@
           id,
           {
             u: visual2.steal.from[i] + (to.u - visual2.steal.from[i]) * e,
-            v: to.v * e,
+            v: layout.playV + (to.v - layout.playV) * e,
             z: 6 + (to.z - 6) * e + Math.sin(t * Math.PI) * 30,
             scale: layout.handScale,
             flip: 0
@@ -1213,7 +1224,12 @@
       const played = sortHand(lastPlay.cards, lastPlay.player === 0 ? { stamp: game2.stamp } : null), n = played.length, gap = Math.min(layout.playGap, 445 / Math.max(1, n - 1));
       for (let i = 0; i < n; i++) {
         const t = Math.min(1, visual2.playTime / 0.36), e = t * t * (3 - 2 * t), from = visual2.playFrom?.[i];
-        let pose = { u: (i - (n - 1) / 2) * gap, v: 0, z: 6 + i * 0.1, scale: layout.playScale };
+        let pose = {
+          u: (i - (n - 1) / 2) * gap,
+          v: layout.playV,
+          z: 6 + i * 0.1,
+          scale: layout.playScale
+        };
         if (from && t < 1)
           pose = {
             ...pose,
@@ -1229,7 +1245,7 @@
           stampFace: lastPlay.player === 0 && game2.stamp?.card === played[i] ? game2.stamp.card + 1 : null
         });
       }
-      label2(`${lastPlay.player === 0 ? "你" : "电脑"} · ${lastPlay.move.name}`, 0, -63);
+      label2(`${lastPlay.player === 0 ? "你" : "电脑"} · ${lastPlay.move.name}`, 0, layout.playV - 63);
     }
     const entry = visual2.entry;
     if (entry) {
@@ -1458,23 +1474,23 @@
           ];
         }
         path(points, closed = true) {
-          const path3 = new Path2D();
+          const path4 = new Path2D();
           for (let i = 0; i < points.length; i++) {
             const p = this.project(points[i]);
-            if (i) path3.lineTo(...p);
-            else path3.moveTo(...p);
+            if (i) path4.lineTo(...p);
+            else path4.moveTo(...p);
           }
-          if (closed) path3.closePath();
-          return path3;
+          if (closed) path4.closePath();
+          return path4;
         }
         polygon(points, color, stroke2 = null, width = 1) {
-          const path3 = this.path(points), ctx = this.ctx;
+          const path4 = this.path(points), ctx = this.ctx;
           ctx.fillStyle = color;
-          ctx.fill(path3);
+          ctx.fill(path4);
           if (stroke2) {
             ctx.strokeStyle = stroke2;
             ctx.lineWidth = width;
-            ctx.stroke(path3);
+            ctx.stroke(path4);
           }
         }
         line(points, color = INK, width = 1, closed = false) {
@@ -1594,20 +1610,20 @@
             for (let j = 0; j < n; j++) {
               if (!visible[i][j]) continue;
               const color = shade(mesh.normals[i][j], palette), k = (j + 1) % n;
-              let path3 = groups2.get(color);
-              if (!path3) groups2.set(color, path3 = new Path2D());
-              path3.moveTo(A[j][0], A[j][1]);
-              path3.lineTo(A[k][0], A[k][1]);
-              path3.lineTo(B[k][0], B[k][1]);
-              path3.lineTo(B[j][0], B[j][1]);
-              path3.closePath();
+              let path4 = groups2.get(color);
+              if (!path4) groups2.set(color, path4 = new Path2D());
+              path4.moveTo(A[j][0], A[j][1]);
+              path4.lineTo(A[k][0], A[k][1]);
+              path4.lineTo(B[k][0], B[k][1]);
+              path4.lineTo(B[j][0], B[j][1]);
+              path4.closePath();
             }
           }
           ctx.lineWidth = 0.35;
-          for (const [color, path3] of groups2) {
+          for (const [color, path4] of groups2) {
             ctx.fillStyle = ctx.strokeStyle = color;
-            ctx.fill(path3);
-            ctx.stroke(path3);
+            ctx.fill(path4);
+            ctx.stroke(path4);
           }
           const edges = new Path2D(), segment = (a, b) => {
             edges.moveTo(a[0], a[1]);
@@ -1721,14 +1737,14 @@
         card(g, image, options) {
           const { A, B, U, V, N, point, scale, thickness } = g, front = facing(N), ring = front ? B : A, ctx = this.ctx;
           ctx.save();
-          const silhouette = hull([...A, ...B].map((p) => this.project(p))), path3 = new Path2D();
-          silhouette.forEach((p, i) => i ? path3.lineTo(...p) : path3.moveTo(...p));
-          path3.closePath();
+          const silhouette = hull([...A, ...B].map((p) => this.project(p))), path4 = new Path2D();
+          silhouette.forEach((p, i) => i ? path4.lineTo(...p) : path4.moveTo(...p));
+          path4.closePath();
           ctx.fillStyle = cardStock.m;
-          ctx.fill(path3);
+          ctx.fill(path4);
           ctx.strokeStyle = INK;
           ctx.lineWidth = 1.5;
-          ctx.stroke(path3);
+          ctx.stroke(path4);
           if (options.deckCount > 1) {
             const edges = new Path2D();
             for (let i = 1; i < options.deckCount; i++) {
@@ -1762,26 +1778,26 @@
         }
         coin(g, image, map = (p) => p) {
           const front = facing(g.n), cap = front ? g.B : g.A, ctx = this.ctx, A = g.A.map((p) => this.project(map(p))), B = g.B.map((p) => this.project(map(p)));
-          let color = null, path3 = null;
+          let color = null, path4 = null;
           for (let i = 0; i < A.length; i++) {
             const j = (i + 1) % A.length, n = norm(sub(avg([g.A[i], g.A[j], g.B[j], g.B[i]]), g.c)), shade = facing(n) && tone(n, coinGold);
-            if (shade !== color && path3) {
+            if (shade !== color && path4) {
               ctx.fillStyle = color;
-              ctx.fill(path3);
-              path3 = null;
+              ctx.fill(path4);
+              path4 = null;
             }
             color = shade;
             if (!shade) continue;
-            path3 ??= new Path2D();
-            path3.moveTo(A[i][0], A[i][1]);
-            path3.lineTo(A[j][0], A[j][1]);
-            path3.lineTo(B[j][0], B[j][1]);
-            path3.lineTo(B[i][0], B[i][1]);
-            path3.closePath();
+            path4 ??= new Path2D();
+            path4.moveTo(A[i][0], A[i][1]);
+            path4.lineTo(A[j][0], A[j][1]);
+            path4.lineTo(B[j][0], B[j][1]);
+            path4.lineTo(B[i][0], B[i][1]);
+            path4.closePath();
           }
-          if (path3) {
+          if (path4) {
             ctx.fillStyle = color;
-            ctx.fill(path3);
+            ctx.fill(path4);
           }
           this.polygon(cap.map(map), coinGold.m, INK, 0.65);
           const center2 = avg(cap), r = COIN_R, sign = front ? 1 : -1;
@@ -1869,7 +1885,7 @@
           this.skin(body, palette, map);
           const ctx = this.ctx;
           for (const { points, normals, color, width } of weave) {
-            const path3 = new Path2D();
+            const path4 = new Path2D();
             let run = false;
             for (let i = 0; i < points.length; i++) {
               if (!facing(normals[i])) {
@@ -1877,13 +1893,13 @@
                 continue;
               }
               const p = this.project(map(points[i]));
-              if (run) path3.lineTo(...p);
-              else path3.moveTo(...p);
+              if (run) path4.lineTo(...p);
+              else path4.moveTo(...p);
               run = true;
             }
             ctx.strokeStyle = color;
             ctx.lineWidth = width * scale;
-            ctx.stroke(path3);
+            ctx.stroke(path4);
           }
           const th = Math.PI / 4, z = m.Hb * 0.46, n = m.normal(th, z);
           if (facing(n)) {
@@ -2463,7 +2479,7 @@
     const key = `${style}|${U}|${V}`;
     if (cache2.has(key)) return cache2.get(key);
     const marble = style === "marble", walnut = style === "walnut";
-    const material = marble ? { l: "#dfe8de", m: "#b4c9bc", d: "#819c90" } : walnut ? { l: "#ae8055", m: "#92623e", d: "#64432e" } : { l: "#d2af7e", m: "#b58b5e", d: "#886849" };
+    const material = marble ? { l: "#dfe8de", m: "#b4c9bc", d: "#819c90" } : walnut ? { l: "#ae8055", m: "#92623e", d: "#64432e" } : { l: "#efbf7f", m: "#d69d60", d: "#a77748" };
     const outline = rrUV(-U, -V, U, V, marble ? 32 : walnut ? 22 : 12, 8);
     const A = outline.map(([u, v]) => world(u, v, -19));
     const B = outline.map(([u, v]) => world(u, v, -1));
@@ -2471,7 +2487,7 @@
     const polygon = (points, color) => polygons.push({ points, color });
     const line = (uv, color, width = 0.8, closed = false, z = -0.75) => lines.push({ points: uv.map(([u, v]) => world(u, v, z)), color, width, closed });
     if (!marble) {
-      const strips = walnut ? 5 : 6;
+      const strips = walnut ? 6 : 8;
       for (let j = 1; j < strips; j++) {
         const v = -V + 2 * V * j / strips;
         line(
@@ -2483,15 +2499,15 @@
           walnut ? 0.65 : 1.5
         );
       }
-      for (let j = 0; j < 18; j++) {
-        const v = -V + 26 + j * ((2 * V - 52) / 18);
-        const x = -U + 26 + j * 79 % 160, length = 80 + j * 61 % 220;
+      for (let j = 0; j < 64; j++) {
+        const v = -V + 26 + j * ((2 * V - 52) / 64);
+        const length = 35 + j * 61 % 180, x = -U + 20 + j * 173 % Math.max(1, 2 * U - length - 40);
         line(
           Array.from({ length: 13 }, (_, k) => [
             x + k * length / 12,
             v + Math.sin(k * 0.6 + j) * (walnut ? 2 : 3)
           ]),
-          walnut ? "#93673f" : "#a07b51",
+          walnut ? "#93673f" : "#d59e63",
           0.65
         );
       }
@@ -3666,8 +3682,8 @@
       const outline = hull(part.points.map((p) => canvas.project(p))), ctx = canvas.ctx;
       ctx.strokeStyle = INK;
       ctx.lineWidth = 0.7;
-      const path3 = new Path2D(sp(outline));
-      ctx.stroke(path3);
+      const path4 = new Path2D(sp(outline));
+      ctx.stroke(path4);
     }
   }
   function drawTableItemShadow(canvas, model2, clip) {
@@ -3712,6 +3728,111 @@
     }
   });
 
+  // src/game/table-ornament.js
+  function paintTableOrnament(canvas, table) {
+    const U = Math.max(...table.outline.map(([u]) => u));
+    const V = Math.max(...table.outline.map(([, v]) => v));
+    const marble = table.material.l === "#dfe8de";
+    const rail = (u0, v0, u1, v1, z = 9) => {
+      const corners = [
+        [u0, v0],
+        [u1, v0],
+        [u1, v1],
+        [u0, v1]
+      ];
+      const top = corners.map(([u, v]) => world(u, v, z));
+      const base = corners.map(([u, v]) => world(u, v, -1));
+      for (const [a, b] of [
+        [1, 2],
+        [2, 3],
+        [3, 0]
+      ])
+        canvas.polygon([base[a], base[b], top[b], top[a]], table.material.d, "#715036", 0.85);
+      canvas.polygon(top, marble ? "#d2dbc8" : "#d69c60", "#735237", 1.25);
+      canvas.line(
+        [
+          [u0 + 3, v0 + 2],
+          [u1 - 3, v0 + 2]
+        ].map(([u, v]) => world(u, v, z + 0.1)),
+        "#f7d89b",
+        1.3
+      );
+      if (u1 - u0 > 40)
+        for (let i = 0; i < 3; i++) {
+          const v = v0 + 3 + (v1 - v0 - 5) * i / 3;
+          canvas.line(
+            Array.from(
+              { length: 15 },
+              (_, j) => world(u0 + 8 + (u1 - u0 - 16) * j / 14, v + Math.sin(j * 0.7 + i) * 0.8, z + 0.2)
+            ),
+            "#af7847",
+            0.55
+          );
+        }
+    };
+    rail(-U + 2, -V + 2, U - 2, -V + 11, 7);
+    rail(-U + 2, -V + 12, -U + 12, V - 12, 7);
+    rail(U - 12, -V + 12, U - 2, V - 12, 7);
+    rail(-U + 2, V - 12, U - 2, V - 2, 9);
+    for (const u of [-U * 0.72, U * 0.72]) {
+      rail(u - 9, -V + 1, u + 9, -V + 14, 10);
+      rail(u - 9, V - 15, u + 9, V - 1, 12);
+    }
+    const ctx = canvas.ctx;
+    const o = P(...world(0, 0, -0.5));
+    const x = P(...world(1, 0, -0.5));
+    const y = P(...world(0, 1, -0.5));
+    ctx.save();
+    ctx.transform(x[0] - o[0], x[1] - o[1], y[0] - o[0], y[1] - o[1], ...o);
+    ctx.strokeStyle = "#b77e42";
+    ctx.fillStyle = "#b77e42";
+    ctx.globalAlpha = 0.29;
+    for (const [rx, ry] of [
+      [182, 97],
+      [177, 92]
+    ]) {
+      ctx.beginPath();
+      ctx.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2);
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    }
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.font = "900 63px 'STKaiti', 'Kaiti SC', 'Songti SC', serif";
+    ctx.fillText("斗地主", 0, 0);
+    for (const side of [-1, 1]) {
+      ctx.save();
+      ctx.translate(side * 171, 0);
+      ctx.scale(side, 1);
+      ctx.lineWidth = 1.5;
+      for (const [cx, cy, r] of [
+        [0, 0, 15],
+        [19, -7, 11],
+        [16, 14, 10],
+        [-12, 12, 9],
+        [-5, -20, 9]
+      ]) {
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, 0.2, Math.PI * 1.8);
+        ctx.stroke();
+      }
+      ctx.beginPath();
+      ctx.moveTo(5, -22);
+      ctx.bezierCurveTo(26, -45, 52, -21, 28, -18);
+      ctx.bezierCurveTo(51, -4, 37, 19, 19, 11);
+      ctx.stroke();
+      ctx.restore();
+    }
+    ctx.restore();
+  }
+  var init_table_ornament = __esm({
+    "src/game/table-ornament.js"() {
+      init_define_GAME_SOUNDS();
+      init_table();
+      init_camera();
+    }
+  });
+
   // src/game/table-layer.js
   function paintTable(canvas, table, items) {
     const { A, B, outline, material } = table;
@@ -3724,11 +3845,13 @@
     for (const { points, color } of table.polygons) canvas.polygon(points, color);
     for (const { points, color, width, closed } of table.lines)
       canvas.line(points, color, width, closed);
+    paintTableOrnament(canvas, table);
     for (const model2 of items) drawTableItemShadow(canvas, model2, B);
   }
   var init_table_layer = __esm({
     "src/game/table-layer.js"() {
       init_define_GAME_SOUNDS();
+      init_table_ornament();
       init_shading();
       init_math();
       init_palette();
@@ -3742,13 +3865,12 @@
   var init_scene_overlay = __esm({
     "src/game/scene-overlay.js"() {
       init_define_GAME_SOUNDS();
-      init_palette();
       deckMarkup = ({ player, deckCount }, thickness, ring) => `<g class="card-deck" data-player="${player}" data-count="${deckCount}" data-thickness="${thickness}" role="img" aria-label="余牌 ${deckCount} 张"><path d="${ring}" fill="none" pointer-events="none"/></g>`;
       wildMarkup = (id, { wild, revealing }, ring) => `<g class="${wild ? "wild-card-model" : "wild-card-reveal"}" id="wild-card-${id}" data-card-model="frog-wild" data-wild-card="${id}" data-revealing="${!!revealing}" role="img" aria-label="青蛙赖子牌" pointer-events="none"><path d="${ring}" fill="none" pointer-events="none"/></g>`;
       handCardMarkup = (id, { act, selected, name, handIndex }, hover, ring) => `<g data-act="${act}" data-card="${id}" data-hand-index="${handIndex}" data-hover="${hover.toFixed(3)}" class="hand-card${selected ? " selected" : ""}" role="button" tabindex="0" aria-label="${name}" aria-pressed="${!!selected}"><path d="${ring}" fill="transparent" pointer-events="all"/></g>`;
       bagMarkup = (player, palette, fill, hit) => `<g class="money-bag" data-player="${player}" data-palette="${palette}" data-fill="${fill.toFixed(4)}"${player === 0 ? ' data-act="poke-bag" role="button" tabindex="0" aria-label="点击钱袋吐金币"' : ""}>${player === 0 ? `<path d="${hit}" fill="transparent" pointer-events="all"/>` : ""}</g>`;
       itemMarkup = (item, hit) => `<g class="table-item" id="table-item-${item.id}" data-item="${item.id}" role="img" tabindex="0" aria-label="${item.name}：${item.effect}" aria-describedby="item-tooltip"><path d="${hit}" fill="transparent" pointer-events="all"/></g>`;
-      labelMarkup = ({ text, cls }, [x, y]) => `<text class="${cls}" x="${x}" y="${y}" text-anchor="middle" fill="${INK}" font-size="12" font-weight="600">${text}</text>`;
+      labelMarkup = ({ text, cls }) => `<g class="${cls}" role="img" aria-label="${text}" pointer-events="none"></g>`;
     }
   });
 
@@ -3950,7 +4072,7 @@
       const entry = st.visual.entry;
       const progress = entry ? Math.min(1, Math.max(0, (entry.time - 0.16) / 0.56)) : 1;
       const home = st.visual.home && !entry;
-      setCameraPitch(90, 0);
+      setCameraPitch(home ? 90 : GAME_CAMERA.pitch, home ? 0 : GAME_CAMERA.distance);
       canvas.size = { width: svg.clientWidth, height: svg.clientHeight };
       let framing = {};
       if (!home) {
@@ -3976,7 +4098,7 @@
     function anchorControls(st, layout, view2) {
       const handCount = st.game.hands[0].length || 18, key = `${view2}|${handCount}|${layout.handScale}|${layout.playScale}`;
       if (anchors?.key !== key) {
-        const hand2 = canvas.cardGeometry(handPose(0, handCount - 1, handCount, layout)), played = canvas.cardGeometry({ u: 0, v: 0, z: 6, scale: layout.playScale });
+        const hand2 = canvas.cardGeometry(handPose(0, handCount - 1, handCount, layout)), played = canvas.cardGeometry({ u: 0, v: layout.playV, z: 6, scale: layout.playScale });
         const handTop = Math.min(...[...hand2.A, ...hand2.B].map((point) => P(...point)[1])), playedBottom = Math.max(...[...played.A, ...played.B].map((point) => P(...point)[1]));
         anchors = {
           key,
@@ -4031,11 +4153,37 @@
       scene.hits.sort(paintOrder);
       for (const part of scene.parts) sprites.draw(canvas, part.key, part.extent, part.draw);
       sprites.end();
+      for (const label2 of frame.labels) {
+        const [x, y] = P(...world(label2.u, label2.v, label2.z));
+        const ctx = canvas.ctx;
+        ctx.save();
+        const delta = label2.cls.includes("coin-delta");
+        ctx.fillStyle = delta ? label2.cls.includes("gain") ? "#347452" : "#ba4835" : "#3d2b1c";
+        ctx.textAlign = "center";
+        ctx.font = `700 ${delta ? 27 : 11}px 'PingFang SC', sans-serif`;
+        if (delta) {
+          ctx.strokeStyle = "#fff0cd";
+          ctx.lineWidth = 3;
+          ctx.strokeText(label2.text, x, y);
+        }
+        ctx.fillText(label2.text, x, y);
+        if (label2.cls === "scene-label") {
+          const half = ctx.measureText(label2.text).width / 2 + 12;
+          ctx.strokeStyle = "#a27b49";
+          ctx.lineWidth = 0.65;
+          for (const side of [-1, 1]) {
+            ctx.beginPath();
+            ctx.moveTo(x + side * half, y - 4);
+            ctx.lineTo(x + side * (half + 24), y - 4);
+            ctx.stroke();
+          }
+        }
+        ctx.restore();
+      }
       canvas.finish(+((wbEl ||= document.getElementById("wb"))?.value ?? 2.4));
       const overlay = scene.overlay;
       for (const target of scene.hits) overlay.push(target.markup);
-      for (const label2 of frame.labels)
-        overlay.push(labelMarkup(label2, P(...world(label2.u, label2.v, label2.z))));
+      for (const label2 of frame.labels) overlay.push(labelMarkup(label2));
       const markup = overlay.join("");
       if (markup !== layer._markup) {
         patchSvg(layer, markup);
@@ -5282,7 +5430,7 @@
 
   // src/ui/build-version.js
   init_define_GAME_SOUNDS();
-  var BUILD_VERSION = true ? "Version:261102-1337-1364cf6-prod" : "Version:dev-test";
+  var BUILD_VERSION = true ? "Version:261102-1552-453dd09-prod" : "Version:dev-test";
   function mountBuildVersion(container) {
     const canvas = document.createElement("canvas");
     canvas.className = "settings-version";
@@ -6840,8 +6988,8 @@
   init_table_geometry();
   init_palette();
   init_items2();
-  var shape = (ctx, path3, fill, stroke2 = INK, width = 1.5) => {
-    const p = new Path2D(path3);
+  var shape = (ctx, path4, fill, stroke2 = INK, width = 1.5) => {
+    const p = new Path2D(path4);
     if (fill) {
       ctx.fillStyle = fill;
       ctx.fill(p);
@@ -6892,17 +7040,19 @@
     ctx.translate(x, y);
     ctx.scale(size / 48, size / 48);
     shape(ctx, "M7 39 30 44 44 36 21 32Z", "#829ac7", null);
-    for (const [path3, fill] of icons[name] || TOYS[name]?.icon || [
+    for (const [path4, fill] of icons[name] || TOYS[name]?.icon || [
       ["M12 12H36V36H12Z", "#fff4d6"],
       ["M18 24H30M24 18V30", null]
     ])
-      shape(ctx, path3, fill, INK, 2);
+      shape(ctx, path4, fill, INK, 2);
     ctx.restore();
   }
   function drawGear(ctx, x, y, size, focused) {
     ctx.save();
     ctx.translate(x + size / 2, y + size / 2);
     ctx.scale(size / 32, size / 32);
+    roundPanel(ctx, -22, -23, 44, 46, "#b98550", 7);
+    roundPanel(ctx, -21, -25, 42, 44, "#f0c58c", 6);
     const points = Array.from({ length: 32 }, (_, i) => {
       const a = -Math.PI / 2 + i * Math.PI / 16;
       const r = i % 4 < 2 ? 12.8 : 9.8;
@@ -6912,9 +7062,9 @@
     ctx.translate(1.5, 2);
     shape(ctx, points, SHADOW, null);
     ctx.restore();
-    shape(ctx, points, focused ? "#c5edcc" : "#93d3b0", INK, 1.7);
+    shape(ctx, points, focused ? "#fff3d7" : "#fff0cb", INK, 1.7);
     shape(ctx, "M-6.3 0a6.3 6.3 0 1 0 12.6 0a6.3 6.3 0 1 0-12.6 0", "#fff4d6");
-    shape(ctx, "M-2.5 0a2.5 2.5 0 1 0 5 0a2.5 2.5 0 1 0-5 0", "#93d3b0");
+    shape(ctx, "M-2.5 0a2.5 2.5 0 1 0 5 0a2.5 2.5 0 1 0-5 0", "#b58a55");
     ctx.restore();
   }
   function label(ctx, value, x, y, size = 11, weight = 600, color = INK) {
@@ -6938,14 +7088,14 @@
     ctx.translate(3, 3);
     ctx.save();
     ctx.translate(4, 7);
-    roundPanel(ctx, 0, 0, w, h, SHADOW, 10);
+    roundPanel(ctx, 0, 0, w, h, "#735a40", 10);
     ctx.restore();
     roundPanel(ctx, 0, 5, w, h, material.d, 10);
     roundPanel(ctx, 0, 0, w, h, material.l, 10);
     ctx.beginPath();
     ctx.roundRect(0, 0, w, h, 10);
     ctx.clip();
-    const stageAccent = ["#5a82c6", "#bd6b46", "#8a6bb5"][Math.max(0, Math.min(2, stage - 1))];
+    const stageAccent = ["#b78349", "#bd6b46", "#8a6bb5"][Math.max(0, Math.min(2, stage - 1))];
     ctx.beginPath();
     ctx.roundRect(8, 4, w - 16, h - 8, 7);
     ctx.strokeStyle = stageAccent;
@@ -6959,7 +7109,7 @@
     ];
     const stride = stage === 2 ? 4 : stage >= 3 ? 5 : 3;
     const sparseLines = lines.filter(
-      (line, index) => line.closed || index < 5 || index % stride === 0
+      (line, index) => line.closed || index > 7 && index % stride === 0
     );
     for (const line of sparseLines) {
       ctx.beginPath();
@@ -7117,8 +7267,7 @@
       const coinX = mobile ? 113 : 168;
       const stageIcon = stageAppearance(state2.game.stage);
       drawIcon(ctx, stageIcon.icon, 14, statY, 40);
-      label(ctx, "关数", 59, statY + 11, 10);
-      label(ctx, `${state2.game.stage}-${state2.game.substage}`, 59, statY + 35, 23, 800);
+      label(ctx, `${state2.game.stage}-${state2.game.substage}`, 59, statY + 27, 23, 800);
       drawIcon(ctx, "coins", coinX, statY, 40);
       label(ctx, "当前金币", coinX + 45, statY + 11, 10);
       label(ctx, state2.game.coins[0].toLocaleString("zh-CN"), coinX + 45, statY + 35, 23, 800);
@@ -7212,10 +7361,178 @@
 
   // src/ui/game-view.js
   init_device_mode();
+
+  // src/ui/courtyard-art.js
+  init_define_GAME_SOUNDS();
+  var INK2 = "#66513b";
+  function path2(ctx, points, fill, stroke2 = INK2, width = 1.5) {
+    ctx.beginPath();
+    points.forEach(([x, y], i) => i ? ctx.lineTo(x, y) : ctx.moveTo(x, y));
+    ctx.closePath();
+    ctx.fillStyle = fill;
+    ctx.fill();
+    if (stroke2) {
+      ctx.strokeStyle = stroke2;
+      ctx.lineWidth = width;
+      ctx.stroke();
+    }
+  }
+  function foliage(ctx, x, y, scale, seed2) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(scale, scale);
+    for (let j = 0; j < 11; j++) {
+      const a = j * 2.4 + seed2;
+      const cx = Math.cos(a) * (18 + j % 3 * 19);
+      const cy = Math.sin(a) * (18 + j % 4 * 12);
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate(a);
+      ctx.beginPath();
+      ctx.moveTo(-30, 0);
+      ctx.bezierCurveTo(-20, -16, -13, -21, -5, -13);
+      ctx.bezierCurveTo(1, -29, 18, -18, 14, -9);
+      ctx.bezierCurveTo(40, -13, 38, 10, 25, 12);
+      ctx.bezierCurveTo(20, 29, 3, 21, 2, 14);
+      ctx.bezierCurveTo(-14, 29, -29, 17, -22, 8);
+      ctx.closePath();
+      ctx.fillStyle = ["#7c8e72", "#97a181", "#667f70", "#b0ad82"][j % 4];
+      ctx.fill();
+      ctx.strokeStyle = "#5c6a59";
+      ctx.lineWidth = 1.2;
+      ctx.stroke();
+      ctx.restore();
+    }
+    ctx.restore();
+  }
+  function drawCloud(ctx, x, y, scale = 1, mirror = 1) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(scale * mirror, scale);
+    ctx.beginPath();
+    ctx.moveTo(-100, 48);
+    ctx.bezierCurveTo(-110, 20, -83, 8, -66, 15);
+    ctx.bezierCurveTo(-80, -15, -35, -35, -16, -12);
+    ctx.bezierCurveTo(-5, -48, 42, -39, 44, -11);
+    ctx.bezierCurveTo(86, -19, 90, 24, 70, 31);
+    ctx.bezierCurveTo(95, 29, 104, 48, 137, 49);
+    ctx.bezierCurveTo(91, 58, 91, 76, 48, 63);
+    ctx.bezierCurveTo(25, 92, -10, 73, -19, 65);
+    ctx.bezierCurveTo(-42, 86, -76, 72, -76, 60);
+    ctx.closePath();
+    ctx.fillStyle = "#ffebbb";
+    ctx.fill();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = "#d8a363";
+    ctx.stroke();
+    ctx.strokeStyle = "#efbf7b";
+    for (const [cx, cy, r] of [
+      [-48, 33, 19],
+      [14, 12, 20],
+      [42, 47, 15],
+      [-15, 56, 12]
+    ]) {
+      ctx.beginPath();
+      for (let i = 0; i <= 32; i++) {
+        const a = i / 32 * Math.PI * 2.2;
+        const d = r * (1 - i / 43);
+        const px = cx + Math.cos(a) * d, py = cy + Math.sin(a) * d;
+        if (i) ctx.lineTo(px, py);
+        else ctx.moveTo(px, py);
+      }
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+  function paintCourtyard(ctx, width, height) {
+    ctx.clearRect(0, 0, width, height);
+    const sky = ctx.createLinearGradient(0, 0, 0, height);
+    sky.addColorStop(0, "#cad9ca");
+    sky.addColorStop(0.45, "#ece1bb");
+    sky.addColorStop(1, "#9aab8b");
+    ctx.fillStyle = sky;
+    ctx.fillRect(0, 0, width, height);
+    const k = Math.max(0.55, Math.min(width / 1672, height / 941));
+    for (let side = 0; side < 2; side++) {
+      ctx.save();
+      ctx.translate(side ? width : 0, 0);
+      ctx.scale(side ? -1 : 1, 1);
+      path2(
+        ctx,
+        [
+          [-20, 0],
+          [72 * k, 0],
+          [122 * k, 150 * k],
+          [31 * k, height * 0.45],
+          [14 * k, height],
+          [-25, height]
+        ],
+        "#997d57"
+      );
+      path2(
+        ctx,
+        [
+          [13 * k, height],
+          [43 * k, height * 0.48],
+          [131 * k, 134 * k],
+          [109 * k, 112 * k],
+          [16 * k, height * 0.44],
+          [-10, height]
+        ],
+        "#c0a077"
+      );
+      for (const j of [0, 1, 6, 7])
+        foliage(ctx, j % 3 * 35 * k, j * height / 7, (0.7 + j % 3 * 0.13) * k, j + side * 3);
+      for (const [x, y] of [
+        [155, 12],
+        [255, -29],
+        [48, 151]
+      ])
+        foliage(ctx, x * k, y * k, 0.65 * k, x);
+      ctx.restore();
+    }
+    for (let i = 0; i < 14; i++) {
+      const x = (i * 179 + 53) % 1672 / 1672 * width;
+      const y = i % 2 ? height - (19 + i % 4 * 13) * k : (13 + i % 4 * 9) * k;
+      path2(
+        ctx,
+        [
+          [x - 8 * k, y],
+          [x + 2 * k, y - 5 * k],
+          [x + 12 * k, y - 4 * k],
+          [x + 4 * k, y + 4 * k]
+        ],
+        i % 3 ? "#d7b16e" : "#e8a183",
+        "#b68e61",
+        0.7
+      );
+    }
+  }
+  function mountCourtyard(stage) {
+    const canvas = document.createElement("canvas");
+    canvas.id = "courtyard-canvas";
+    canvas.setAttribute("aria-hidden", "true");
+    stage.prepend(canvas);
+    const paint = () => {
+      const w = stage.clientWidth, h = stage.clientHeight;
+      if (!w || !h) return;
+      const ratio = Math.min(devicePixelRatio || 1, 2);
+      canvas.width = Math.round(w * ratio);
+      canvas.height = Math.round(h * ratio);
+      const ctx = canvas.getContext("2d");
+      ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+      paintCourtyard(ctx, w, h);
+    };
+    new ResizeObserver(paint).observe(stage);
+    paint();
+  }
+
+  // src/ui/game-view.js
   init_scene_layout();
   function mountGameView({ state: state2, ui: ui2, actions: controller2, isGamePage: isGamePage2 }) {
     const { game: game2 } = state2;
     const stage = document.querySelector(".stage");
+    mountCourtyard(stage);
     const menu = document.createElement("button");
     menu.id = "open-settings";
     menu.className = "table-settings-button";
@@ -7242,9 +7559,12 @@
       actionCtx.setTransform(ratio, 0, 0, ratio, 0, 0);
       actionCtx.clearRect(0, 0, w, h);
       if (!["playing", "dealing"].includes(game2.phase)) return;
+      const cloudScale = Math.min(w / 1672, h / 941);
+      drawCloud(actionCtx, 4, h * 0.5, cloudScale * 0.9);
+      drawCloud(actionCtx, w - 4, h * 0.51, cloudScale * 0.9, -1);
       const mobile = isMobileLandscape();
       const layout = layoutFor(mobile);
-      const scale = layout.actionScale;
+      const scale = layout.actionScale * (mobile ? 1 : Math.max(0.8, Math.min(1.65, w / 1015, h / 570)));
       const viewport = figure.parentElement;
       const left = mobile ? viewport.offsetLeft : 0;
       const availableWidth = mobile ? viewport.clientWidth : w;
@@ -7255,7 +7575,7 @@
       );
       const contentTop = viewport.offsetTop + (viewport.clientHeight - box.height * viewScale) / 2;
       const center2 = Number(figure.dataset.actionCenter);
-      const rowGap = Number(figure.dataset.actionGap) * viewScale;
+      const rowGap = Number(figure.dataset.actionGap);
       const handTop = contentTop + (center2 + rowGap / 2) * viewScale;
       const actionY = figure.dataset.actionCenter ? (
         // Never sit on the hand: where the gap between the played row and the hand
@@ -7270,7 +7590,7 @@
         actionCtx.scale(scale, scale);
         actionCtx.translate(0, lift);
         const cut = 8;
-        const path3 = () => {
+        const path4 = () => {
           actionCtx.beginPath();
           actionCtx.moveTo(x2 + cut, y);
           actionCtx.lineTo(x2 + width - cut, y);
@@ -7282,13 +7602,13 @@
           actionCtx.lineTo(x2, y + cut);
           actionCtx.closePath();
         };
-        actionCtx.fillStyle = "#41538f";
+        actionCtx.fillStyle = "#91633d";
         actionCtx.translate(3, 5);
-        path3();
+        path4();
         actionCtx.fill();
         actionCtx.translate(-3, -5);
-        actionCtx.fillStyle = disabled ? "#d9d1c0" : fill;
-        path3();
+        actionCtx.fillStyle = disabled ? "#d4c5ab" : fill;
+        path4();
         actionCtx.fill();
         actionCtx.strokeStyle = "#231e16";
         actionCtx.lineWidth = 2;
@@ -7315,6 +7635,9 @@
           actionCtx.moveTo(x2 + 16, y + 14);
           actionCtx.lineTo(x2 + 16, y + 29);
           actionCtx.lineTo(x2 + 25, y + 21.5);
+          actionCtx.closePath();
+          actionCtx.fillStyle = disabled ? "#9f937f" : "#61472d";
+          actionCtx.fill();
         } else if (icon === "steal") {
           actionCtx.arc(x2 + 19, y + 21, 7, Math.PI * 0.6, Math.PI * 1.9);
           actionCtx.moveTo(x2 + 13.5, y + 15.5);
@@ -7354,7 +7677,7 @@
         });
         cursor += stealW + gap;
       }
-      draw2(cursor, passW, "#fff4d6", "过牌", "pass", buttons[2]?.disabled, hoveredAction === "pass");
+      draw2(cursor, passW, "#fff0cd", "过牌", "pass", buttons[2]?.disabled, hoveredAction === "pass");
       Object.assign(buttons[2].style, {
         left: `${left + cursor * scale}px`,
         top: `${hitY}px`,
@@ -7362,7 +7685,7 @@
         height: `${52 * scale}px`
       });
       cursor += passW + gap;
-      draw2(cursor, playW, "#93d3b0", "出牌", "play", buttons[1]?.disabled, hoveredAction === "play");
+      draw2(cursor, playW, "#ffedc8", "出牌", "play", buttons[1]?.disabled, hoveredAction === "play");
       Object.assign(buttons[1].style, {
         left: `${left + cursor * scale}px`,
         top: `${hitY}px`,
@@ -7470,11 +7793,11 @@
         event.stopImmediatePropagation();
         const id = Number(card2.dataset.handIndex);
         const hits = [...figure.querySelectorAll(".hand-card")].reverse().map((node) => {
-          const path3 = node.querySelector("path");
+          const path4 = node.querySelector("path");
           return {
             id: Number(node.dataset.handIndex),
-            path: new Path2D(path3.getAttribute("d")),
-            inverse: path3.getScreenCTM().inverse()
+            path: new Path2D(path4.getAttribute("d")),
+            inverse: path4.getScreenCTM().inverse()
           };
         });
         suppressClick = false;
@@ -7505,9 +7828,9 @@
       const crossed = [];
       for (let i = 1; i <= steps; i++) {
         const point = new DOMPoint(gesture.x + dx * i / steps, gesture.y + dy * i / steps);
-        const hit = gesture.hits.find(({ path: path3, inverse }) => {
+        const hit = gesture.hits.find(({ path: path4, inverse }) => {
           const local = point.matrixTransform(inverse);
-          return hitContext.isPointInPath(path3, local.x, local.y);
+          return hitContext.isPointInPath(path4, local.x, local.y);
         });
         if (!hit || gesture.visited.has(hit.id)) continue;
         gesture.visited.add(hit.id);
@@ -8465,13 +8788,13 @@
   }
 
   // src/ui/home-art.js
-  var INK2 = "#231e16";
-  var path2 = (points) => points.map(([x, y], i) => `${i ? "L" : "M"}${x},${y}`).join(" ");
+  var INK3 = "#231e16";
+  var path3 = (points) => points.map(([x, y], i) => `${i ? "L" : "M"}${x},${y}`).join(" ");
   var stroke = (d, color, width) => `<path d="${d}" fill="none" stroke="${color}" stroke-width="${width}" stroke-linejoin="round" stroke-linecap="round"/>`;
-  var allPaths = TITLE_STROKES.map(path2).join(" ");
+  var allPaths = TITLE_STROKES.map(path3).join(" ");
   var relief = Array.from({ length: 9 }, (_, i) => {
     const offset = 9 - i;
-    return `<g transform="translate(${offset},${offset * 1.15})">${stroke(allPaths, INK2, 21)}${stroke(allPaths, "#b97e31", 15)}</g>`;
+    return `<g transform="translate(${offset},${offset * 1.15})">${stroke(allPaths, INK3, 21)}${stroke(allPaths, "#b97e31", 15)}</g>`;
   }).join("");
   function tableBackdrop() {
     return '<div class="home-table home-table-wide" aria-hidden="true"></div>';
@@ -8485,17 +8808,17 @@
         `${(15 + Math.cos(angle) * radius).toFixed(2)},${(15 + Math.sin(angle) * radius).toFixed(2)}`
       );
     }
-    return `<svg viewBox="0 0 30 30" aria-hidden="true"><path d="M${points.join(" L")}Z" transform="translate(1.2 1.7)" fill="#6487bd" opacity=".75"/><path d="M${points.join(" L")}Z" fill="#93d3b0" stroke="${INK2}" stroke-width="1.7" stroke-linejoin="round"/><circle cx="15" cy="15" r="6.3" fill="#fff4d6" stroke="${INK2}" stroke-width="1.7"/><circle cx="15" cy="15" r="2.5" fill="#93d3b0" stroke="${INK2}" stroke-width="1.4"/></svg>`;
+    return `<svg viewBox="0 0 30 30" aria-hidden="true"><path d="M${points.join(" L")}Z" transform="translate(1.2 1.7)" fill="#6487bd" opacity=".75"/><path d="M${points.join(" L")}Z" fill="#93d3b0" stroke="${INK3}" stroke-width="1.7" stroke-linejoin="round"/><circle cx="15" cy="15" r="6.3" fill="#fff4d6" stroke="${INK3}" stroke-width="1.7"/><circle cx="15" cy="15" r="2.5" fill="#93d3b0" stroke="${INK3}" stroke-width="1.4"/></svg>`;
   }
   function importIcon() {
     const box = "M5 16.5h20v5.6a4.4 4.4 0 0 1-4.4 4.4H9.4A4.4 4.4 0 0 1 5 22.1Z";
     const arrow = "M11.5 3h7v6.5h3.7L15 15.8 7.8 9.5h3.7Z";
-    return `<svg viewBox="0 0 30 30" aria-hidden="true"><path d="${box}" transform="translate(1.2 1.7)" fill="#6487bd" opacity=".75"/><path d="${box}" fill="#76a0e2" stroke="${INK2}" stroke-width="1.7" stroke-linejoin="round"/><path d="${arrow}" fill="#f4b829" stroke="${INK2}" stroke-width="1.7" stroke-linejoin="round"/></svg>`;
+    return `<svg viewBox="0 0 30 30" aria-hidden="true"><path d="${box}" transform="translate(1.2 1.7)" fill="#6487bd" opacity=".75"/><path d="${box}" fill="#76a0e2" stroke="${INK3}" stroke-width="1.7" stroke-linejoin="round"/><path d="${arrow}" fill="#f4b829" stroke="${INK3}" stroke-width="1.7" stroke-linejoin="round"/></svg>`;
   }
   function homeMarkup() {
-    return `${tableBackdrop()}<a class="home-rocket" href="./performance.html" aria-label="进入性能测试页" title="性能测试"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M18 29L10 30 12 19 23 16M24 31L23 40 33 35 34 24" fill="#76a0e2" stroke="${INK2}" stroke-width="2.2" stroke-linejoin="round"/><path d="M17 29C17 17 28 7 39 7 41 19 33 30 24 33Z" fill="#fff4d6" stroke="${INK2}" stroke-width="2.2"/><circle cx="30" cy="17" r="4.5" fill="#93d3b0" stroke="${INK2}" stroke-width="2"/><path d="M17 32L10 39 17 37 15 43 23 35" fill="#f4b829" stroke="${INK2}" stroke-width="2" stroke-linejoin="round"/></svg></a>
-    <div class="home-composition"><h1 class="home-title"><span class="sr-only">地主牌</span><svg id="home-art" viewBox="0 0 800 465" aria-hidden="true"><g transform="translate(-9,25)" opacity=".19">${stroke(allPaths, "#41538f", 24)}</g>${relief}${stroke(allPaths, INK2, 21)}${stroke(allPaths, "#f4b829", 15)}<g transform="translate(-1,-3)">${stroke(allPaths, "#ffe194", 3)}</g><g id="home-bag"></g><g id="home-cards"></g><g id="home-coins"></g></svg></h1>
-    <div class="home-buttons"><button id="enter-game" class="figure-button figure-primary"><svg viewBox="0 0 30 30" aria-hidden="true"><path d="M9 5L24 15 9 25Z" fill="#fff4d6" stroke="${INK2}" stroke-width="2" stroke-linejoin="round"/></svg><span class="home-start-label">开始游戏</span></button><button id="home-catalogue" class="figure-button">${itemIconMarkup("frog")}道具图鉴</button><button id="home-import" class="figure-button">${importIcon()}导入存档</button><button id="home-settings" class="figure-button">${settingsIcon()}设置</button></div></div>`;
+    return `${tableBackdrop()}<a class="home-rocket" href="./performance.html" aria-label="进入性能测试页" title="性能测试"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M18 29L10 30 12 19 23 16M24 31L23 40 33 35 34 24" fill="#76a0e2" stroke="${INK3}" stroke-width="2.2" stroke-linejoin="round"/><path d="M17 29C17 17 28 7 39 7 41 19 33 30 24 33Z" fill="#fff4d6" stroke="${INK3}" stroke-width="2.2"/><circle cx="30" cy="17" r="4.5" fill="#93d3b0" stroke="${INK3}" stroke-width="2"/><path d="M17 32L10 39 17 37 15 43 23 35" fill="#f4b829" stroke="${INK3}" stroke-width="2" stroke-linejoin="round"/></svg></a>
+    <div class="home-composition"><h1 class="home-title"><span class="sr-only">地主牌</span><svg id="home-art" viewBox="0 0 800 465" aria-hidden="true"><g transform="translate(-9,25)" opacity=".19">${stroke(allPaths, "#41538f", 24)}</g>${relief}${stroke(allPaths, INK3, 21)}${stroke(allPaths, "#f4b829", 15)}<g transform="translate(-1,-3)">${stroke(allPaths, "#ffe194", 3)}</g><g id="home-bag"></g><g id="home-cards"></g><g id="home-coins"></g></svg></h1>
+    <div class="home-buttons"><button id="enter-game" class="figure-button figure-primary"><svg viewBox="0 0 30 30" aria-hidden="true"><path d="M9 5L24 15 9 25Z" fill="#fff4d6" stroke="${INK3}" stroke-width="2" stroke-linejoin="round"/></svg><span class="home-start-label">开始游戏</span></button><button id="home-catalogue" class="figure-button">${itemIconMarkup("frog")}道具图鉴</button><button id="home-import" class="figure-button">${importIcon()}导入存档</button><button id="home-settings" class="figure-button">${settingsIcon()}设置</button></div></div>`;
   }
   var ns = "http://www.w3.org/2000/svg";
   var group = (root, markup) => {
@@ -8517,7 +8840,7 @@
       contacts: 0,
       node: group(
         home.querySelector("#home-coins"),
-        `<ellipse cy="3" rx="9" ry="10" fill="#b97e31" stroke="${INK2}" stroke-width="2"/><circle r="9" fill="#f4b829" stroke="${INK2}" stroke-width="2"/><circle r="5.5" fill="none" stroke="#fff0b4" stroke-width="1.5"/><path d="M-2-3H2V3H-2Z" fill="#b97e31"/>`
+        `<ellipse cy="3" rx="9" ry="10" fill="#b97e31" stroke="${INK3}" stroke-width="2"/><circle r="9" fill="#f4b829" stroke="${INK3}" stroke-width="2"/><circle r="5.5" fill="none" stroke="#fff0b4" stroke-width="1.5"/><path d="M-2-3H2V3H-2Z" fill="#b97e31"/>`
       )
     }));
     const cards2 = Array.from({ length: 3 }, (_, i) => ({
@@ -8725,6 +9048,7 @@
 
   // src/ui/game-entry.js
   init_define_GAME_SOUNDS();
+  init_scene_layout();
   init_camera();
   init_table();
   var ENTRY_DURATION = 1.36;
@@ -8830,7 +9154,7 @@
       wrap.style.removeProperty("transform");
       ui2.render();
       const { sx, sy, tx, ty } = homeTransform();
-      state2.visual.entry = { time: 0, pitch: 90 };
+      state2.visual.entry = { time: 0, pitch: GAME_CAMERA.pitch };
       home.inert = true;
       document.body.classList.add("game-entering");
       wrap.style.transformOrigin = "0 0";

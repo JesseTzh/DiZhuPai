@@ -778,26 +778,28 @@
   });
 
   // src/game/scene-layout.js
-  var DESKTOP_LAYOUT, MOBILE_LAYOUT, layoutFor;
+  var GAME_CAMERA, DESKTOP_LAYOUT, MOBILE_LAYOUT, layoutFor;
   var init_scene_layout = __esm({
     "src/game/scene-layout.js"() {
       init_define_GAME_SOUNDS();
+      GAME_CAMERA = { pitch: 72, distance: 2400 };
       DESKTOP_LAYOUT = {
         // Rows 0 (player) and 1 (computer); bags, decks and hands all sit on these.
-        rowV: [180, -165],
-        handSpacing: 24,
+        rowV: [150, -174],
+        handSpacing: 27,
         handSpan: null,
-        handScale: 0.86,
-        playScale: 0.86,
+        handScale: 1.03,
+        playScale: 0.94,
+        playV: -32,
         playGap: 42,
         deckScale: 0.82,
         selectedLift: 22,
-        bagU: -315,
-        deckU: 315,
-        // Collectibles keep their authored corner below the player's hand.
-        itemLayout: null,
+        bagU: -350,
+        deckU: 350,
+        // 道具沿桌面左侧排列，避开底部手牌和钱袋。
+        itemLayout: { u: -352, v: -80, step: 24, scale: 0.32 },
         // Keep cards and collectibles visible without extra camera padding.
-        bounds: { u0: -384, u1: 384, v0: -273, v1: 273 },
+        bounds: { u0: -396, u1: 396, v0: -236, v1: 236 },
         // Action pills are drawn at this fraction of their desktop size.
         actionScale: 1
       };
@@ -812,6 +814,7 @@
         handSpan: 500,
         handScale: 1.15,
         playScale: 1,
+        playV: -32,
         playGap: 42,
         deckScale: 0.95,
         // A small lift keeps the raised card clear of the action pills.
@@ -870,11 +873,19 @@
     return { width, height };
   }
   function tableSize(view, viewport) {
-    const origin = P(...world(0, 0)), unit = P(...world(1, 1)), inset = 4 * view.width / viewport.width;
-    return {
-      u: (view.width / 2 - inset) / (unit[0] - origin[0]),
-      v: (view.height / 2 - inset) / (unit[1] - origin[1])
-    };
+    const inset = 7 * view.width / viewport.width;
+    let low = 0, high = 1600;
+    for (let i = 0; i < 40; i++) {
+      const v2 = (low + high) / 2;
+      const top = P(...world(0, -v2, -1))[1];
+      const bottom = P(...world(0, v2, -1))[1];
+      if (top >= inset && bottom <= view.height - inset) low = v2;
+      else high = v2;
+    }
+    const v = low;
+    const center2 = P(...world(0, v, -1))[0];
+    const unit = P(...world(1, v, -1))[0] - center2;
+    return { u: (Math.min(center2, view.width - center2) - inset) / unit, v };
   }
   function sceneFrame(st, layout = DESKTOP_LAYOUT) {
     const { game: game2, visual: visual2 } = st;
@@ -1008,7 +1019,7 @@
           id,
           {
             u: visual2.steal.from[i] + (to.u - visual2.steal.from[i]) * e,
-            v: to.v * e,
+            v: layout.playV + (to.v - layout.playV) * e,
             z: 6 + (to.z - 6) * e + Math.sin(t * Math.PI) * 30,
             scale: layout.handScale,
             flip: 0
@@ -1026,7 +1037,12 @@
       const played = sortHand(lastPlay2.cards, lastPlay2.player === 0 ? { stamp: game2.stamp } : null), n = played.length, gap = Math.min(layout.playGap, 445 / Math.max(1, n - 1));
       for (let i = 0; i < n; i++) {
         const t = Math.min(1, visual2.playTime / 0.36), e = t * t * (3 - 2 * t), from = visual2.playFrom?.[i];
-        let pose = { u: (i - (n - 1) / 2) * gap, v: 0, z: 6 + i * 0.1, scale: layout.playScale };
+        let pose = {
+          u: (i - (n - 1) / 2) * gap,
+          v: layout.playV,
+          z: 6 + i * 0.1,
+          scale: layout.playScale
+        };
         if (from && t < 1)
           pose = {
             ...pose,
@@ -1042,7 +1058,7 @@
           stampFace: lastPlay2.player === 0 && game2.stamp?.card === played[i] ? game2.stamp.card + 1 : null
         });
       }
-      label(`${lastPlay2.player === 0 ? "你" : "电脑"} · ${lastPlay2.move.name}`, 0, -63);
+      label(`${lastPlay2.player === 0 ? "你" : "电脑"} · ${lastPlay2.move.name}`, 0, layout.playV - 63);
     }
     const entry = visual2.entry;
     if (entry) {
@@ -2281,7 +2297,7 @@
     const key = `${style}|${U}|${V}`;
     if (cache2.has(key)) return cache2.get(key);
     const marble = style === "marble", walnut = style === "walnut";
-    const material = marble ? { l: "#dfe8de", m: "#b4c9bc", d: "#819c90" } : walnut ? { l: "#ae8055", m: "#92623e", d: "#64432e" } : { l: "#d2af7e", m: "#b58b5e", d: "#886849" };
+    const material = marble ? { l: "#dfe8de", m: "#b4c9bc", d: "#819c90" } : walnut ? { l: "#ae8055", m: "#92623e", d: "#64432e" } : { l: "#efbf7f", m: "#d69d60", d: "#a77748" };
     const outline = rrUV(-U, -V, U, V, marble ? 32 : walnut ? 22 : 12, 8);
     const A = outline.map(([u, v]) => world(u, v, -19));
     const B = outline.map(([u, v]) => world(u, v, -1));
@@ -2289,7 +2305,7 @@
     const polygon = (points, color) => polygons.push({ points, color });
     const line = (uv, color, width = 0.8, closed = false, z = -0.75) => lines.push({ points: uv.map(([u, v]) => world(u, v, z)), color, width, closed });
     if (!marble) {
-      const strips = walnut ? 5 : 6;
+      const strips = walnut ? 6 : 8;
       for (let j = 1; j < strips; j++) {
         const v = -V + 2 * V * j / strips;
         line(
@@ -2301,15 +2317,15 @@
           walnut ? 0.65 : 1.5
         );
       }
-      for (let j = 0; j < 18; j++) {
-        const v = -V + 26 + j * ((2 * V - 52) / 18);
-        const x = -U + 26 + j * 79 % 160, length = 80 + j * 61 % 220;
+      for (let j = 0; j < 64; j++) {
+        const v = -V + 26 + j * ((2 * V - 52) / 64);
+        const length = 35 + j * 61 % 180, x = -U + 20 + j * 173 % Math.max(1, 2 * U - length - 40);
         line(
           Array.from({ length: 13 }, (_, k) => [
             x + k * length / 12,
             v + Math.sin(k * 0.6 + j) * (walnut ? 2 : 3)
           ]),
-          walnut ? "#93673f" : "#a07b51",
+          walnut ? "#93673f" : "#d59e63",
           0.65
         );
       }
@@ -3418,6 +3434,111 @@
     }
   });
 
+  // src/game/table-ornament.js
+  function paintTableOrnament(canvas, table) {
+    const U = Math.max(...table.outline.map(([u]) => u));
+    const V = Math.max(...table.outline.map(([, v]) => v));
+    const marble = table.material.l === "#dfe8de";
+    const rail = (u0, v0, u1, v1, z = 9) => {
+      const corners = [
+        [u0, v0],
+        [u1, v0],
+        [u1, v1],
+        [u0, v1]
+      ];
+      const top = corners.map(([u, v]) => world(u, v, z));
+      const base = corners.map(([u, v]) => world(u, v, -1));
+      for (const [a, b] of [
+        [1, 2],
+        [2, 3],
+        [3, 0]
+      ])
+        canvas.polygon([base[a], base[b], top[b], top[a]], table.material.d, "#715036", 0.85);
+      canvas.polygon(top, marble ? "#d2dbc8" : "#d69c60", "#735237", 1.25);
+      canvas.line(
+        [
+          [u0 + 3, v0 + 2],
+          [u1 - 3, v0 + 2]
+        ].map(([u, v]) => world(u, v, z + 0.1)),
+        "#f7d89b",
+        1.3
+      );
+      if (u1 - u0 > 40)
+        for (let i = 0; i < 3; i++) {
+          const v = v0 + 3 + (v1 - v0 - 5) * i / 3;
+          canvas.line(
+            Array.from(
+              { length: 15 },
+              (_, j) => world(u0 + 8 + (u1 - u0 - 16) * j / 14, v + Math.sin(j * 0.7 + i) * 0.8, z + 0.2)
+            ),
+            "#af7847",
+            0.55
+          );
+        }
+    };
+    rail(-U + 2, -V + 2, U - 2, -V + 11, 7);
+    rail(-U + 2, -V + 12, -U + 12, V - 12, 7);
+    rail(U - 12, -V + 12, U - 2, V - 12, 7);
+    rail(-U + 2, V - 12, U - 2, V - 2, 9);
+    for (const u of [-U * 0.72, U * 0.72]) {
+      rail(u - 9, -V + 1, u + 9, -V + 14, 10);
+      rail(u - 9, V - 15, u + 9, V - 1, 12);
+    }
+    const ctx = canvas.ctx;
+    const o = P(...world(0, 0, -0.5));
+    const x = P(...world(1, 0, -0.5));
+    const y = P(...world(0, 1, -0.5));
+    ctx.save();
+    ctx.transform(x[0] - o[0], x[1] - o[1], y[0] - o[0], y[1] - o[1], ...o);
+    ctx.strokeStyle = "#b77e42";
+    ctx.fillStyle = "#b77e42";
+    ctx.globalAlpha = 0.29;
+    for (const [rx, ry] of [
+      [182, 97],
+      [177, 92]
+    ]) {
+      ctx.beginPath();
+      ctx.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2);
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    }
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.font = "900 63px 'STKaiti', 'Kaiti SC', 'Songti SC', serif";
+    ctx.fillText("斗地主", 0, 0);
+    for (const side of [-1, 1]) {
+      ctx.save();
+      ctx.translate(side * 171, 0);
+      ctx.scale(side, 1);
+      ctx.lineWidth = 1.5;
+      for (const [cx, cy, r] of [
+        [0, 0, 15],
+        [19, -7, 11],
+        [16, 14, 10],
+        [-12, 12, 9],
+        [-5, -20, 9]
+      ]) {
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, 0.2, Math.PI * 1.8);
+        ctx.stroke();
+      }
+      ctx.beginPath();
+      ctx.moveTo(5, -22);
+      ctx.bezierCurveTo(26, -45, 52, -21, 28, -18);
+      ctx.bezierCurveTo(51, -4, 37, 19, 19, 11);
+      ctx.stroke();
+      ctx.restore();
+    }
+    ctx.restore();
+  }
+  var init_table_ornament = __esm({
+    "src/game/table-ornament.js"() {
+      init_define_GAME_SOUNDS();
+      init_table();
+      init_camera();
+    }
+  });
+
   // src/game/table-layer.js
   function paintTable(canvas, table, items) {
     const { A, B, outline, material } = table;
@@ -3430,11 +3551,13 @@
     for (const { points, color } of table.polygons) canvas.polygon(points, color);
     for (const { points, color, width, closed } of table.lines)
       canvas.line(points, color, width, closed);
+    paintTableOrnament(canvas, table);
     for (const model2 of items) drawTableItemShadow(canvas, model2, B);
   }
   var init_table_layer = __esm({
     "src/game/table-layer.js"() {
       init_define_GAME_SOUNDS();
+      init_table_ornament();
       init_shading();
       init_math();
       init_palette();
@@ -3448,13 +3571,12 @@
   var init_scene_overlay = __esm({
     "src/game/scene-overlay.js"() {
       init_define_GAME_SOUNDS();
-      init_palette();
       deckMarkup = ({ player, deckCount }, thickness, ring) => `<g class="card-deck" data-player="${player}" data-count="${deckCount}" data-thickness="${thickness}" role="img" aria-label="余牌 ${deckCount} 张"><path d="${ring}" fill="none" pointer-events="none"/></g>`;
       wildMarkup = (id, { wild, revealing }, ring) => `<g class="${wild ? "wild-card-model" : "wild-card-reveal"}" id="wild-card-${id}" data-card-model="frog-wild" data-wild-card="${id}" data-revealing="${!!revealing}" role="img" aria-label="青蛙赖子牌" pointer-events="none"><path d="${ring}" fill="none" pointer-events="none"/></g>`;
       handCardMarkup = (id, { act, selected, name, handIndex }, hover, ring) => `<g data-act="${act}" data-card="${id}" data-hand-index="${handIndex}" data-hover="${hover.toFixed(3)}" class="hand-card${selected ? " selected" : ""}" role="button" tabindex="0" aria-label="${name}" aria-pressed="${!!selected}"><path d="${ring}" fill="transparent" pointer-events="all"/></g>`;
       bagMarkup = (player, palette, fill, hit) => `<g class="money-bag" data-player="${player}" data-palette="${palette}" data-fill="${fill.toFixed(4)}"${player === 0 ? ' data-act="poke-bag" role="button" tabindex="0" aria-label="点击钱袋吐金币"' : ""}>${player === 0 ? `<path d="${hit}" fill="transparent" pointer-events="all"/>` : ""}</g>`;
       itemMarkup = (item, hit) => `<g class="table-item" id="table-item-${item.id}" data-item="${item.id}" role="img" tabindex="0" aria-label="${item.name}：${item.effect}" aria-describedby="item-tooltip"><path d="${hit}" fill="transparent" pointer-events="all"/></g>`;
-      labelMarkup = ({ text, cls }, [x, y]) => `<text class="${cls}" x="${x}" y="${y}" text-anchor="middle" fill="${INK}" font-size="12" font-weight="600">${text}</text>`;
+      labelMarkup = ({ text, cls }) => `<g class="${cls}" role="img" aria-label="${text}" pointer-events="none"></g>`;
     }
   });
 
@@ -3656,7 +3778,7 @@
       const entry = st.visual.entry;
       const progress = entry ? Math.min(1, Math.max(0, (entry.time - 0.16) / 0.56)) : 1;
       const home = st.visual.home && !entry;
-      setCameraPitch(90, 0);
+      setCameraPitch(home ? 90 : GAME_CAMERA.pitch, home ? 0 : GAME_CAMERA.distance);
       canvas.size = { width: svg.clientWidth, height: svg.clientHeight };
       let framing = {};
       if (!home) {
@@ -3682,7 +3804,7 @@
     function anchorControls(st, layout, view) {
       const handCount = st.game.hands[0].length || 18, key = `${view}|${handCount}|${layout.handScale}|${layout.playScale}`;
       if (anchors?.key !== key) {
-        const hand2 = canvas.cardGeometry(handPose(0, handCount - 1, handCount, layout)), played = canvas.cardGeometry({ u: 0, v: 0, z: 6, scale: layout.playScale });
+        const hand2 = canvas.cardGeometry(handPose(0, handCount - 1, handCount, layout)), played = canvas.cardGeometry({ u: 0, v: layout.playV, z: 6, scale: layout.playScale });
         const handTop = Math.min(...[...hand2.A, ...hand2.B].map((point) => P(...point)[1])), playedBottom = Math.max(...[...played.A, ...played.B].map((point) => P(...point)[1]));
         anchors = {
           key,
@@ -3737,11 +3859,37 @@
       scene.hits.sort(paintOrder);
       for (const part of scene.parts) sprites.draw(canvas, part.key, part.extent, part.draw);
       sprites.end();
+      for (const label of frame.labels) {
+        const [x, y] = P(...world(label.u, label.v, label.z));
+        const ctx = canvas.ctx;
+        ctx.save();
+        const delta = label.cls.includes("coin-delta");
+        ctx.fillStyle = delta ? label.cls.includes("gain") ? "#347452" : "#ba4835" : "#3d2b1c";
+        ctx.textAlign = "center";
+        ctx.font = `700 ${delta ? 27 : 11}px 'PingFang SC', sans-serif`;
+        if (delta) {
+          ctx.strokeStyle = "#fff0cd";
+          ctx.lineWidth = 3;
+          ctx.strokeText(label.text, x, y);
+        }
+        ctx.fillText(label.text, x, y);
+        if (label.cls === "scene-label") {
+          const half = ctx.measureText(label.text).width / 2 + 12;
+          ctx.strokeStyle = "#a27b49";
+          ctx.lineWidth = 0.65;
+          for (const side of [-1, 1]) {
+            ctx.beginPath();
+            ctx.moveTo(x + side * half, y - 4);
+            ctx.lineTo(x + side * (half + 24), y - 4);
+            ctx.stroke();
+          }
+        }
+        ctx.restore();
+      }
       canvas.finish(+((wbEl ||= document.getElementById("wb"))?.value ?? 2.4));
       const overlay = scene.overlay;
       for (const target of scene.hits) overlay.push(target.markup);
-      for (const label of frame.labels)
-        overlay.push(labelMarkup(label, P(...world(label.u, label.v, label.z))));
+      for (const label of frame.labels) overlay.push(labelMarkup(label));
       const markup = overlay.join("");
       if (markup !== layer._markup) {
         patchSvg(layer, markup);
